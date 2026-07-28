@@ -146,6 +146,7 @@ class MotorState:
     velocity: float = 0.0
     torque: float = 0.0
     temperature: float = 0.0
+    voltage: float = 0.0
     raw_pos: int = 0
     raw_vel: int = 0
     raw_tqe: int = 0
@@ -226,12 +227,22 @@ class SocketCan:
         try:
             n = self.sock.send(frame)
         except OSError as exc:
-            if exc.errno == 105:
+            if exc.errno != 105:
+                raise
+            for _ in range(8):
+                time.sleep(0.002)
+                try:
+                    n = self.sock.send(frame)
+                    break
+                except OSError as retry_exc:
+                    if retry_exc.errno != 105:
+                        raise
+                    exc = retry_exc
+            else:
                 raise OSError(
-                    "CAN 发送缓冲满（Errno 105）。通常是总线无人 ACK："
-                    "电机没供电、CANH/CANL 反了、或未接 120Ω。"
+                    105,
+                    "CAN 发送缓冲满。位置保持时刷新太密，或总线暂时发不出去。",
                 ) from exc
-            raise
         if n != CAN_FRAME_SIZE:
             raise OSError(f"CAN 发送不完整: {n}/{CAN_FRAME_SIZE}")
 
@@ -281,6 +292,10 @@ class Motor:
         if not data:
             return False
         cmd = data[0]
+        # 读 1 个 int16：0x15 0x0D → 回复 0x25 0x0D，母线电压，1 LSB = 0.1V
+        if cmd == 0x25 and len(data) >= 4 and data[1] == 0x0D:
+            self.state.voltage = unpack_i16_le(data, 2) * 0.1
+            return True
         # 读模式回复: 21 00 0A → 位置模式
         if cmd in (0x21, 0x11) and len(data) >= 3 and data[1] == 0x00:
             self.state.mode = data[2]
@@ -357,6 +372,10 @@ class MotorBus:
     def read_status(self, motor_id: int) -> None:
         self.send_cmd(motor_id, bytes([0x17, 0x01]))
 
+    def read_voltage(self, motor_id: int) -> None:
+        """读母线电压，寄存器 0x0D，1 个 int16。"""
+        self.send_cmd(motor_id, bytes([0x15, 0x0D]))
+
     def set_timeout_ms(self, motor_id: int, timeout_ms: int) -> None:
         # 0 表示禁用超时。原 SDK MODE_TIME_OUT。
         self.send_cmd(motor_id, bytes([0x05, 0xb4, 0x02, 0x00]) + struct.pack("<H", timeout_ms & 0xFFFF))
@@ -412,7 +431,7 @@ class MotorBus:
     def control_position(self, motor: Motor, position_rad: float, torque_max_nm: float) -> None:
         pos = pos_to_int(position_rad)
         tqe = tqe_to_int(torque_max_nm, motor.type)
-        data = bytes([0x07, 0x07]) + i16_le(pos) + bytes([0x80, 0x00]) + i16_le(tqe)
+        data = bytes([0x07, 0x07]) + i16_le(pos) + bytes([0x00, 0x00]) + i16_le(tqe)
         self.send_cmd(motor.id, data)
 
     def stream_pos_vel_tqe(

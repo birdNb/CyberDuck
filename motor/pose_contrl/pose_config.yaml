@@ -1,0 +1,44 @@
+# Joint poses in degrees. Motor 15 is not included.
+# Capture: python3 pose.py capture stand
+# Switch:  python3 pose.py go stand
+interface: can0
+start_id: 1
+end_id: 14
+skip_ids:
+- 15
+motor_type: '4538_19'
+transition_s: 3.0
+hz: 50
+vel_limit: 1.0
+torque_nm: 1.2
+damping_torque_nm: 0.35
+poses:
+  stand:
+    mode: position
+    joints:
+      '1': -10.33
+      '2': -34.88
+      '3': -24.8
+      '4': 3.13
+      '5': 0.83
+      '6': 14.0
+      '7': 40.32
+      '8': 25.31
+      '9': -5.8
+      '10': -1.51
+      '11': -65.59
+      '12': -63.72
+      '13': -1.3
+      '14': -8.5
+  squat:
+    mode: position
+    joints: {}
+  fold:
+    mode: position
+    joints: {}
+  damp:
+    mode: damping
+    joints: {}
+  release:
+    mode: release
+    joints: {}

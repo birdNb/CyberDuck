@@ -37,3 +37,209 @@
 23:09:38 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
 23:10:16 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
 23:04:52 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+23:04:52 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
+23:04:52 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+23:07:43 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
+23:07:43 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+23:08:19 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
+23:08:19 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+23:47:52 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+23:47:54 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+23:47:56 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+23:47:58 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:00 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:02 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:04 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:06 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:09 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:11 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:13 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:15 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:17 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:19 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:21 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:23 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:25 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+23:48:27 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+23:48:29 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+23:48:31 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+23:48:33 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:35 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:37 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:40 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:42 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:44 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:46 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:48 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:50 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:52 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:54 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:56 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:48:58 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:00 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:02 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:04 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:07 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:09 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:11 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:13 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:15 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:17 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:19 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:21 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:23 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:25 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:27 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:29 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:31 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:33 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:36 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:38 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:40 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:42 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:44 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:46 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:48 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:50 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:52 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:54 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:56 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:49:58 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:00 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:02 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:05 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:07 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:09 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:11 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:13 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:15 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:17 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:19 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:21 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:23 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:25 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:27 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:29 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:31 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:33 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:36 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:38 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:40 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:42 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:44 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:46 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:48 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:50 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:52 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:54 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:56 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:50:58 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:00 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:02 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:05 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:07 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:09 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:11 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:13 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:15 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:17 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:19 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:21 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:23 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:25 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:27 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:29 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:31 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:34 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:36 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:38 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:40 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:42 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:44 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:46 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:48 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:50 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:52 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:54 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:56 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:51:58 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:00 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:03 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:05 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:07 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:09 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:11 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:13 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:15 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:17 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:19 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:21 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:23 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:25 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:27 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:29 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:31 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:34 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:36 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:38 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:40 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:42 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:44 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:46 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:48 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:50 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:52 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:54 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:56 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:52:58 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:00 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:03 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:05 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:07 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:09 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:11 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:13 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:15 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:17 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:19 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:21 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:23 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:25 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:27 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:29 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:32 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:34 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:36 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:38 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:40 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:42 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:44 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:46 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:48 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:50 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:52 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:54 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:56 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:53:58 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:00 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:03 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:05 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:07 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:09 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:11 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:13 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:15 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:17 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:19 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:21 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:23 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:25 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+23:54:27 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+23:54:29 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+23:54:32 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+23:04:51 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+23:06:51 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+23:07:25 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+23:08:02 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+23:08:36 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+23:04:51 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
