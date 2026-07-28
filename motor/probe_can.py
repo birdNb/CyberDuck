@@ -34,7 +34,7 @@ def main() -> int:
     parser.add_argument("-i", "--iface", default="can0")
     parser.add_argument("--listen", type=float, default=2.0, help="先静听秒数")
     parser.add_argument("--start", type=int, default=1)
-    parser.add_argument("--end", type=int, default=14)
+    parser.add_argument("--end", type=int, default=15)
     parser.add_argument("--timeout", type=float, default=0.08)
     args = parser.parse_args()
 

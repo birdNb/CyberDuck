@@ -31,3 +31,9 @@
 19:44:10 hci_le_cmd fail 0x08 0x0008 0x14: < HCI Command: ogf 0x08, ocf 0x0008, plen 32 14 02 01 06 03 03 E0 FF 0C 09 48 54 5F 31 31 34 35 31 34 32 33 00 00 00 00 00 00 00 00 00 00 00 > HCI Event: 0x13 plen 5 01 11 00 01 00
 19:44:10 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
 19:44:41 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+23:04:52 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+23:06:21 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+23:07:15 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+23:09:38 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+23:10:16 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+23:04:52 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423

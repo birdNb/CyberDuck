@@ -361,6 +361,31 @@ class MotorBus:
         # 0 表示禁用超时。原 SDK MODE_TIME_OUT。
         self.send_cmd(motor_id, bytes([0x05, 0xb4, 0x02, 0x00]) + struct.pack("<H", timeout_ms & 0xFFFF))
 
+    def set_zero(self, motor_id: int) -> None:
+        """把当前位置设为机械零位（只改 RAM）。官方帧 40 01 04 64 20 63 0A。"""
+        self.send_cmd(motor_id, bytes([0x40, 0x01, 0x04, 0x64, 0x20, 0x63, 0x0A]))
+
+    def save_config(self, motor_id: int) -> None:
+        """把 RAM 配置写入 flash。官方帧 05 B3 02 00 00，建议之后给电机重新上电。"""
+        self.send_cmd(motor_id, bytes([0x05, 0xB3, 0x02, 0x00, 0x00]))
+
+    def command_pos_vel_tqe(
+        self,
+        motor: Motor,
+        position_rad: float,
+        velocity_rad_s: float,
+        torque_max_nm: float,
+        reply: bool = False,
+    ) -> None:
+        """按电机 ID 发位置/速度/力矩，避免 0x0090 广播带动整条总线。"""
+        data = (
+            bytes([0x07, 0x07])
+            + i16_le(pos_to_int(position_rad))
+            + i16_le(vel_to_int(velocity_rad_s))
+            + i16_le(tqe_to_int(torque_max_nm, motor.type))
+        )
+        self.send_cmd(motor.id, data, reply=reply)
+
     def pos_vel_maxtqe(
         self,
         motor: Motor,

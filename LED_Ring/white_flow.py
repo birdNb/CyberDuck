@@ -10,9 +10,8 @@
 GPIO_22 默认是调试串口 TX，程序会临时占用该脚。需要 root：
   sudo python3 white_flow.py
   sudo python3 white_flow.py --effect ironman
-  sudo python3 white_flow.py --effect neon
-  sudo python3 white_flow.py --effect breathe
-  sudo python3 white_flow.py --cycle
+  sudo python3 white_flow.py --boot
+  sudo python3 white_flow.py --boot-demo
 关灯：
   sudo python3 white_flow.py --off
 Ctrl+C 退出并关灯。
@@ -41,6 +40,11 @@ BRIGHTNESS = 64
 STEP_S = 0.04
 TAIL = 5
 HOLD_S = 8.0
+IDLE_BRIGHTNESS = 30
+BOOT_SINE_PERIOD_S = 2.0
+BOOT_SINE_CYCLES = 3
+BOOT_TIMEOUT_S = 180.0
+BOOT_DEMO_FLOW_S = 6.0
 
 
 def build_so() -> None:
@@ -69,7 +73,7 @@ def load_lib() -> ctypes.CDLL:
 
 
 def maybe_rerun_as_root() -> None:
-    if os.geteuid() == 0:
+    if os.geteuid() == 0 or os.environ.get("INVOCATION_ID"):
         return
     print("WS2812 需要直接操作 GPIO_22 / TLMM，正在用 sudo 重新启动…")
     os.execvp("sudo", ["sudo", "-E", sys.executable, os.path.abspath(__file__), *sys.argv[1:]])
@@ -291,6 +295,122 @@ def show_frame(lib, frame: bytearray) -> None:
     lib.ws2812_show(buf)
 
 
+def solid_white(count: int, level: int) -> bytearray:
+    x = max(0, min(255, int(level)))
+    buf = bytearray(count * 3)
+    pixel = (x, x, x)
+    for i in range(count):
+        put_grb(buf, i, pixel)
+    return buf
+
+
+def system_is_up() -> bool:
+    try:
+        r = subprocess.run(
+            ["systemctl", "is-system-running"],
+            capture_output=True,
+            text=True,
+            timeout=1,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return (r.stdout or "").strip() in ("running", "degraded")
+
+
+def tick_delay(next_t: float, delay: float) -> float:
+    next_t += delay
+    remain = next_t - time.monotonic()
+    if remain > 0:
+        time.sleep(remain)
+        return next_t
+    return time.monotonic()
+
+
+def run_boot(
+    lib,
+    count: int,
+    brightness: int,
+    tail: int,
+    delay: float,
+    idle: int,
+    demo_s: Optional[float],
+    timeout_s: float,
+) -> None:
+    running = True
+
+    def _stop(_signum=None, _frame=None):
+        nonlocal running
+        running = False
+
+    signal.signal(signal.SIGINT, _stop)
+    signal.signal(signal.SIGTERM, _stop)
+
+    hi = max(1, min(255, brightness))
+    lo = 0
+    idle = max(0, min(255, idle))
+    st = SparkleState()
+    n = 0
+    next_t = time.monotonic()
+    t0 = next_t
+    if demo_s is not None:
+        print(
+            f"开机演示：白色流水 {demo_s:.0f}s，随后正弦 {BOOT_SINE_CYCLES} 次，再恒定 {idle}"
+        )
+        until = t0 + max(0.0, demo_s)
+        wait_boot = False
+    elif system_is_up():
+        print("系统已就绪，先走一段白色流水再进入完成灯效")
+        until = t0 + BOOT_DEMO_FLOW_S
+        wait_boot = False
+    else:
+        print("开机：白色流水灯，等待系统就绪…")
+        until = t0 + max(5.0, timeout_s)
+        wait_boot = True
+
+    try:
+        while running:
+            show_frame(lib, effect_flow(n, count, hi, tail, st))
+            n += 1
+            next_t = tick_delay(next_t, delay)
+            now = time.monotonic()
+            if wait_boot and system_is_up():
+                print("开机完成")
+                break
+            if now >= until:
+                if wait_boot:
+                    print("等待开机超时，进入完成灯效")
+                break
+
+        if running:
+            print(
+                f"正弦白光 {lo}–{hi}，周期 {BOOT_SINE_PERIOD_S:.0f}s × {BOOT_SINE_CYCLES}"
+            )
+            sine_t0 = time.monotonic()
+            next_t = sine_t0
+            duration = BOOT_SINE_PERIOD_S * BOOT_SINE_CYCLES
+            while running:
+                elapsed = time.monotonic() - sine_t0
+                if elapsed >= duration:
+                    break
+                phase = 2.0 * math.pi * elapsed / BOOT_SINE_PERIOD_S
+                level = lo + (hi - lo) * (0.5 + 0.5 * math.cos(phase))
+                show_frame(lib, solid_white(count, int(level + 0.5)))
+                next_t = tick_delay(next_t, delay)
+
+        if running:
+            print(f"恒定白光 亮度 {idle}。Ctrl+C 关灯退出。")
+            hold = solid_white(count, idle)
+            next_t = time.monotonic()
+            while running:
+                show_frame(lib, hold)
+                next_t = tick_delay(next_t, 0.25)
+
+        off = (ctypes.c_uint8 * (count * 3))()
+        lib.ws2812_show(off)
+    finally:
+        lib.ws2812_close()
+
+
 def run_loop(
     lib,
     names: List[str],
@@ -361,20 +481,28 @@ def main() -> int:
     )
     parser.add_argument("--cycle", action="store_true", help="轮播全部灯效")
     parser.add_argument("--hold", type=float, default=HOLD_S, help="轮播时每种持续秒，默认 8")
+    parser.add_argument("--boot", action="store_true", help="开机灯效：流水 → 正弦3次 → 亮度30恒定")
+    parser.add_argument("--boot-demo", action="store_true", help="演示开机灯效（不等待 systemd）")
+    parser.add_argument("--idle", type=int, default=IDLE_BRIGHTNESS, help="开机完成后恒定亮度，默认 30")
     parser.add_argument("--list", action="store_true", help="列出灯效")
     parser.add_argument("--off", action="store_true", help="发送全灭后退出")
+    parser.add_argument("--no-sudo", action="store_true", help="不要自动 sudo（systemd 用）")
     args = parser.parse_args()
 
     if args.list:
         for name in EFFECTS:
             print(f"  {name:14}  {EFFECTS[name][0]}")
         print("  cycle           轮播全部")
+        print("  --boot          开机：流水 → 正弦3次 → 亮度30")
+        print("  --boot-demo     演示开机灯效")
         return 0
 
     args.brightness = max(1, min(255, args.brightness))
     args.tail = max(1, min(args.count, args.tail))
+    args.idle = max(0, min(255, args.idle))
 
-    maybe_rerun_as_root()
+    if not args.no_sudo:
+        maybe_rerun_as_root()
     lib = load_lib()
 
     if args.off:
@@ -395,6 +523,24 @@ def main() -> int:
             pass
         lib.ws2812_hold_low()
         lib.ws2812_close()
+        return 0
+
+    if args.boot or args.boot_demo:
+        if lib.ws2812_open(args.chip, args.line, args.count) != 0:
+            err = lib.ws2812_error() or b"unknown"
+            print(f"打开 GPIO_{args.line} 失败: {err.decode('utf-8', 'replace')}", file=sys.stderr)
+            print("请用 sudo 运行，并确认 DIN 接到 40 针排针第 8 脚（GPIO_22）。", file=sys.stderr)
+            return 1
+        run_boot(
+            lib,
+            args.count,
+            args.brightness,
+            args.tail,
+            args.delay,
+            args.idle,
+            BOOT_DEMO_FLOW_S if args.boot_demo else None,
+            BOOT_TIMEOUT_S,
+        )
         return 0
 
     if args.cycle or args.effect == "cycle":
