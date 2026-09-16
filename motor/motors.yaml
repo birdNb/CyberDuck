@@ -1,0 +1,16 @@
+# 从 hightorque_robot/robot_param/1dof_STM32H730_model_test_Orin_params.yaml 迁移
+# 直连 PCAN-USB / SocketCAN，不再走 USB-CDC 通讯板
+interface: can0
+bitrate: 1000000
+sample_point: 0.875
+scan_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+motors:
+  - name: L_low_foot
+    type: "4538_19"
+    id: 1
+    pos_limit_enable: false
+    pos_upper: 5
+    pos_lower: -5
+    tor_limit_enable: false
+    tor_upper: 5
+    tor_lower: -3

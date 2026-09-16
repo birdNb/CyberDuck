@@ -1,0 +1,30 @@
+[Unit]
+Description=microDuck BLE GATT (connect / IP / volume)
+Documentation=file://@PKG_DIR@/docs/BLE_PROTOCOL.md
+After=bluetooth.service network-online.target
+Wants=bluetooth.service network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=@BT_DIR@
+Environment=PKG_DIR=@PKG_DIR@
+Environment=BT_DIR=@BT_DIR@
+Environment=DUCK_WS=@DUCK_WS@
+Environment=DUCK_USER=@DUCK_USER@
+Environment=DUCK_HOME=@DUCK_HOME@
+Environment=DUCK_BLE_UID=@DUCK_BLE_UID@
+Environment=PULSE_SERVER=unix:/run/user/@DUCK_BLE_UID@/pulse/native
+Environment=XDG_RUNTIME_DIR=/run/user/@DUCK_BLE_UID@
+Environment=HOME=@DUCK_HOME@
+Environment=BLE_DEVICE_NAME_FILE=/var/lib/duck-ble/ble_device_name.conf
+ExecStart=@BT_DIR@/systemd/duck-ble-boot.sh
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=duck-ble
+
+[Install]
+WantedBy=multi-user.target

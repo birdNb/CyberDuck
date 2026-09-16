@@ -1,0 +1,164 @@
+[0:11:28.939949579] [10226]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:11:28.978363434] [10229] ERROR V4L2 v4l2_device.cpp:412 'imx219 20-0010': Unable to set controls: Device or resource busy
+[0:11:28.978508069] [10229]  WARN CameraSensor camera_sensor_legacy.cpp:355 'imx219 20-0010': Recommended V4L2 control 0x009a0922 not supported
+[0:11:28.978526246] [10229]  WARN CameraSensor camera_sensor_legacy.cpp:427 'imx219 20-0010': The sensor kernel driver needs to be fixed
+[0:11:28.978531715] [10229]  WARN CameraSensor camera_sensor_legacy.cpp:429 'imx219 20-0010': See Documentation/sensor_driver_requirements.rst in the libcamera sources for more information
+[0:11:28.978792444] [10229]  WARN CameraSensor camera_sensor_legacy.cpp:595 'imx219 20-0010': Failed to retrieve the camera location
+[0:11:28.978804944] [10229]  WARN CameraSensor camera_sensor_legacy.cpp:617 'imx219 20-0010': Rotation control not available, default to 0 degrees
+[0:11:28.980606246] [10229]  INFO IPAProxy ipa_proxy.cpp:184 Using tuning file /usr/share/libcamera/ipa/simple/imx219.yaml
+[0:11:28.980906611] [10229] ERROR MediaDevice media_device.cpp:848 /dev/media0[qcom-camss]: Failed to setup link 'msm_csiphy3'[1] -> 'msm_csid0'[0]: Device or resource busy
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10" ! video/x-raw, width=1280, height=720, framerate=30/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:11:28.988262548] [10226]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:11:29.022245048] [10231] ERROR V4L2 v4l2_device.cpp:412 'imx219 20-0010': Unable to set controls: Device or resource busy
+[0:11:29.022329579] [10231]  WARN CameraSensor camera_sensor_legacy.cpp:355 'imx219 20-0010': Recommended V4L2 control 0x009a0922 not supported
+[0:11:29.022343382] [10231]  WARN CameraSensor camera_sensor_legacy.cpp:427 'imx219 20-0010': The sensor kernel driver needs to be fixed
+[0:11:29.022348434] [10231]  WARN CameraSensor camera_sensor_legacy.cpp:429 'imx219 20-0010': See Documentation/sensor_driver_requirements.rst in the libcamera sources for more information
+[0:11:29.022445986] [10231]  WARN CameraSensor camera_sensor_legacy.cpp:595 'imx219 20-0010': Failed to retrieve the camera location
+[0:11:29.022453382] [10231]  WARN CameraSensor camera_sensor_legacy.cpp:617 'imx219 20-0010': Rotation control not available, default to 0 degrees
+[0:11:29.024140829] [10231]  INFO IPAProxy ipa_proxy.cpp:184 Using tuning file /usr/share/libcamera/ipa/simple/imx219.yaml
+[0:11:29.024376454] [10231] ERROR MediaDevice media_device.cpp:848 /dev/media0[qcom-camss]: Failed to setup link 'msm_csiphy3'[1] -> 'msm_csid0'[0]: Device or resource busy
+[ WARN:0@0.321] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc0 reported: Could not find a camera named '/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10'.
+[ WARN:0@0.322] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@0.322] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc ! video/x-raw, width=1280, height=720, framerate=30/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:11:29.029747757] [10226]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:11:29.062248486] [10232] ERROR V4L2 v4l2_device.cpp:412 'imx219 20-0010': Unable to set controls: Device or resource busy
+[0:11:29.062334944] [10232]  WARN CameraSensor camera_sensor_legacy.cpp:355 'imx219 20-0010': Recommended V4L2 control 0x009a0922 not supported
+[0:11:29.062348382] [10232]  WARN CameraSensor camera_sensor_legacy.cpp:427 'imx219 20-0010': The sensor kernel driver needs to be fixed
+[0:11:29.062353277] [10232]  WARN CameraSensor camera_sensor_legacy.cpp:429 'imx219 20-0010': See Documentation/sensor_driver_requirements.rst in the libcamera sources for more information
+[0:11:29.062481767] [10232]  WARN CameraSensor camera_sensor_legacy.cpp:595 'imx219 20-0010': Failed to retrieve the camera location
+[0:11:29.062491194] [10232]  WARN CameraSensor camera_sensor_legacy.cpp:617 'imx219 20-0010': Rotation control not available, default to 0 degrees
+[0:11:29.064545413] [10232]  INFO IPAProxy ipa_proxy.cpp:184 Using tuning file /usr/share/libcamera/ipa/simple/imx219.yaml
+[0:11:29.064829579] [10232] ERROR MediaDevice media_device.cpp:848 /dev/media0[qcom-camss]: Failed to setup link 'msm_csiphy3'[1] -> 'msm_csid0'[0]: Device or resource busy
+[ WARN:0@0.361] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc1 reported: Could not find any supported camera on this system.
+[ WARN:0@0.362] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@0.362] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@0/camera@10" ! video/x-raw, width=1280, height=720, framerate=30/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:11:29.069088277] [10226]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:11:29.089154840] [10233] ERROR V4L2 v4l2_device.cpp:412 'imx219 20-0010': Unable to set controls: Device or resource busy
+[0:11:29.089252236] [10233]  WARN CameraSensor camera_sensor_legacy.cpp:355 'imx219 20-0010': Recommended V4L2 control 0x009a0922 not supported
+[0:11:29.089266923] [10233]  WARN CameraSensor camera_sensor_legacy.cpp:427 'imx219 20-0010': The sensor kernel driver needs to be fixed
+[0:11:29.089272184] [10233]  WARN CameraSensor camera_sensor_legacy.cpp:429 'imx219 20-0010': See Documentation/sensor_driver_requirements.rst in the libcamera sources for more information
+[0:11:29.089390882] [10233]  WARN CameraSensor camera_sensor_legacy.cpp:595 'imx219 20-0010': Failed to retrieve the camera location
+[0:11:29.089399527] [10233]  WARN CameraSensor camera_sensor_legacy.cpp:617 'imx219 20-0010': Rotation control not available, default to 0 degrees
+[0:11:29.091100413] [10233]  INFO IPAProxy ipa_proxy.cpp:184 Using tuning file /usr/share/libcamera/ipa/simple/imx219.yaml
+[0:11:29.091369267] [10233] ERROR MediaDevice media_device.cpp:848 /dev/media0[qcom-camss]: Failed to setup link 'msm_csiphy3'[1] -> 'msm_csid0'[0]: Device or resource busy
+[ WARN:0@0.389] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc2 reported: Could not find a camera named '/base/soc@0/cci@ac4b000/i2c-bus@0/camera@10'.
+[ WARN:0@0.390] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@0.390] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+无法打开 CSI 摄像头。
+采集线程已退出
+[0:12:03.628273941] [10609]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:12:03.650150608] [10617]  WARN CameraSensor camera_sensor_legacy.cpp:355 'imx219 20-0010': Recommended V4L2 control 0x009a0922 not supported
+[0:12:03.650212535] [10617]  WARN CameraSensor camera_sensor_legacy.cpp:427 'imx219 20-0010': The sensor kernel driver needs to be fixed
+[0:12:03.650222639] [10617]  WARN CameraSensor camera_sensor_legacy.cpp:429 'imx219 20-0010': See Documentation/sensor_driver_requirements.rst in the libcamera sources for more information
+[0:12:03.650406858] [10617]  WARN CameraSensor camera_sensor_legacy.cpp:595 'imx219 20-0010': Failed to retrieve the camera location
+[0:12:03.650419827] [10617]  WARN CameraSensor camera_sensor_legacy.cpp:617 'imx219 20-0010': Rotation control not available, default to 0 degrees
+[0:12:03.652018212] [10617]  INFO IPAProxy ipa_proxy.cpp:184 Using tuning file /usr/share/libcamera/ipa/simple/imx219.yaml
+[0:12:03.652503264] [10617]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10' for pipeline handler simple
+libcamera 检测到: /base/soc@0/cci@ac4b000/i2c-bus@1/camera@10
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10" ! video/x-raw, width=1280, height=720, framerate=30/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:12:03.661157431] [10609]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:12:03.680504097] [10619]  WARN CameraSensor camera_sensor_legacy.cpp:355 'imx219 20-0010': Recommended V4L2 control 0x009a0922 not supported
+[0:12:03.680579618] [10619]  WARN CameraSensor camera_sensor_legacy.cpp:427 'imx219 20-0010': The sensor kernel driver needs to be fixed
+[0:12:03.680590452] [10619]  WARN CameraSensor camera_sensor_legacy.cpp:429 'imx219 20-0010': See Documentation/sensor_driver_requirements.rst in the libcamera sources for more information
+[0:12:03.680701337] [10619]  WARN CameraSensor camera_sensor_legacy.cpp:595 'imx219 20-0010': Failed to retrieve the camera location
+[0:12:03.680710764] [10619]  WARN CameraSensor camera_sensor_legacy.cpp:617 'imx219 20-0010': Rotation control not available, default to 0 degrees
+[0:12:03.682582327] [10619]  INFO IPAProxy ipa_proxy.cpp:184 Using tuning file /usr/share/libcamera/ipa/simple/imx219.yaml
+[0:12:03.683132639] [10619]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10' for pipeline handler simple
+[0:12:03.687494722] [10620]  INFO Camera camera.cpp:1216 configuring streams: (0) 1280x720-ABGR8888/sRGB
+[0:12:03.687908160] [10619]  INFO IPASoft soft_simple.cpp:258 IPASoft: Exposure 4-1703, gain 1-10.6667 (0.0966667)
+[0:12:03.687954618] [10619]  INFO SoftwareIsp software_isp.cpp:278 Input 1640x1232-RGGB-10-CSI2P stride 2064
+[0:12:03.751485087] [10622]  INFO eGL egl.cpp:288 EGL: EGL_VERSION: 1.5
+[0:12:03.751553785] [10622]  INFO eGL egl.cpp:289 EGL: EGL_VENDOR: Mesa Project
+[0:12:03.751565452] [10622]  INFO eGL egl.cpp:290 EGL: EGL_CLIENT_APIS: OpenGL OpenGL_ES 
+[0:12:03.751571806] [10622]  INFO eGL egl.cpp:291 EGL: EGL_EXTENSIONS: EGL_ANDROID_blob_cache EGL_ANDROID_native_fence_sync EGL_EXT_config_select_group EGL_EXT_create_context_robustness EGL_EXT_image_dma_buf_import EGL_EXT_image_dma_buf_import_modifiers EGL_EXT_query_reset_notification_strategy EGL_EXT_surface_compression EGL_IMG_context_priority EGL_KHR_cl_event2 EGL_KHR_config_attribs EGL_KHR_context_flush_control EGL_KHR_create_context EGL_KHR_create_context_no_error EGL_KHR_fence_sync EGL_KHR_get_all_proc_addresses EGL_KHR_gl_colorspace EGL_KHR_gl_renderbuffer_image EGL_KHR_gl_texture_2D_image EGL_KHR_gl_texture_3D_image EGL_KHR_gl_texture_cubemap_image EGL_KHR_image_base EGL_KHR_no_config_context EGL_KHR_reusable_sync EGL_KHR_surfaceless_context EGL_EXT_pixel_format_float EGL_KHR_wait_sync EGL_MESA_configless_context EGL_MESA_gl_interop EGL_MESA_image_dma_buf_export EGL_MESA_query_driver EGL_MESA_x11_native_visual_id 
+[0:12:03.759148525] [10622]  INFO eGL egl.cpp:332 EGL: GL_VERSION: OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.2
+[ WARN:0@0.402] global ./modules/videoio/src/cap_gstreamer.cpp (1374) open OpenCV | GStreamer warning: unable to query duration of stream
+[ WARN:0@0.402] global ./modules/videoio/src/cap_gstreamer.cpp (1405) open OpenCV | GStreamer warning: Cannot query video position: status=0, value=-1, duration=-1
+CSI 实时视频流已启动  1280x720 @ 30 fps
+  本机:   http://127.0.0.1:8088/
+  局域网: http://192.168.98.240:8088/
+浏览器打开上述地址即可播放
+[0:12:04.778509097] [10622]  INFO Benchmark benchmark.cpp:89 Debayer processed 30 frames in 156967us, 5232 us/frame
+[0:12:07.732473263] [10622]  INFO Benchmark benchmark.cpp:89 CPU stats processed 30 frames in 64731us, 2157 us/frame
+[127.0.0.1] "GET /stream HTTP/1.1" 200 -
+[0:12:20.027272477] [10857]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:12:20.048177945] [10865]  WARN CameraSensor camera_sensor_legacy.cpp:355 'imx219 20-0010': Recommended V4L2 control 0x009a0922 not supported
+[0:12:20.048242372] [10865]  WARN CameraSensor camera_sensor_legacy.cpp:427 'imx219 20-0010': The sensor kernel driver needs to be fixed
+[0:12:20.048250914] [10865]  WARN CameraSensor camera_sensor_legacy.cpp:429 'imx219 20-0010': See Documentation/sensor_driver_requirements.rst in the libcamera sources for more information
+[0:12:20.048441070] [10865]  WARN CameraSensor camera_sensor_legacy.cpp:595 'imx219 20-0010': Failed to retrieve the camera location
+[0:12:20.048451383] [10865]  WARN CameraSensor camera_sensor_legacy.cpp:617 'imx219 20-0010': Rotation control not available, default to 0 degrees
+[0:12:20.050015341] [10865]  INFO IPAProxy ipa_proxy.cpp:184 Using tuning file /usr/share/libcamera/ipa/simple/imx219.yaml
+[0:12:20.050497893] [10865]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10' for pipeline handler simple
+libcamera 检测到: /base/soc@0/cci@ac4b000/i2c-bus@1/camera@10
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10" ! video/x-raw, width=1280, height=720, framerate=30/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:12:20.058617164] [10857]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:12:20.099186018] [10867]  WARN CameraSensor camera_sensor_legacy.cpp:355 'imx219 20-0010': Recommended V4L2 control 0x009a0922 not supported
+[0:12:20.099243831] [10867]  WARN CameraSensor camera_sensor_legacy.cpp:427 'imx219 20-0010': The sensor kernel driver needs to be fixed
+[0:12:20.099253206] [10867]  WARN CameraSensor camera_sensor_legacy.cpp:429 'imx219 20-0010': See Documentation/sensor_driver_requirements.rst in the libcamera sources for more information
+[0:12:20.099355602] [10867]  WARN CameraSensor camera_sensor_legacy.cpp:595 'imx219 20-0010': Failed to retrieve the camera location
+[0:12:20.099363831] [10867]  WARN CameraSensor camera_sensor_legacy.cpp:617 'imx219 20-0010': Rotation control not available, default to 0 degrees
+[0:12:20.101028206] [10867]  INFO IPAProxy ipa_proxy.cpp:184 Using tuning file /usr/share/libcamera/ipa/simple/imx219.yaml
+[0:12:20.101610602] [10867]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10' for pipeline handler simple
+[0:12:20.106526227] [10868]  INFO Camera camera.cpp:1216 configuring streams: (0) 1280x720-ABGR8888/sRGB
+[0:12:20.107122477] [10867]  INFO IPASoft soft_simple.cpp:258 IPASoft: Exposure 4-1703, gain 1-10.6667 (0.0966667)
+[0:12:20.107180445] [10867]  INFO SoftwareIsp software_isp.cpp:278 Input 1640x1232-RGGB-10-CSI2P stride 2064
+[0:12:20.203645602] [10870]  INFO eGL egl.cpp:288 EGL: EGL_VERSION: 1.5
+[0:12:20.203718727] [10870]  INFO eGL egl.cpp:289 EGL: EGL_VENDOR: Mesa Project
+[0:12:20.203733570] [10870]  INFO eGL egl.cpp:290 EGL: EGL_CLIENT_APIS: OpenGL OpenGL_ES 
+[0:12:20.203743206] [10870]  INFO eGL egl.cpp:291 EGL: EGL_EXTENSIONS: EGL_ANDROID_blob_cache EGL_ANDROID_native_fence_sync EGL_EXT_config_select_group EGL_EXT_create_context_robustness EGL_EXT_image_dma_buf_import EGL_EXT_image_dma_buf_import_modifiers EGL_EXT_query_reset_notification_strategy EGL_EXT_surface_compression EGL_IMG_context_priority EGL_KHR_cl_event2 EGL_KHR_config_attribs EGL_KHR_context_flush_control EGL_KHR_create_context EGL_KHR_create_context_no_error EGL_KHR_fence_sync EGL_KHR_get_all_proc_addresses EGL_KHR_gl_colorspace EGL_KHR_gl_renderbuffer_image EGL_KHR_gl_texture_2D_image EGL_KHR_gl_texture_3D_image EGL_KHR_gl_texture_cubemap_image EGL_KHR_image_base EGL_KHR_no_config_context EGL_KHR_reusable_sync EGL_KHR_surfaceless_context EGL_EXT_pixel_format_float EGL_KHR_wait_sync EGL_MESA_configless_context EGL_MESA_gl_interop EGL_MESA_image_dma_buf_export EGL_MESA_query_driver EGL_MESA_x11_native_visual_id 
+[0:12:20.212198570] [10870]  INFO eGL egl.cpp:332 EGL: GL_VERSION: OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.2
+[ WARN:0@0.464] global ./modules/videoio/src/cap_gstreamer.cpp (1374) open OpenCV | GStreamer warning: unable to query duration of stream
+[ WARN:0@0.464] global ./modules/videoio/src/cap_gstreamer.cpp (1405) open OpenCV | GStreamer warning: Cannot query video position: status=0, value=-1, duration=-1
+CSI 实时视频流已启动  1280x720 @ 30 fps
+  本机:   http://127.0.0.1:8088/
+  局域网: http://192.168.98.240:8088/
+浏览器打开上述地址即可播放
+[0:12:21.231221487] [10870]  INFO Benchmark benchmark.cpp:89 Debayer processed 30 frames in 153329us, 5110 us/frame
+[0:12:24.187779663] [10870]  INFO Benchmark benchmark.cpp:89 CPU stats processed 30 frames in 67423us, 2247 us/frame
+[127.0.0.1] "GET / HTTP/1.1" 200 -
+[127.0.0.1] "GET /stream HTTP/1.1" 200 -
+[127.0.0.1] code 404, message Not Found
+[127.0.0.1] "GET /favicon.ico HTTP/1.1" 404 -
+[127.0.0.1] "GET / HTTP/1.1" 200 -
+[127.0.0.1] "GET /stream HTTP/1.1" 200 -
+[0:15:21.700823293] [12531]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:15:21.719198345] [12538]  WARN CameraSensor camera_sensor_legacy.cpp:355 'imx219 20-0010': Recommended V4L2 control 0x009a0922 not supported
+[0:15:21.719269439] [12538]  WARN CameraSensor camera_sensor_legacy.cpp:427 'imx219 20-0010': The sensor kernel driver needs to be fixed
+[0:15:21.719281522] [12538]  WARN CameraSensor camera_sensor_legacy.cpp:429 'imx219 20-0010': See Documentation/sensor_driver_requirements.rst in the libcamera sources for more information
+[0:15:21.719499907] [12538]  WARN CameraSensor camera_sensor_legacy.cpp:595 'imx219 20-0010': Failed to retrieve the camera location
+[0:15:21.719515064] [12538]  WARN CameraSensor camera_sensor_legacy.cpp:617 'imx219 20-0010': Rotation control not available, default to 0 degrees
+[0:15:21.721285584] [12538]  INFO IPAProxy ipa_proxy.cpp:184 Using tuning file /usr/share/libcamera/ipa/simple/imx219.yaml
+[0:15:21.721867564] [12538]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10' for pipeline handler simple
+libcamera 检测到: /base/soc@0/cci@ac4b000/i2c-bus@1/camera@10
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10" ! video/x-raw, width=3272, height=2464, framerate=30/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:15:21.729367876] [12531]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:15:21.747630064] [12541]  WARN CameraSensor camera_sensor_legacy.cpp:355 'imx219 20-0010': Recommended V4L2 control 0x009a0922 not supported
+[0:15:21.747693762] [12541]  WARN CameraSensor camera_sensor_legacy.cpp:427 'imx219 20-0010': The sensor kernel driver needs to be fixed
+[0:15:21.747703918] [12541]  WARN CameraSensor camera_sensor_legacy.cpp:429 'imx219 20-0010': See Documentation/sensor_driver_requirements.rst in the libcamera sources for more information
+[0:15:21.747797095] [12541]  WARN CameraSensor camera_sensor_legacy.cpp:595 'imx219 20-0010': Failed to retrieve the camera location
+[0:15:21.747806366] [12541]  WARN CameraSensor camera_sensor_legacy.cpp:617 'imx219 20-0010': Rotation control not available, default to 0 degrees
+[0:15:21.749377251] [12541]  INFO IPAProxy ipa_proxy.cpp:184 Using tuning file /usr/share/libcamera/ipa/simple/imx219.yaml
+[0:15:21.749876157] [12541]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10' for pipeline handler simple
+[0:15:21.751182928] [12542]  INFO Camera camera.cpp:1216 configuring streams: (0) 3272x2464-ABGR8888/sRGB
+[0:15:21.751322772] [12541]  INFO IPASoft soft_simple.cpp:258 IPASoft: Exposure 4-3522, gain 1-10.6667 (0.0966667)
+[0:15:21.751355897] [12541]  INFO SoftwareIsp software_isp.cpp:278 Input 3280x2464-RGGB-10-CSI2P stride 4112
+[0:15:21.855856886] [12545]  INFO eGL egl.cpp:288 EGL: EGL_VERSION: 1.5
+[0:15:21.855932772] [12545]  INFO eGL egl.cpp:289 EGL: EGL_VENDOR: Mesa Project
+[0:15:21.855942980] [12545]  INFO eGL egl.cpp:290 EGL: EGL_CLIENT_APIS: OpenGL OpenGL_ES 
+[0:15:21.855948032] [12545]  INFO eGL egl.cpp:291 EGL: EGL_EXTENSIONS: EGL_ANDROID_blob_cache EGL_ANDROID_native_fence_sync EGL_EXT_config_select_group EGL_EXT_create_context_robustness EGL_EXT_image_dma_buf_import EGL_EXT_image_dma_buf_import_modifiers EGL_EXT_query_reset_notification_strategy EGL_EXT_surface_compression EGL_IMG_context_priority EGL_KHR_cl_event2 EGL_KHR_config_attribs EGL_KHR_context_flush_control EGL_KHR_create_context EGL_KHR_create_context_no_error EGL_KHR_fence_sync EGL_KHR_get_all_proc_addresses EGL_KHR_gl_colorspace EGL_KHR_gl_renderbuffer_image EGL_KHR_gl_texture_2D_image EGL_KHR_gl_texture_3D_image EGL_KHR_gl_texture_cubemap_image EGL_KHR_image_base EGL_KHR_no_config_context EGL_KHR_reusable_sync EGL_KHR_surfaceless_context EGL_EXT_pixel_format_float EGL_KHR_wait_sync EGL_MESA_configless_context EGL_MESA_gl_interop EGL_MESA_image_dma_buf_export EGL_MESA_query_driver EGL_MESA_x11_native_visual_id 
+[0:15:21.863921522] [12545]  INFO eGL egl.cpp:332 EGL: GL_VERSION: OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.2
+[ WARN:0@0.510] global ./modules/videoio/src/cap_gstreamer.cpp (1374) open OpenCV | GStreamer warning: unable to query duration of stream
+[ WARN:0@0.510] global ./modules/videoio/src/cap_gstreamer.cpp (1405) open OpenCV | GStreamer warning: Cannot query video position: status=0, value=-1, duration=-1
+CSI 实时视频流已启动  3272x2464 @ 30 fps
+  本机:   http://127.0.0.1:8088/
+  局域网: http://192.168.98.240:8088/
+浏览器打开上述地址即可播放
+[0:15:26.046219802] [12545]  INFO Benchmark benchmark.cpp:89 Debayer processed 30 frames in 697356us, 23245 us/frame
+[127.0.0.1] "GET /stream HTTP/1.1" 200 -
+[0:15:38.242397766] [12545]  INFO Benchmark benchmark.cpp:89 CPU stats processed 30 frames in 506131us, 16871 us/frame
+[192.168.98.210] "GET / HTTP/1.1" 200 -
+[192.168.98.210] "GET /stream HTTP/1.1" 200 -
+[192.168.98.210] code 404, message Not Found
+[192.168.98.210] "GET /favicon.ico HTTP/1.1" 404 -
