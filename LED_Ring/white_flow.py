@@ -14,7 +14,7 @@ GPIO_22 默认是调试串口 TX，程序会临时占用该脚。需要 root：
   sudo python3 white_flow.py --boot-demo
 关灯：
   sudo python3 white_flow.py --off
-Ctrl+C 退出并关灯。
+Ctrl+C 退出并关灯。开机灯效结束时会熄灭。
 """
 from __future__ import annotations
 
@@ -354,7 +354,7 @@ def run_boot(
     t0 = next_t
     if demo_s is not None:
         print(
-            f"开机演示：白色流水 {demo_s:.0f}s，随后正弦 {BOOT_SINE_CYCLES} 次，再恒定 {idle}"
+            f"开机演示：白色流水 {demo_s:.0f}s，随后正弦 {BOOT_SINE_CYCLES} 次，最后熄灭"
         )
         until = t0 + max(0.0, demo_s)
         wait_boot = False
@@ -397,16 +397,11 @@ def run_boot(
                 show_frame(lib, solid_white(count, int(level + 0.5)))
                 next_t = tick_delay(next_t, delay)
 
-        if running:
-            print(f"恒定白光 亮度 {idle}。Ctrl+C 关灯退出。")
-            hold = solid_white(count, idle)
-            next_t = time.monotonic()
-            while running:
-                show_frame(lib, hold)
-                next_t = tick_delay(next_t, 0.25)
-
+        print("熄灭")
         off = (ctypes.c_uint8 * (count * 3))()
-        lib.ws2812_show(off)
+        for _ in range(3):
+            lib.ws2812_show(off)
+        lib.ws2812_hold_low()
     finally:
         lib.ws2812_close()
 
@@ -481,9 +476,9 @@ def main() -> int:
     )
     parser.add_argument("--cycle", action="store_true", help="轮播全部灯效")
     parser.add_argument("--hold", type=float, default=HOLD_S, help="轮播时每种持续秒，默认 8")
-    parser.add_argument("--boot", action="store_true", help="开机灯效：流水 → 正弦3次 → 亮度30恒定")
+    parser.add_argument("--boot", action="store_true", help="开机灯效：流水 → 正弦3次 → 熄灭")
     parser.add_argument("--boot-demo", action="store_true", help="演示开机灯效（不等待 systemd）")
-    parser.add_argument("--idle", type=int, default=IDLE_BRIGHTNESS, help="开机完成后恒定亮度，默认 30")
+    parser.add_argument("--idle", type=int, default=IDLE_BRIGHTNESS, help="保留参数，开机结束已改为熄灭")
     parser.add_argument("--list", action="store_true", help="列出灯效")
     parser.add_argument("--off", action="store_true", help="发送全灭后退出")
     parser.add_argument("--no-sudo", action="store_true", help="不要自动 sudo（systemd 用）")
@@ -493,7 +488,7 @@ def main() -> int:
         for name in EFFECTS:
             print(f"  {name:14}  {EFFECTS[name][0]}")
         print("  cycle           轮播全部")
-        print("  --boot          开机：流水 → 正弦3次 → 亮度30")
+        print("  --boot          开机：流水 → 正弦3次 → 熄灭")
         print("  --boot-demo     演示开机灯效")
         return 0
 
