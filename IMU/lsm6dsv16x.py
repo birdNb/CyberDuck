@@ -41,8 +41,30 @@ XL_FS_8G = 0x02
 # ±8 g → 0.244 mg/LSB；±2000 dps → 70 mdps/LSB
 ACC_LSB_G = 0.000244
 GYRO_LSB_DPS = 0.070
+GYRO_LSB_RAD = GYRO_LSB_DPS * 3.141592653589793 / 180.0
 
 ADDRS = (0x6A, 0x6B)
+
+
+def rotate_mount(v: tuple[float, float, float]) -> tuple[float, float, float]:
+    """sensor → trunk，与 microduck DEFAULT_MOUNT（+90° about Y）一致：[+z, +y, −x]。"""
+    x, y, z = v
+    return (z, y, -x)
+
+
+def normalize(v: tuple[float, float, float]) -> tuple[float, float, float]:
+    n = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) ** 0.5
+    if n < 1e-9:
+        return (0.0, 0.0, -1.0)
+    return (v[0] / n, v[1] / n, v[2] / n)
+
+
+@dataclass
+class PolicyImu:
+    """策略观测用 IMU：对齐 microduck ImuData 的 gyro + gravity。"""
+
+    gyro: tuple[float, float, float]  # trunk, rad/s
+    gravity: tuple[float, float, float]  # trunk, 单位向量；直立 ≈ [0, 0, -1]
 
 
 class I2CGpioError(RuntimeError):
@@ -95,6 +117,22 @@ class ImuSample:
     @property
     def gyro_dps(self) -> tuple[float, float, float]:
         return self.gx * GYRO_LSB_DPS, self.gy * GYRO_LSB_DPS, self.gz * GYRO_LSB_DPS
+
+    def to_policy(self) -> PolicyImu:
+        """转成策略推理字段（gyro rad/s + 投影重力）。
+
+        正式机重力来自 SFLP 四元数；直连 I2C 测试用 −normalize(acc) 近似。
+        """
+        gyro = rotate_mount(
+            (
+                self.gx * GYRO_LSB_RAD,
+                self.gy * GYRO_LSB_RAD,
+                self.gz * GYRO_LSB_RAD,
+            )
+        )
+        ax, ay, az = self.acc_g
+        gravity = normalize(tuple(-c for c in rotate_mount((ax, ay, az))))
+        return PolicyImu(gyro=gyro, gravity=gravity)
 
 
 class LSM6DSV16X:
