@@ -1,18 +1,23 @@
 [Unit]
 Description=microDuckPro LED ring boot animation
+DefaultDependencies=no
 After=local-fs.target
-Before=getty.target
+Before=getty.target multi-user.target
 
 [Service]
 Type=simple
 User=root
 Group=root
 WorkingDirectory=/home/radxa/microDuckPro/LED_Ring
-ExecStart=/usr/bin/python3 /home/radxa/microDuckPro/LED_Ring/white_flow.py --boot --no-sudo
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -u /home/radxa/microDuckPro/LED_Ring/white_flow.py --boot --no-sudo
 Restart=no
+KillMode=mixed
+TimeoutStopSec=3
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=led-boot
 
 [Install]
 WantedBy=multi-user.target
+WantedBy=sysinit.target

@@ -368,6 +368,12 @@ def run_boot(
         wait_boot = True
 
     try:
+        # 先清掉串口 TX 造成的全亮垃圾帧
+        off0 = (ctypes.c_uint8 * (count * 3))()
+        for _ in range(2):
+            show_frame(lib, off0)
+        lib.ws2812_hold_low()
+
         while running:
             show_frame(lib, effect_flow(n, count, hi, tail, st))
             n += 1
@@ -397,12 +403,22 @@ def run_boot(
                 show_frame(lib, solid_white(count, int(level + 0.5)))
                 next_t = tick_delay(next_t, delay)
 
-        print("熄灭")
+        print("熄灭，并保持 DIN 低电平（防止串口 TX 再次点亮）")
         off = (ctypes.c_uint8 * (count * 3))()
         for _ in range(3):
             lib.ws2812_show(off)
         lib.ws2812_hold_low()
+        # 必须一直占住 GPIO 线；进程退出后 pinctrl 可能把脚交回 UART5_TX（空闲高→全亮）
+        while running:
+            lib.ws2812_hold_low()
+            time.sleep(1.0)
     finally:
+        try:
+            off = (ctypes.c_uint8 * (count * 3))()
+            lib.ws2812_show(off)
+            lib.ws2812_hold_low()
+        except Exception:
+            pass
         lib.ws2812_close()
 
 
@@ -506,18 +522,28 @@ def main() -> int:
             err = lib.ws2812_error() or b"unknown"
             print(f"打开 GPIO_{args.line} 失败: {err.decode('utf-8', 'replace')}", file=sys.stderr)
             return 1
+        running = True
+
+        def _stop(_signum=None, _frame=None):
+            nonlocal running
+            running = False
+
+        signal.signal(signal.SIGINT, _stop)
+        signal.signal(signal.SIGTERM, _stop)
+
         off = (ctypes.c_uint8 * (n * 3))()
         for _ in range(3):
             lib.ws2812_show(off)
         lib.ws2812_hold_low()
-        print("已发送全灭帧，GPIO_22 DIN 保持低电平（不再绑回串口）。")
-        print("确认灯灭后 Ctrl+C 退出。")
+        print("已熄灭。保持 GPIO_22 低电平中（退出进程可能导致串口再次点亮）。")
+        print("Ctrl+C 结束进程。")
         try:
-            signal.pause()
-        except KeyboardInterrupt:
-            pass
-        lib.ws2812_hold_low()
-        lib.ws2812_close()
+            while running:
+                lib.ws2812_hold_low()
+                time.sleep(1.0)
+        finally:
+            lib.ws2812_hold_low()
+            lib.ws2812_close()
         return 0
 
     if args.boot or args.boot_demo:
