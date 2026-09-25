@@ -1,5 +1,5 @@
 [Unit]
-Description=microDuckPro LED ring boot animation
+Description=microDuckPro LED ring boot animation (releases GPIO when done)
 DefaultDependencies=no
 After=local-fs.target
 Before=getty.target multi-user.target

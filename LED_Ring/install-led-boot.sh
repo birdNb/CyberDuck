@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 安装并启用开机灯效（流水 → 正弦 → 熄灭并保持 DIN 低）
+# 安装并启用开机灯效（流水 → 正弦 → 熄灭并释放 GPIO）
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 UNIT_SRC="${DIR}/led-boot.service"

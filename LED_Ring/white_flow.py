@@ -403,15 +403,10 @@ def run_boot(
                 show_frame(lib, solid_white(count, int(level + 0.5)))
                 next_t = tick_delay(next_t, delay)
 
-        print("熄灭，并保持 DIN 低电平（防止串口 TX 再次点亮）")
+        print("熄灭，释放 GPIO")
         off = (ctypes.c_uint8 * (count * 3))()
         for _ in range(3):
             lib.ws2812_show(off)
-        lib.ws2812_hold_low()
-        # 必须一直占住 GPIO 线；进程退出后 pinctrl 可能把脚交回 UART5_TX（空闲高→全亮）
-        while running:
-            lib.ws2812_hold_low()
-            time.sleep(1.0)
     finally:
         try:
             off = (ctypes.c_uint8 * (count * 3))()
