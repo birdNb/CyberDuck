@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmotor_can.a CMakeFiles/motor_can.dir/src/protocol.cpp.o CMakeFiles/motor_can.dir/src/bus.cpp.o
+/usr/bin/ranlib libmotor_can.a

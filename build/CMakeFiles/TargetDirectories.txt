@@ -1,0 +1,11 @@
+/home/radxa/microDuckPro/build/CMakeFiles/edit_cache.dir
+/home/radxa/microDuckPro/build/CMakeFiles/rebuild_cache.dir
+/home/radxa/microDuckPro/build/motor/cpp/CMakeFiles/motor_can.dir
+/home/radxa/microDuckPro/build/motor/cpp/CMakeFiles/edit_cache.dir
+/home/radxa/microDuckPro/build/motor/cpp/CMakeFiles/rebuild_cache.dir
+/home/radxa/microDuckPro/build/IMU/cpp/CMakeFiles/imu_lsm6.dir
+/home/radxa/microDuckPro/build/IMU/cpp/CMakeFiles/edit_cache.dir
+/home/radxa/microDuckPro/build/IMU/cpp/CMakeFiles/rebuild_cache.dir
+/home/radxa/microDuckPro/build/locomotion/CMakeFiles/duck_locomotion.dir
+/home/radxa/microDuckPro/build/locomotion/CMakeFiles/edit_cache.dir
+/home/radxa/microDuckPro/build/locomotion/CMakeFiles/rebuild_cache.dir

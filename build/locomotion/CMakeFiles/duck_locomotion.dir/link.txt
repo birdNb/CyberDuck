@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/duck_locomotion.dir/src/layout.cpp.o CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o CMakeFiles/duck_locomotion.dir/src/engine.cpp.o CMakeFiles/duck_locomotion.dir/src/main.cpp.o -o duck_locomotion  ../motor/cpp/libmotor_can.a ../IMU/cpp/libimu_lsm6.a -ldl 
