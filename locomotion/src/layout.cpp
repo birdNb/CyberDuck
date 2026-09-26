@@ -1,7 +1,10 @@
 #include "locomotion/layout.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <fstream>
+#include <iterator>
 #include <sstream>
 #include <stdexcept>
 
@@ -10,9 +13,9 @@ namespace loco {
 Config load_config(const std::string& path) {
     Config cfg;
     for (int i = 0; i < kActionLen; ++i) {
-        cfg.joints[i].name = kJointNames[i];
-        cfg.joints[i].can_id = i + 1;
-        cfg.joints[i].home = kMicroduckHome[i];
+        cfg.joints[i].name = kJointSpec[i].name;
+        cfg.joints[i].can_id = kJointSpec[i].can_id;
+        cfg.joints[i].home = kJointSpec[i].home;
     }
     std::ifstream in(path);
     if (!in) throw std::runtime_error("打不开配置 " + path);
@@ -30,9 +33,10 @@ Config load_config(const std::string& path) {
         else if (key == "qnn_backend") ss >> cfg.qnn_backend;
         else if (key == "gamepad") ss >> cfg.gamepad;
         else if (key == "motor_type") ss >> cfg.motor_type;
-        else if (key == "action_scale") ss >> cfg.action_scale;
+        else if (key == "imu_mount") ss >> cfg.imu_mount;
+        else if (key == "tau_max_leg") ss >> cfg.tau_max_leg;
+        else if (key == "cmd_scale") ss >> cfg.cmd_scale;
         else if (key == "vel_limit") ss >> cfg.vel_limit;
-        else if (key == "torque_nm") ss >> cfg.torque_nm;
         else if (key == "max_vx") ss >> cfg.max_vx;
         else if (key == "max_vx_back") ss >> cfg.max_vx_back;
         else if (key == "max_vy") ss >> cfg.max_vy;
@@ -54,7 +58,55 @@ Config load_config(const std::string& path) {
             }
         }
     }
+    cfg.tau_max_leg = std::clamp(cfg.tau_max_leg, 0.0, 3.7);
+    cfg.cmd_scale = std::clamp(cfg.cmd_scale, 0.0, 1.0);
     return cfg;
+}
+
+bool load_imu_mount(const std::string& path, float R[9]) {
+    std::ifstream in(path);
+    if (!in) return false;
+    std::string text((std::istreambuf_iterator<char>(in)), {});
+    auto key = text.find("\"R\"");
+    if (key == std::string::npos) return false;
+    auto lb = text.find('[', key);
+    if (lb == std::string::npos) return false;
+    const char* p = text.c_str() + lb;
+    for (int i = 0; i < 9; ++i) {
+        while (*p && !((*p >= '0' && *p <= '9') || *p == '-' || *p == '+')) ++p;
+        if (!*p) return false;
+        char* end = nullptr;
+        R[i] = std::strtof(p, &end);
+        if (end == p) return false;
+        p = end;
+    }
+    float det = R[0] * (R[4] * R[8] - R[5] * R[7]) - R[1] * (R[3] * R[8] - R[5] * R[6]) +
+                R[2] * (R[3] * R[7] - R[4] * R[6]);
+    return det > 0.5f && det < 1.5f;
+}
+
+void motor_targets(const float action[kActionLen], const double q[kActionLen],
+                   const double home[kActionLen], MotorGoal goal, double ramp,
+                   double tau_max_leg, double q_des[kActionLen], double tau[kActionLen]) {
+    ramp = std::clamp(ramp, 0.0, 1.0);
+    tau_max_leg = std::clamp(tau_max_leg, 0.0, 3.7);
+    for (int i = 0; i < kActionLen; ++i) {
+        const auto& spec = kJointSpec[i];
+        double tau_full = spec.leg ? tau_max_leg : spec.tau;
+        tau[i] = tau_full * ramp;
+        if (goal == MotorGoal::Hold || tau[i] <= 0) {
+            q_des[i] = q[i];
+            continue;
+        }
+        double target = home[i];
+        if (goal == MotorGoal::Track && spec.leg) {
+            target = home[i] + spec.scale * static_cast<double>(action[i]);
+        }
+        target = std::clamp(target, spec.lo, spec.hi);
+        double max_err = tau[i] / spec.kp;
+        q_des[i] = std::clamp(target, q[i] - max_err, q[i] + max_err);
+        q_des[i] = std::clamp(q_des[i], spec.lo, spec.hi);
+    }
 }
 
 void build_obs(const float gyro[3], const float gravity[3],

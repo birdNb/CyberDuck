@@ -33,9 +33,10 @@ Command Gamepad::poll(const Config& cfg) {
     float ly = dz(-axis_[1]);
     float rx = dz(axis_[3]);
     Command c;
-    c.vx = ly * static_cast<float>(ly >= 0 ? cfg.max_vx : cfg.max_vx_back);
-    c.vy = -lx * static_cast<float>(cfg.max_vy);
-    c.vyaw = -rx * static_cast<float>(cfg.max_vyaw);
+    float scale = static_cast<float>(cfg.cmd_scale);
+    c.vx = ly * static_cast<float>(ly >= 0 ? cfg.max_vx : cfg.max_vx_back) * scale;
+    c.vy = -lx * static_cast<float>(cfg.max_vy) * scale;
+    c.vyaw = -rx * static_cast<float>(cfg.max_vyaw) * scale;
     return c;
 }
 

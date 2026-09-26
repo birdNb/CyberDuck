@@ -46,10 +46,25 @@ GYRO_LSB_RAD = GYRO_LSB_DPS * 3.141592653589793 / 180.0
 ADDRS = (0x6A, 0x6B)
 
 
+def _load_mount() -> tuple[tuple[float, float, float], ...]:
+    """R @ v_sensor = v_base_link。文件缺失时用单位阵，不再套官方鸭子的安装旋转。"""
+    path = os.path.join(os.path.dirname(DIR), "locomotion", "config", "imu_mount.json")
+    try:
+        import json
+
+        with open(path, encoding="utf-8") as f:
+            rows = json.load(f)["R"]
+        return tuple(tuple(float(v) for v in row) for row in rows)
+    except (OSError, KeyError, TypeError, ValueError):
+        return ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+
+
+_MOUNT = _load_mount()
+
+
 def rotate_mount(v: tuple[float, float, float]) -> tuple[float, float, float]:
-    """sensor → trunk，与 microduck DEFAULT_MOUNT（+90° about Y）一致：[+z, +y, −x]。"""
-    x, y, z = v
-    return (z, y, -x)
+    """sensor → base_link，乘 locomotion/config/imu_mount.json 里的 R。"""
+    return tuple(sum(_MOUNT[i][k] * v[k] for k in range(3)) for i in range(3))
 
 
 def normalize(v: tuple[float, float, float]) -> tuple[float, float, float]:
