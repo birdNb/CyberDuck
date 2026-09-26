@@ -13,5 +13,6 @@ modprobe peak_usb || true
 
 ip link set "${IFACE}" down 2>/dev/null || true
 ip link set "${IFACE}" up type can bitrate 1000000 sample-point 0.875 restart-ms 100
+ip link set "${IFACE}" txqueuelen 256
 ip -details link show "${IFACE}"
 echo "OK: ${IFACE} UP @ 1Mbps"

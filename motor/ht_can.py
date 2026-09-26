@@ -230,7 +230,8 @@ class SocketCan:
             if exc.errno != 105:
                 raise
             for _ in range(8):
-                time.sleep(0.002)
+                self._drop_pending()
+                time.sleep(0.001)
                 try:
                     n = self.sock.send(frame)
                     break
@@ -261,6 +262,12 @@ class SocketCan:
             extended=bool(cid & CAN_EFF_FLAG),
             error=bool(cid & CAN_ERR_FLAG),
         )
+
+    def _drop_pending(self, limit: int = 64) -> None:
+        """把已经到主机的帧读掉，避免接收积压后发送一直返回缓冲满。"""
+        for _ in range(limit):
+            if self.recv(timeout=0) is None:
+                break
 
     def drain(self, window_s: float = 0.02) -> List[CanFrame]:
         frames: List[CanFrame] = []

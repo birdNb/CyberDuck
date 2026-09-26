@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""站立附近看策略，空格才把策略角度写进电机。
+"""进程序先站到采集的站立角，空格才执行策略。
 
-腿跟随限位并限步后的策略目标。颈和头锁在站立采集角。
-再按空格停在当前角度并保持力矩，不卸力。Ctrl+C 退出时失能。
+再按空格停止策略并回到站立。Ctrl+C 也先回到站立再退出，电机保持出力。
+腿和颈、头 pitch 的力矩保护是 1.2 N·m。头 yaw/roll 额定 0.3，不加。
 
 用法（在 locomotion/ 下，用带 onnxruntime 的解释器）:
   python3 scripts/watch_policy.py
@@ -32,9 +32,11 @@ import pose  # noqa: E402
 from ht_can import i16_le, pos_to_int, tqe_to_int  # noqa: E402
 from lsm6dsv16x import I2CGpioError, LSM6DSV16X, WHO_AM_I_VAL, ADDRS, load_lib, open_bus, scan_bus  # noqa: E402
 
-# 与 htdk_sim2real.md 2.4 一致。头 yaw/roll 力矩不超过 0.3。
+# kp 与文档 2.4 一致。力矩保护：腿、颈、头 pitch 为 1.2 N·m；头 yaw/roll 额定 0.3。
+# 每拍转角按 tau/kp 再放开 3 倍，让关节能更快跟上，实际出力仍被力矩上限卡住。
 KP = (60, 60, 60, 60, 60, 20, 20, 8, 8, 60, 60, 60, 60, 60)
-TAU = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.3, 0.5, 0.5, 0.5, 0.5, 0.5)
+TAU = (1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 0.3, 0.3, 1.2, 1.2, 1.2, 1.2, 1.2)
+STEP_SCALE = 3.0
 
 # 策略下标，电机号，HOME，SCALE，URDF 下限/上限 rad，是否腿。
 # 限位与 htdk_sim2real.md 第 2.3 节一致。腿用 HOME+scale*action 后再裁切，颈和头目标固定 0。
@@ -160,21 +162,25 @@ def red_diff(deg: float) -> str:
 
 
 def torque_of(can: int) -> float:
-    return 0.3 if can in (13, 14) else 0.5
+    return 0.3 if can in (13, 14) else 1.2
 
 
 def step_limited(cmd_deg: list[float], now_deg: dict[int, float]) -> list[float]:
-    """本拍下发不超过 tau/kp，避免一拍顶满。"""
+    """本拍转角比 tau/kp 放开 STEP_SCALE 倍。力矩字仍然卡住峰值出力。"""
     out = []
     for i, (_name, can, _home, _scale, _lo, _hi, _leg) in enumerate(JOINTS):
-        cap = math.degrees(TAU[i] / KP[i])
+        cap = math.degrees(TAU[i] / KP[i]) * STEP_SCALE
         cur = now_deg[can]
         out.append(min(cur + cap, max(cur - cap, cmd_deg[i])))
     return out
 
 
-def send_degrees(bus, ids: list[int], degrees: dict[int, float]) -> None:
-    for mid in ids:
+def send_degrees(bus, ids: list[int], degrees: dict[int, float]) -> int:
+    """发出位置指令。缓冲满时先排空再试，仍失败就跳过该电机，不让控制环退出。"""
+    dropped = 0
+    for n, mid in enumerate(ids):
+        if n and n % 4 == 0:
+            bus.can._drop_pending()
         motor = bus.motors[mid]
         data = (
             bytes([0x07, 0x07])
@@ -182,7 +188,19 @@ def send_degrees(bus, ids: list[int], degrees: dict[int, float]) -> None:
             + bytes([0x00, 0x00])
             + i16_le(tqe_to_int(torque_of(mid), motor.type))
         )
-        bus.send_cmd(motor.id, data, reply=False)
+        try:
+            bus.send_cmd(motor.id, data, reply=False)
+        except OSError as exc:
+            if exc.errno != 105:
+                raise
+            bus.can._drop_pending()
+            try:
+                bus.send_cmd(motor.id, data, reply=False)
+            except OSError as again:
+                if again.errno != 105:
+                    raise
+                dropped += 1
+    return dropped
 
 
 def gravity_tilt_deg(gravity) -> float:
@@ -200,7 +218,7 @@ def refresh_motors(bus, ids: list[int], volt_id: int) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="空格执行策略输出，再按一次停在当前角度")
+    parser = argparse.ArgumentParser(description="先站立，空格开始或停止策略")
     parser.add_argument("--onnx", default=str(DEFAULT_ONNX))
     parser.add_argument("--print-every", type=float, default=1.0)
     args = parser.parse_args()
@@ -225,17 +243,21 @@ def main() -> int:
     in_name = session.get_inputs()[0].name
     print(f"策略 {args.onnx}")
     print(f"输入 {in_name} {session.get_inputs()[0].shape}  输出 {[o.name for o in session.get_outputs()]}")
-    print("刚启动不出力。按空格执行策略，再按一次停在当前角度并保持力矩，不卸力。")
-    print("腿力矩 0.50 N·m，头 yaw/roll 0.30 N·m。颈和头不跟策略，停在站立采集角。")
+    print("进程序先站立，力矩保护 1.20 N·m。站稳后按空格执行策略，再按一次回到站立。")
+    print("Ctrl+C 先回到站立再退出，电机保持出力。头 yaw/roll 仍是 0.30 N·m。")
 
     lib = lock_fd = imu = None
     keys = None
     motors_on = False
     running = True
+    leaving = False
 
     def stop(*_):
-        nonlocal running
-        running = False
+        nonlocal running, leaving
+        if leaving:
+            running = False
+        else:
+            leaving = True
 
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
@@ -246,11 +268,17 @@ def main() -> int:
             print("标准输入不是终端，读不到空格。", file=sys.stderr)
         lib, lock_fd, imu = open_imu()
         pose.read_degrees(bus, ids)
+        for mid in ids:
+            bus.enable(mid)
+            bus.set_torque_limit(mid, torque_of(mid))
+        motors_on = True
         period = 1.0 / 50.0
-        phase = "idle"
-        hold_deg = {mid: stand[mid] for mid in ids}
+        phase = "stand"
+        stand_cmd = [stand[can] for (_name, can, _home, _scale, _lo, _hi, _leg) in JOINTS]
         last_space = 0.0
         space_edge = False
+        leave_t0 = 0.0
+        print("电机已使能，正在走向站立。", flush=True)
 
         print("目标角和电机角都是编码器角度：站立采集角 + (限位后的 URDF 目标 - HOME)。")
         print("空格下发的是限步后的这个角度。红字是策略还想再走的角度。")
@@ -265,12 +293,24 @@ def main() -> int:
         loops = 0
         infer_us = 0.0
         volt_i = 0
+        can_drop = 0
         while running:
             tick = time.monotonic()
-            if keys.poll() == " " and tick - last_space > 0.3:
+            if leaving and leave_t0 == 0.0:
+                leave_t0 = tick
+                phase = "stand"
+                print("Ctrl+C：回到站立后退出，电机保持出力。再按一次立即退出。", flush=True)
+            if not leaving and keys.poll() == " " and tick - last_space > 0.3:
                 last_space = tick
                 space_edge = True
-            refresh_motors(bus, ids, ids[volt_i % len(ids)])
+            bus.can._drop_pending()
+            try:
+                refresh_motors(bus, ids, ids[volt_i % len(ids)])
+            except OSError as exc:
+                if exc.errno != 105:
+                    raise
+                can_drop += 1
+                bus.can._drop_pending()
             volt_i += 1
             now_deg = {mid: bus.motors[mid].state.position / pose.DEG for mid in ids}
             q_rad = np.zeros(14, dtype=np.float64)
@@ -287,33 +327,37 @@ def main() -> int:
             last_action = np.asarray(action, dtype=np.float32).copy()
             q_dot_prev = q_dot
             q_cmd_deg, clipped = encoder_command_deg(action, stand)
+            stand_err_now = max(abs(now_deg[mid] - stand[mid]) for mid in ids)
+            if leaving:
+                phase = "stand"
+                space_edge = False
             if space_edge:
                 space_edge = False
                 if phase == "track":
-                    hold_deg = dict(now_deg)
-                    phase = "hold"
-                    print("空格：停止跟策略，停在当前角度，力矩保持", flush=True)
+                    phase = "stand"
+                    print("空格：停止策略，回到站立，力矩保持", flush=True)
                 else:
                     tilt = gravity_tilt_deg(sample.gravity)
-                    stand_err = max(abs(now_deg[mid] - stand[mid]) for mid in ids)
-                    if tilt > 8.0 or stand_err > math.degrees(0.35):
+                    if stand_err_now > math.degrees(0.35) or tilt > 8.0:
                         print(
-                            f"空格未执行：重力偏 {tilt:.1f}°，离站立 {stand_err:.1f}°。"
-                            f"先摆回站立附近再按。",
+                            f"空格未执行：还在站立，离目标 {stand_err_now:.1f}°，重力偏 {tilt:.1f}°。",
                             flush=True,
                         )
                     else:
-                        for mid in ids:
-                            bus.enable(mid)
-                            bus.set_torque_limit(mid, torque_of(mid))
-                        motors_on = True
                         phase = "track"
-                        print("空格：开始执行策略输出。再按一次停在当前角度。", flush=True)
+                        print("空格：开始执行策略。再按一次回到站立。", flush=True)
             if phase == "track":
                 limited = step_limited(q_cmd_deg, now_deg)
-                send_degrees(bus, ids, {can: limited[i] for i, (_n, can, *_r) in enumerate(JOINTS)})
-            elif phase == "hold":
-                send_degrees(bus, ids, hold_deg)
+            else:
+                limited = step_limited(stand_cmd, now_deg)
+            can_drop += send_degrees(bus, ids, {can: limited[i] for i, (_n, can, *_r) in enumerate(JOINTS)})
+            if leaving and (stand_err_now < 4.0 or tick - leave_t0 > 8.0):
+                if stand_err_now < 4.0:
+                    for _ in range(8):
+                        send_degrees(bus, ids, stand)
+                        time.sleep(period)
+                print(f"已退出，停在站立方向，偏差 {stand_err_now:.1f}°，电机继续保持出力。", flush=True)
+                break
             if tick >= next_print:
                 elapsed = max(tick - window_t, 1e-6)
                 loop_hz = loops / elapsed
@@ -325,16 +369,19 @@ def main() -> int:
                 vmin = min(known) if known else 0.0
                 vmax = max(known) if known else 0.0
                 volt_txt = " ".join(f"{mid}:{volts[mid]:.1f}V" for mid in ids)
-                state = {
-                    "idle": "未出力，按空格执行策略",
-                    "track": "正在执行策略，按空格停住",
-                    "hold": "停在当前角度，按空格继续执行策略",
-                }[phase]
+                if phase == "track":
+                    state = "正在执行策略，按空格回到站立"
+                elif hold_err > 5.0:
+                    state = "正在站立，站稳后再按空格"
+                else:
+                    state = "已站立，按空格执行策略"
                 print(
                     f"电机执行: {state}  循环 {loop_hz:.1f} Hz  推理 {infer_us:.0f} us  "
-                    f"腿力矩 0.50 N·m  电压 {vmin:.1f}–{vmax:.1f} V  "
+                    f"力矩保护 1.20 N·m  电压 {vmin:.1f}–{vmax:.1f} V  "
                     f"stand偏差 {hold_err:.2f}°"
+                    + (f"  CAN丢帧 {can_drop}" if can_drop else "")
                 )
+                can_drop = 0
                 print(f"电压 {volt_txt}")
                 print(
                     f"gravity {sample.gravity[0]:+.3f} {sample.gravity[1]:+.3f} {sample.gravity[2]:+.3f}  "
@@ -359,9 +406,6 @@ def main() -> int:
                 time.sleep(period - spent)
         return 0
     finally:
-        if motors_on:
-            for mid in ids:
-                bus.disable(mid)
         if keys is not None:
             keys.close()
         if lib is not None:
