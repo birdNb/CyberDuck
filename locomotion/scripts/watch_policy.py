@@ -34,15 +34,21 @@ from ht_can import i16_le, pos_to_int, tqe_to_int  # noqa: E402
 from lsm6dsv16x import I2CGpioError, LSM6DSV16X, WHO_AM_I_VAL, ADDRS, load_lib, open_bus, scan_bus  # noqa: E402
 
 # kp 与文档 2.4 一致。力矩保护：腿、颈、头 pitch 为 1.2 N·m；头 yaw/roll 额定 0.3。
-# 每拍转角仍是 2 倍 tau/kp。摆幅不再放大。
-# 策略在站立附近会把髋 pitch 往回带，躯干后倾。两侧髋 pitch 在 URDF 里加 0.05 rad，观测里减掉，平衡点前移。
+# 同一拍采样 IMU 和关节。指令再经 0.06 s 平滑，去掉高频。
+# 腿的动作 1.2 倍。仍相对上一拍限速，不跟编码器跑，力矩顶住 1.2 N·m。
+# 站立前倾过多。两侧髋 pitch 只留 0.02 rad 的前移，观测里减掉同样的量。
 KP = (60, 60, 60, 60, 60, 20, 20, 8, 8, 60, 60, 60, 60, 60)
 TAU = (1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 0.3, 0.3, 1.2, 1.2, 1.2, 1.2, 1.2)
 STEP_SCALE = 2.0
-HIP_PITCH_BIAS = 0.05
-# 下蹲时左腿 roll/pitch/小腿/踝的编码器与右腿反向，URDF 左右却同向。
-# 观测和电机指令用同一个符号，只翻一次。髋 yaw 左右同向，不翻。
-ENC_SIGN = (1, -1, -1, -1, -1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+LEG_GAIN = 1.2
+CMD_TAU = 0.06
+HIP_PITCH_BIAS = 0.02
+# 下蹲时左腿 roll/pitch/小腿的编码器与右腿反向，URDF 左右却同向。观测和指令一起取反。
+# 右踝原来和左踝相反：前进时左脚往下踩、右脚往上提。右踝改成和左踝同一个符号。
+# 髋 yaw 不翻。
+ENC_SIGN = (1, -1, -1, -1, -1, 1, 1, 1, 1, 1, 1, 1, 1, -1)
+# 满杆 ±0.5 直接写入步频太高；0.6 倍大约 ±0.30。再放到 0.8 倍，满杆约 ±0.40。
+POLICY_VX_SCALE = 0.8
 
 # 策略下标，电机号，HOME，SCALE，URDF 下限/上限 rad，是否腿。
 # HOME 与 htdk_policy_joint_order copy.md 的训练站立零位一致。
@@ -71,7 +77,7 @@ DEFAULT_ONNX = (
     / "rsl_rl"
     / "velocity"
     / "2026-09-28_02-51-17_velocity"
-    / "model_2400.onnx"
+    / "model_3500.onnx"
 )
 
 
@@ -137,7 +143,7 @@ def encoder_command_deg(action: np.ndarray, stand_deg: dict[int, float]) -> tupl
     cmd = []
     clipped = []
     for i, (_name, can, home, scale, lo, hi, leg) in enumerate(JOINTS):
-        raw = home + scale * float(action[i]) if leg else home
+        raw = home + LEG_GAIN * scale * float(action[i]) if leg else home
         if i in (2, 11):
             raw += HIP_PITCH_BIAS
         limited = min(hi, max(lo, raw))
@@ -158,8 +164,9 @@ def build_obs(gyro, gravity, q_rad, q_dot_prev, last_action, stand_deg: dict[int
         obs[6 + i] = pos
     obs[20:34] = q_dot_prev
     obs[34:48] = last_action
-    # 摇杆向前时实机往后退，写入策略前把前后速度取反。打印仍是摇杆方向。
-    obs[48] = -vx
+    # 摇杆向前时实机往后退，写入策略前取反，再乘 0.8。满杆约 ±0.40。
+    # 打印仍是摇杆方向和满杆 ±0.5。
+    obs[48] = -vx * POLICY_VX_SCALE
     return obs
 
 
@@ -227,7 +234,7 @@ def torque_of(can: int) -> float:
 
 
 class Gravity:
-    """陀螺积分重力，只在加速度接近 1 g 时慢慢靠过去。站立时不被震动带偏。"""
+    """陀螺每拍积分。加速度只在接近 1 g 时用 0.5 s 修正，避免震动把目标打回来。"""
 
     TAU = 0.5
 
@@ -256,12 +263,21 @@ class Gravity:
         return self.g
 
 
-def step_limited(cmd_deg: list[float], now_deg: dict[int, float]) -> list[float]:
-    """本拍转角不超过 STEP_SCALE * tau/kp。"""
+def smooth_command(target: list[float], prev: list[float], dt: float) -> list[float]:
+    """去掉策略目标里的高频。平滑后的角度仍由上一拍指令限速，不跟实测角跑。"""
+    alpha = 1.0 if dt <= 0.0 or dt > 0.2 else dt / (CMD_TAU + dt)
+    return [p + alpha * (g - p) for p, g in zip(prev, target)]
+
+
+def step_limited(cmd_deg: list[float], prev_deg: list[float]) -> list[float]:
+    """本拍指令相对上一拍指令移动，不超过 STEP_SCALE * tau/kp。
+
+    不能相对实测角度限幅。抖动时实测角一跳，目标就跟着跑，电机几乎没有位置误差，力矩掉下去。
+    """
     out = []
-    for i, (_name, can, _home, _scale, _lo, _hi, _leg) in enumerate(JOINTS):
+    for i, (_name, _can, _home, _scale, _lo, _hi, _leg) in enumerate(JOINTS):
         cap = math.degrees(TAU[i] / KP[i]) * STEP_SCALE
-        cur = now_deg[can]
+        cur = prev_deg[i]
         out.append(min(cur + cap, max(cur - cap, cmd_deg[i])))
     return out
 
@@ -340,8 +356,8 @@ def main() -> int:
     print(f"策略 {args.onnx}")
     print(f"输入 {in_name} {session.get_inputs()[0].shape}  输出 {[o.name for o in session.get_outputs()]}")
     print("进程序先站立，力矩保护 1.20 N·m。站稳后按空格执行策略，再按一次回到站立。")
-    print("摇杆向前为前进。摆幅不再放大。两侧髋 pitch 前移 0.05 rad。")
-    print("执行策略时左摇杆前后写入速度指令，范围 ±0.50 m/s。未执行时指令为 0。")
+    print("摇杆向前为前进。指令平滑 0.06 s。腿部动作 1.2 倍。")
+    print("执行策略时左摇杆前后仍是 ±0.50 m/s。写入策略为 0.8 倍，满杆约 ±0.40。未执行时指令为 0。")
     print("Ctrl+C 先回到站立再退出，电机保持出力。头 yaw/roll 仍是 0.30 N·m。")
 
     lib = lock_fd = imu = None
@@ -374,6 +390,8 @@ def main() -> int:
         period = 1.0 / 50.0
         phase = "stand"
         stand_cmd = [stand[can] for (_name, can, _home, _scale, _lo, _hi, _leg) in JOINTS]
+        held: list[float] | None = None
+        shaped: list[float] | None = None
         last_space = 0.0
         space_edge = False
         leave_t0 = 0.0
@@ -413,15 +431,16 @@ def main() -> int:
                 can_drop += 1
                 bus.can._drop_pending()
             now_deg = {mid: bus.motors[mid].state.position / pose.DEG for mid in ids}
+            raw_imu = imu.read_raw()
+            t_sample = time.monotonic()
+            dt = max(0.0, t_sample - prev_tick)
+            prev_tick = t_sample
             q_rad = np.zeros(14, dtype=np.float64)
             q_dot = np.zeros(14, dtype=np.float32)
             for i, (_name, can, _home, _scale, _lo, _hi, _leg) in enumerate(JOINTS):
                 q_rad[i] = now_deg[can] * pose.DEG
                 q_dot[i] = ENC_SIGN[i] * bus.motors[can].state.velocity
-            raw_imu = imu.read_raw()
             sample = raw_imu.to_policy()
-            dt = max(0.0, tick - prev_tick)
-            prev_tick = tick
             acc_n = 9.81 * math.sqrt(sum(c * c for c in raw_imu.acc_g))
             gravity = gravity_filt.update(sample.gravity, sample.gyro, acc_n, dt)
             vx = stick.poll(dt, phase == "track")
@@ -453,7 +472,12 @@ def main() -> int:
                         phase = "track"
                         print("空格：开始执行策略。再按一次回到站立。", flush=True)
             target = q_cmd_deg if phase == "track" else stand_cmd
-            limited = step_limited(target, now_deg)
+            if held is None:
+                held = [now_deg[can] for (_name, can, _home, _scale, _lo, _hi, _leg) in JOINTS]
+                shaped = list(held)
+            shaped = smooth_command(target, shaped, dt)
+            held = step_limited(shaped, held)
+            limited = held
             can_drop += send_degrees(bus, ids, {can: limited[i] for i, (_n, can, *_r) in enumerate(JOINTS)})
             if leaving and (stand_err_now < 4.0 or tick - leave_t0 > 8.0):
                 if stand_err_now < 4.0:
