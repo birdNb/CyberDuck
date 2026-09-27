@@ -229,7 +229,7 @@ class SocketCan:
         except OSError as exc:
             if exc.errno != 105:
                 raise
-            for _ in range(8):
+            for _ in range(2):
                 self._drop_pending()
                 time.sleep(0.001)
                 try:

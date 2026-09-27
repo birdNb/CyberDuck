@@ -15,6 +15,7 @@ import math
 import os
 import select
 import signal
+import struct
 import sys
 import termios
 import time
@@ -33,10 +34,10 @@ from ht_can import i16_le, pos_to_int, tqe_to_int  # noqa: E402
 from lsm6dsv16x import I2CGpioError, LSM6DSV16X, WHO_AM_I_VAL, ADDRS, load_lib, open_bus, scan_bus  # noqa: E402
 
 # kp 与文档 2.4 一致。力矩保护：腿、颈、头 pitch 为 1.2 N·m；头 yaw/roll 额定 0.3。
-# 每拍转角按 tau/kp 再放开 3 倍，让关节能更快跟上，实际出力仍被力矩上限卡住。
+# 每拍转角按 tau/kp 放开 1.5 倍。3 倍时前倾会来回猛跟，把 CAN 打满。
 KP = (60, 60, 60, 60, 60, 20, 20, 8, 8, 60, 60, 60, 60, 60)
 TAU = (1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 0.3, 0.3, 1.2, 1.2, 1.2, 1.2, 1.2)
-STEP_SCALE = 3.0
+STEP_SCALE = 1.5
 
 # 策略下标，电机号，HOME，SCALE，URDF 下限/上限 rad，是否腿。
 # 限位与 htdk_sim2real.md 第 2.3 节一致。腿用 HOME+scale*action 后再裁切，颈和头目标固定 0。
@@ -64,7 +65,7 @@ DEFAULT_ONNX = (
     / "rsl_rl"
     / "velocity"
     / "2026-09-27_01-50-18_velocity"
-    / "2026-09-27_01-50-18_velocity.onnx"
+    / "model_45500.onnx"
 )
 
 
@@ -137,7 +138,7 @@ def encoder_command_deg(action: np.ndarray, stand_deg: dict[int, float]) -> tupl
     return cmd, clipped
 
 
-def build_obs(gyro, gravity, q_rad, q_dot_prev, last_action, stand_deg: dict[int, float]) -> np.ndarray:
+def build_obs(gyro, gravity, q_rad, q_dot_prev, last_action, stand_deg: dict[int, float], vx: float) -> np.ndarray:
     obs = np.zeros(61, dtype=np.float32)
     obs[0:3] = gyro
     obs[3:6] = gravity
@@ -145,7 +146,54 @@ def build_obs(gyro, gravity, q_rad, q_dot_prev, last_action, stand_deg: dict[int
         obs[6 + i] = q_rad[i] - math.radians(stand_deg[can])
     obs[20:34] = q_dot_prev
     obs[34:48] = last_action
+    obs[48] = vx
     return obs
+
+
+class Stick:
+    """左摇杆前后 → 机头方向速度，满杆 ±0.5 m/s。死区 0.12，约 0.1 s 低通。"""
+
+    PATH = "/dev/input/js0"
+    DEADZONE = 0.12
+    VX_MAX = 0.5
+    TAU = 0.1
+
+    def __init__(self) -> None:
+        self.axis = [0.0] * 8
+        self.vx = 0.0
+        self.fd = -1
+        try:
+            self.fd = os.open(self.PATH, os.O_RDONLY | os.O_NONBLOCK)
+        except OSError as exc:
+            print(f"没有打开 {self.PATH}：{exc}。前后指令保持 0。", file=sys.stderr)
+
+    def poll(self, dt: float, enabled: bool) -> float:
+        if self.fd >= 0:
+            while True:
+                try:
+                    raw = os.read(self.fd, 8)
+                except BlockingIOError:
+                    break
+                if len(raw) < 8:
+                    break
+                _time, value, kind, number = struct.unpack("IhBB", raw)
+                if (kind & ~0x80) == 0x02 and number < 8:
+                    self.axis[number] = max(-1.0, min(1.0, value / 32767.0))
+        ly = -self.axis[1]
+        if abs(ly) < self.DEADZONE:
+            ly = 0.0
+        target = ly * self.VX_MAX if enabled else 0.0
+        target = max(-self.VX_MAX, min(self.VX_MAX, target))
+        alpha = dt / (self.TAU + dt) if dt > 0 else 1.0
+        self.vx += alpha * (target - self.vx)
+        if abs(self.vx) < 1e-3:
+            self.vx = 0.0
+        return self.vx
+
+    def close(self) -> None:
+        if self.fd >= 0:
+            os.close(self.fd)
+            self.fd = -1
 
 
 def yellow_nm(nm: float) -> str:
@@ -191,16 +239,21 @@ def send_degrees(bus, ids: list[int], degrees: dict[int, float]) -> int:
         try:
             bus.send_cmd(motor.id, data, reply=False)
         except OSError as exc:
-            if exc.errno != 105:
+            if not can_send_failed(exc):
                 raise
             bus.can._drop_pending()
             try:
                 bus.send_cmd(motor.id, data, reply=False)
             except OSError as again:
-                if again.errno != 105:
+                if not can_send_failed(again):
                     raise
                 dropped += 1
     return dropped
+
+
+def can_send_failed(exc: OSError) -> bool:
+    """缓冲满、总线掉线都不当成致命错误，避免抖动丢帧时把控制环打掉。"""
+    return exc.errno in (19, 100, 105) or "缓冲" in str(exc)
 
 
 def gravity_tilt_deg(gravity) -> float:
@@ -244,10 +297,12 @@ def main() -> int:
     print(f"策略 {args.onnx}")
     print(f"输入 {in_name} {session.get_inputs()[0].shape}  输出 {[o.name for o in session.get_outputs()]}")
     print("进程序先站立，力矩保护 1.20 N·m。站稳后按空格执行策略，再按一次回到站立。")
+    print("执行策略时左摇杆前后写入速度指令，范围 ±0.50 m/s。未执行时指令为 0。")
     print("Ctrl+C 先回到站立再退出，电机保持出力。头 yaw/roll 仍是 0.30 N·m。")
 
     lib = lock_fd = imu = None
     keys = None
+    stick = None
     motors_on = False
     running = True
     leaving = False
@@ -294,6 +349,8 @@ def main() -> int:
         infer_us = 0.0
         volt_i = 0
         can_drop = 0
+        stick = Stick()
+        prev_tick = time.monotonic()
         while running:
             tick = time.monotonic()
             if leaving and leave_t0 == 0.0:
@@ -307,7 +364,7 @@ def main() -> int:
             try:
                 refresh_motors(bus, ids, ids[volt_i % len(ids)])
             except OSError as exc:
-                if exc.errno != 105:
+                if not can_send_failed(exc):
                     raise
                 can_drop += 1
                 bus.can._drop_pending()
@@ -319,7 +376,10 @@ def main() -> int:
                 q_rad[i] = now_deg[can] * pose.DEG
                 q_dot[i] = bus.motors[can].state.velocity
             sample = imu.read_raw().to_policy()
-            obs = build_obs(sample.gyro, sample.gravity, q_rad, q_dot_prev, last_action, stand)
+            dt = max(0.0, tick - prev_tick)
+            prev_tick = tick
+            vx = stick.poll(dt, phase == "track")
+            obs = build_obs(sample.gyro, sample.gravity, q_rad, q_dot_prev, last_action, stand, vx)
             t_infer = time.monotonic()
             action = session.run(None, {in_name: obs.reshape(1, 61)})[0][0]
             infer_us = (time.monotonic() - t_infer) * 1e6
@@ -385,7 +445,8 @@ def main() -> int:
                 print(f"电压 {volt_txt}")
                 print(
                     f"gravity {sample.gravity[0]:+.3f} {sample.gravity[1]:+.3f} {sample.gravity[2]:+.3f}  "
-                    f"gyro {sample.gyro[0]:+.3f} {sample.gyro[1]:+.3f} {sample.gyro[2]:+.3f} rad/s"
+                    f"gyro {sample.gyro[0]:+.3f} {sample.gyro[1]:+.3f} {sample.gyro[2]:+.3f} rad/s  "
+                    f"指令前后 {vx:+.2f} m/s"
                 )
                 for i, (name, can, _home, _scale, lo, hi, leg) in enumerate(JOINTS):
                     pol = q_cmd_deg[i]
@@ -406,6 +467,8 @@ def main() -> int:
                 time.sleep(period - spent)
         return 0
     finally:
+        if stick is not None:
+            stick.close()
         if keys is not None:
             keys.close()
         if lib is not None:
