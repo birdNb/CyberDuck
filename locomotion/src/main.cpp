@@ -54,8 +54,8 @@ bool self_test() {
     loco::motor_targets(action, q, home, loco::MotorGoal::Track, 1.0, 0.5, q_des, tau);
     auto near = [](double a, double b) { return std::fabs(a - b) < 1e-6; };
     motor_ok &= near(q_des[0], 0.5 / 60.0);
-    motor_ok &= near(q_des[2], 0.175 + 0.5 / 60.0);
-    motor_ok &= near(q_des[5], 0.0);
+    motor_ok &= near(q_des[2], 0.68 + 0.5 / 60.0);
+    motor_ok &= near(q_des[5], 0.52);
     motor_ok &= near(tau[0], 0.5) && near(tau[7], 0.3);
     q[1] = 0.079;
     loco::motor_targets(action, q, home, loco::MotorGoal::Track, 1.0, 0.5, q_des, tau);
