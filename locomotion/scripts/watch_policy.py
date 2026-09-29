@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import math
 import os
 import select
@@ -31,13 +32,27 @@ except (AttributeError, OSError):
 
 
 def say(text: str = "") -> None:
-    """绕过缓冲，直接把一行写到终端。"""
+    """直接写到终端。写不进去就丢掉这一行，不能让打印堵住 50 Hz。"""
     data = (text + "\n").encode()
+    fd = sys.stdout.fileno()
     try:
-        os.write(sys.stdout.fileno(), data)
+        import fcntl
+
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        if not flags & os.O_NONBLOCK:
+            fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
     except OSError:
-        sys.stdout.write(text + "\n")
-        sys.stdout.flush()
+        pass
+    try:
+        os.write(fd, data)
+    except BlockingIOError:
+        return
+    except OSError:
+        try:
+            sys.stdout.write(text + "\n")
+            sys.stdout.flush()
+        except OSError:
+            return
 
 import numpy as np
 
@@ -57,8 +72,12 @@ KP = (60, 60, 60, 60, 60, 20, 20, 8, 8, 60, 60, 60, 60, 60)
 TAU = (1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 0.3, 0.3, 1.2, 1.2, 1.2, 1.2, 1.2)
 STEP_SCALE = 2.0
 SIGN = (1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1)
-# 训练速度 vx ∈ [-0.4, 0.4]。满杆写入策略再乘 0.50，满杆约 ±0.20 m/s。
-CMD_SCALE = 0.50
+# 摇杆满杆先映射到训练范围 ±0.4 m/s，再写入策略 ±0.15 m/s。
+CMD_SCALE = 0.15 / 0.4
+# 只放大腿的动作，脖子和头仍锁站立。1.25 让步幅大约再大两成。
+LEG_GAIN = 1.25
+# 电机目标低通。约 0.035 s 去掉高频抖动，走路的步频还能通过。
+CMD_TAU = 0.035
 
 # 策略下标，电机号，仿真 HOME，SCALE，仿真下限/上限 rad，是否腿。
 # 腿用 HOME+SCALE*action 后再裁切。颈和头锁在 HOME，不跟动作。
@@ -151,7 +170,7 @@ def motor_command_deg(action: np.ndarray, stand_deg: dict[int, float]) -> tuple[
     cmd = []
     clipped = []
     for i, (_name, can, home, scale, lo, hi, leg) in enumerate(JOINTS):
-        raw = home + scale * float(action[i]) if leg else home
+        raw = home + scale * LEG_GAIN * float(action[i]) if leg else home
         limited = min(hi, max(lo, raw))
         clipped.append(raw < lo - 1e-6 or raw > hi + 1e-6)
         cmd.append(stand_deg[can] + math.degrees(SIGN[i] * (limited - home)))
@@ -162,6 +181,8 @@ def build_obs(gyro, gravity, q_motor_rad, q_dot_prev, last_action, stand_deg: di
     obs = np.zeros(61, dtype=np.float32)
     obs[0:3] = gyro
     obs[3:6] = gravity
+    # 实机前倾时 gx 变负，策略把这当成后仰，髋和踝继续往前送。只把送进网络的俯仰重力反过来。
+    obs[3] = -obs[3]
     for i, (_name, can, home, _scale, _lo, _hi, _leg) in enumerate(JOINTS):
         q_sim = home + SIGN[i] * (q_motor_rad[i] - math.radians(stand_deg[can]))
         obs[6 + i] = q_sim - home
@@ -174,18 +195,21 @@ def build_obs(gyro, gravity, q_motor_rad, q_dot_prev, last_action, stand_deg: di
 
 
 class Stick:
-    """只读左摇杆前后。左右、右摇杆、扳机都不进观测。满杆 ±0.4 m/s。"""
+    """只读左摇杆前后。每拍把积压事件读完，只用最新位置，不再做低通。"""
 
     PATH = "/dev/input/js0"
     DEADZONE = 0.12
     VX_MAX = 0.4
-    TAU = 0.1
     FORWARD_AXIS = 1
+    BTN_A = 0
+    BTN_B = 1
 
     def __init__(self) -> None:
         self.axis = [0.0] * 8
         self.vx = 0.0
+        self.cmd = 0.0
         self.raw = 0.0
+        self.button = ""
         self.name = ""
         self.fd = -1
         try:
@@ -202,36 +226,86 @@ class Stick:
             self.name = buf.split(b"\x00", 1)[0].decode(errors="replace")
         except OSError:
             self.name = self.PATH
-        say(f"手柄已接入 {self.name}（{self.PATH}）。只接受左摇杆前后，向前为正。")
+        say(f"手柄已接入 {self.name}（{self.PATH}）。只接受左摇杆前后，向前为正。A 启停策略，B 卸力。")
 
     def poll(self, dt: float, enabled: bool) -> float:
+        del dt
         if self.fd >= 0:
             while True:
                 try:
-                    raw = os.read(self.fd, 8)
+                    blob = os.read(self.fd, 8 * 64)
                 except BlockingIOError:
                     break
-                if len(raw) < 8:
+                if len(blob) < 8:
                     break
-                _time, value, kind, number = struct.unpack("IhBB", raw)
-                if (kind & ~0x80) == 0x02 and number < 8:
-                    self.axis[number] = max(-1.0, min(1.0, value / 32767.0))
+                for off in range(0, len(blob) - 7, 8):
+                    _time, value, kind, number = struct.unpack_from("IhBB", blob, off)
+                    init = bool(kind & 0x80)
+                    kind &= ~0x80
+                    if kind == 0x02 and number < 8:
+                        self.axis[number] = max(-1.0, min(1.0, value / 32767.0))
+                    elif kind == 0x01 and not init and value == 1:
+                        if number == self.BTN_B:
+                            self.button = "B"
+                        elif number == self.BTN_A and self.button != "B":
+                            self.button = "A"
         ly = -self.axis[self.FORWARD_AXIS]
         if abs(ly) < self.DEADZONE:
             ly = 0.0
         self.raw = ly
-        target = ly * self.VX_MAX if enabled else 0.0
-        target = max(-self.VX_MAX, min(self.VX_MAX, target))
-        alpha = dt / (self.TAU + dt) if dt > 0 else 1.0
-        self.vx += alpha * (target - self.vx)
-        if abs(self.vx) < 1e-3:
-            self.vx = 0.0
+        self.cmd = ly * self.VX_MAX
+        self.vx = self.cmd if enabled else 0.0
         return self.vx
+
+    def take_button(self) -> str:
+        name = self.button
+        self.button = ""
+        return name
 
     def close(self) -> None:
         if self.fd >= 0:
             os.close(self.fd)
             self.fd = -1
+
+
+class CsvLog:
+    """每拍一行，50 Hz。缓冲写入，不跟着终端打印堵住控制环。"""
+
+    def __init__(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.path = path
+        self.file = path.open("w", newline="", encoding="utf-8")
+        names = [j[0] for j in JOINTS]
+        cols = ["t_s", "unix_s", "phase", "dt_s", "infer_us"]
+        cols += [f"gyro_{a}" for a in "xyz"]
+        cols += [f"gravity_{a}" for a in "xyz"]
+        cols += [f"meas_gravity_{a}" for a in "xyz"]
+        cols += [f"acc_g_{a}" for a in "xyz"]
+        cols += ["acc_norm", "roll_deg", "pitch_deg", "tilt_deg"]
+        cols += ["stick_raw", "stick_mps", "obs_vx", "obs_vy", "obs_wz"]
+        cols += [f"obs_q_{n}" for n in names]
+        cols += [f"obs_dq_{n}" for n in names]
+        cols += [f"dq_{n}" for n in names]
+        cols += [f"last_action_{n}" for n in names]
+        cols += [f"action_{n}" for n in names]
+        cols += [f"policy_deg_{n}" for n in names]
+        cols += [f"cmd_deg_{n}" for n in names]
+        cols += [f"motor_deg_{n}" for n in names]
+        cols += [f"torque_{n}" for n in names]
+        cols += ["voltage_v", "can_drop"]
+        self.writer = csv.writer(self.file)
+        self.writer.writerow(cols)
+        self.rows = 0
+
+    def write(self, values: list[float | str]) -> None:
+        self.writer.writerow(values)
+        self.rows += 1
+        if self.rows % 25 == 0:
+            self.file.flush()
+
+    def close(self) -> None:
+        self.file.flush()
+        self.file.close()
 
 
 def yellow_nm(nm: float) -> str:
@@ -252,9 +326,13 @@ def torque_of(can: int) -> float:
 
 
 class Gravity:
-    """陀螺每拍积分。加速度只在接近 1 g 时用 0.5 s 修正，避免震动把目标打回来。"""
+    """陀螺每拍积分。加速度只在接近 1 g 时修正。
 
-    TAU = 0.5
+    0.04 s 会把站立时的加速度噪声写进倾角，策略跟着抖，形成自激。
+    0.10 s 仍快于早先的 0.15 s。冲击仍被 7–13 m/s² 的门挡住。
+    """
+
+    TAU = 0.10
 
     def __init__(self) -> None:
         self.g: tuple[float, float, float] | None = None
@@ -392,13 +470,14 @@ def main() -> int:
     say(f"策略 {args.onnx}")
     say(f"输入 {in_name} {session.get_inputs()[0].shape}  输出 {[o.name for o in session.get_outputs()]}")
     say(f"进程序用 {stand_s:.0f} 秒渐变到 pose_config.yaml 的站立角。右腿动作相对这个姿势取反。")
-    say("操作：空格 启动/停止策略 | Ctrl+C 回到站立并保持出力 | Q 立刻卸力")
-    say("站稳后再按空格。力矩保护 1.20 N·m。头 yaw/roll 仍是 0.30 N·m。")
-    say("控制频率目标 50 Hz。手柄只取前后：满杆 ±0.40 m/s，写入策略再乘 0.50，满杆约 ±0.20。未执行时指令为 0。")
+    say("操作：A 或空格 启动/停止策略 | B 或 Q 立刻卸力 | Ctrl+C 回到站立并保持出力")
+    say("站稳后再按 A 或空格。力矩保护 1.20 N·m。头 yaw/roll 仍是 0.30 N·m。")
+    say("控制频率目标 50 Hz。手柄只取前后：满杆写入策略 ±0.15 m/s。未执行时指令为 0。")
 
     lib = lock_fd = imu = None
     keys = None
     stick = None
+    csv_log = None
     motors_on = False
     running = True
     leaving = False
@@ -428,6 +507,7 @@ def main() -> int:
         stand_cmd = [stand[can] for (_name, can, _home, _scale, _lo, _hi, _leg) in JOINTS]
         stand_hold = {can: stand[can] for (_name, can, _home, _scale, _lo, _hi, _leg) in JOINTS}
         held: list[float] | None = None
+        cmd_filt: list[float] | None = None
         stand_origin: list[float] | None = None
         stand_t0 = 0.0
         last_space = 0.0
@@ -435,7 +515,7 @@ def main() -> int:
         leave_t0 = 0.0
         say(f"电机已使能，{stand_s:.0f} 秒渐变到站立。")
         say("电机角 = 采集站立角 + SIGN × (仿真目标 − HOME)。红字是还没跟上的角度。")
-        say("操作：空格 启停策略 | Ctrl+C 回站立保持 | Q 卸力")
+        say("操作：A 或空格 启停策略 | B 或 Q 卸力 | Ctrl+C 回站立保持")
         last_action = np.zeros(14, dtype=np.float32)
         q_dot_prev = np.zeros(14, dtype=np.float32)
         window_t = time.monotonic()
@@ -446,6 +526,10 @@ def main() -> int:
         stick = Stick()
         gravity_filt = Gravity()
         prev_tick = time.monotonic()
+        log_t0 = prev_tick
+        log_path = REPO / "locomotion" / "logs" / "watch" / time.strftime("watch_%Y%m%d_%H%M%S.csv")
+        csv_log = CsvLog(log_path)
+        say(f"50 Hz 记录 {log_path}")
         while running:
             tick = time.monotonic()
             if leaving and leave_t0 == 0.0:
@@ -457,7 +541,7 @@ def main() -> int:
                 print(f"Ctrl+C：{stand_s:.0f} 秒回到站立后退出，电机保持出力。再按一次立即退出。", flush=True)
             key = keys.poll()
             if key in ("q", "Q"):
-                print("q：电机卸力。", flush=True)
+                print("卸力。", flush=True)
                 for mid in ids:
                     try:
                         bus.disable(mid)
@@ -492,6 +576,21 @@ def main() -> int:
             acc_n = 9.81 * math.sqrt(sum(c * c for c in raw_imu.acc_g))
             gravity = gravity_filt.update(sample.gravity, sample.gyro, acc_n, dt)
             vx = stick.poll(dt, phase == "track")
+            btn = stick.take_button()
+            if btn == "B":
+                print("B：电机卸力。", flush=True)
+                for mid in ids:
+                    try:
+                        bus.disable(mid)
+                    except OSError as exc:
+                        if not can_send_failed(exc):
+                            raise
+                motors_on = False
+                print("已卸力。", flush=True)
+                break
+            if btn == "A" and not leaving and tick - last_space > 0.3:
+                last_space = tick
+                space_edge = True
             obs = build_obs(sample.gyro, gravity, q_rad, q_dot_prev, last_action, stand, vx)
             t_infer = time.monotonic()
             action = session.run(None, {in_name: obs.reshape(1, 61)})[0][0]
@@ -510,17 +609,17 @@ def main() -> int:
                     phase = "stand"
                     stand_origin = list(held) if held is not None else None
                     stand_t0 = tick
-                    print(f"空格：停止策略，{stand_s:.0f} 秒回到站立，力矩保持", flush=True)
+                    print(f"停止策略，{stand_s:.0f} 秒回到站立，力矩保持", flush=True)
                 else:
                     tilt = gravity_tilt_deg(gravity)
                     if stand_err_now > math.degrees(0.35) or tilt > 8.0:
                         print(
-                            f"空格未执行：还在站立，离目标 {stand_err_now:.1f}°，重力偏 {tilt:.1f}°。",
+                            f"未执行：还在站立，离目标 {stand_err_now:.1f}°，重力偏 {tilt:.1f}°。",
                             flush=True,
                         )
                     else:
                         phase = "track"
-                        print("空格：开始执行策略。再按一次回到站立。", flush=True)
+                        print("开始执行策略。再按 A 或空格回到站立。", flush=True)
             if held is None:
                 held = [now_deg[can] for (_name, can, _home, _scale, _lo, _hi, _leg) in JOINTS]
             if phase == "stand":
@@ -530,10 +629,52 @@ def main() -> int:
                 target = blend_stand(stand_origin, stand_cmd, tick - stand_t0, stand_s)
             else:
                 stand_origin = None
-                target = q_cmd_deg
+                if cmd_filt is None:
+                    cmd_filt = list(held)
+                alpha = dt / (CMD_TAU + dt) if dt > 0.0 else 1.0
+                cmd_filt = [a + alpha * (b - a) for a, b in zip(cmd_filt, q_cmd_deg)]
+                target = cmd_filt
+            if phase != "track":
+                cmd_filt = None
             held = step_limited(target, held)
             limited = held
-            can_drop += send_degrees(bus, ids, {can: limited[i] for i, (_n, can, *_r) in enumerate(JOINTS)})
+            dropped = send_degrees(bus, ids, {can: limited[i] for i, (_n, can, *_r) in enumerate(JOINTS)})
+            can_drop += dropped
+            roll_deg, pitch_deg, tilt_deg = tilt_axes_deg(gravity)
+            obs_vx = float(max(-0.4, min(0.4, vx)) * CMD_SCALE)
+            csv_log.write(
+                [
+                    f"{tick - log_t0:.4f}",
+                    f"{time.time():.3f}",
+                    phase,
+                    f"{dt:.5f}",
+                    f"{infer_us:.1f}",
+                    *[f"{float(v):.5f}" for v in sample.gyro],
+                    *[f"{float(v):.5f}" for v in gravity],
+                    *[f"{float(v):.5f}" for v in sample.gravity],
+                    *[f"{float(v):.5f}" for v in raw_imu.acc_g],
+                    f"{acc_n:.4f}",
+                    f"{roll_deg:.3f}",
+                    f"{pitch_deg:.3f}",
+                    f"{tilt_deg:.3f}",
+                    f"{stick.raw:.4f}",
+                    f"{stick.cmd:.4f}",
+                    f"{obs_vx:.4f}",
+                    "0",
+                    "0",
+                    *[f"{float(obs[6 + i]):.5f}" for i in range(14)],
+                    *[f"{float(obs[20 + i]):.5f}" for i in range(14)],
+                    *[f"{float(q_dot[i]):.5f}" for i in range(14)],
+                    *[f"{float(obs[34 + i]):.5f}" for i in range(14)],
+                    *[f"{float(action[i]):.5f}" for i in range(14)],
+                    *[f"{q_cmd_deg[i]:.3f}" for i in range(14)],
+                    *[f"{limited[i]:.3f}" for i in range(14)],
+                    *[f"{now_deg[JOINTS[i][1]]:.3f}" for i in range(14)],
+                    *[f"{bus.motors[JOINTS[i][1]].state.torque:.4f}" for i in range(14)],
+                    f"{bus.motors[ids[0]].state.voltage:.2f}",
+                    str(dropped),
+                ]
+            )
             if leaving and (stand_err_now < 4.0 or tick - leave_t0 > stand_s + 5.0):
                 if stand_err_now < 4.0:
                     for _ in range(8):
@@ -552,28 +693,26 @@ def main() -> int:
                 if phase == "stand" and stand_origin is not None:
                     ramp_left = max(0.0, stand_s - (tick - stand_t0))
                 if phase == "track":
-                    state = "正在执行策略，按空格回到站立"
+                    state = "正在执行策略，按 A 或空格回到站立"
                 elif ramp_left > 0.05:
                     state = f"正在站立，还剩 {ramp_left:.1f} 秒"
                 elif hold_err > 5.0:
-                    state = "正在站立，站稳后再按空格"
+                    state = "正在站立，站稳后再按 A 或空格"
                 else:
-                    state = "已站立，按空格执行策略"
+                    state = "已站立，按 A 或空格执行策略"
                 written = max(-0.4, min(0.4, vx)) * CMD_SCALE
                 say(
                     f"控制频率 {loop_hz:.1f} Hz（目标 50）  {state}  推理 {infer_us:.0f} us  "
                     f"电压 {bus_v:.1f} V  stand偏差 {hold_err:.2f}°  "
-                    f"指令速度 {vx:+.2f} m/s  写入策略 {written:+.2f}"
+                    f"手柄 {stick.raw:+.2f}  摇杆速度 {stick.cmd:+.2f} m/s  本拍写入 {written:+.2f}"
                     + (f"  CAN丢帧 {can_drop}" if can_drop else "")
                 )
-                say(f"手柄前后 {stick.raw:+.2f}  左右/转向 不接入")
-                say("操作：空格 启停策略 | Ctrl+C 回站立保持 | Q 卸力")
+                say("操作：A 或空格 启停策略 | B 或 Q 卸力 | Ctrl+C 回站立保持")
                 can_drop = 0
                 say(
                     f"{'idx':>3} {'关节':<12} {'电机':>4} {'动作':>8} {'策略角':>8} {'电机角':>8} "
                     f"{'力矩Nm':>8} {'角度差':>10}  备注"
                 )
-                roll_deg, pitch_deg, tilt_deg = tilt_axes_deg(gravity)
                 say(
                     f"gravity {gravity[0]:+.3f} {gravity[1]:+.3f} {gravity[2]:+.3f}  "
                     f"gyro {sample.gyro[0]:+.3f} {sample.gyro[1]:+.3f} {sample.gyro[2]:+.3f} rad/s  "
@@ -598,6 +737,9 @@ def main() -> int:
                 time.sleep(period - spent)
         return 0
     finally:
+        if csv_log is not None:
+            csv_log.close()
+            say(f"记录已写入 {csv_log.path}  共 {csv_log.rows} 行")
         if stick is not None:
             stick.close()
         if keys is not None:
