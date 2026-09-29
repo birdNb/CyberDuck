@@ -19,6 +19,9 @@ from ble_log import log_info, log_tx, log_warn
 FIXED_BATTERY_PCT = 88
 IP_POLL_SEC = 15.0
 PWR_POLL_SEC = 5.0
+# 小程序订阅 FFE2 后连发局域网 IP：立即一次，之后每隔 2 秒，共 3 次
+IP_BURST_COUNT = 3
+IP_BURST_INTERVAL_SEC = 2.0
 
 NotifyFn = Callable[[bytes], None]
 BatteryFn = Callable[[], Optional[int]]
@@ -76,6 +79,8 @@ class BleStatusTelemetry:
         self._last_ip: Optional[str] = None
         self._last_pwr_sent: Optional[int] = None
         self._poll_thread: Optional[threading.Thread] = None
+        self._ip_burst_stop = threading.Event()
+        self._ip_burst_thread: Optional[threading.Thread] = None
 
     def start(self) -> None:
         if self._poll_thread is not None:
@@ -86,6 +91,7 @@ class BleStatusTelemetry:
 
     def stop(self) -> None:
         self._stop.set()
+        self._cancel_ip_burst()
 
     def on_subscribed(self, emit_snapshot: bool = True) -> None:
         self._subscribed.set()
@@ -96,6 +102,10 @@ class BleStatusTelemetry:
 
     def on_unsubscribed(self) -> None:
         self._subscribed.clear()
+        self._cancel_ip_burst()
+
+    def _cancel_ip_burst(self) -> None:
+        self._ip_burst_stop.set()
 
     def _push_snapshot(self) -> None:
         ip = read_lan_ip()
@@ -136,8 +146,10 @@ class BleStatusTelemetry:
         with self._lock:
             if not force and ip == self._last_ip:
                 return
+        if not self._tx(f"IP:{ip}"):
+            return
+        with self._lock:
             self._last_ip = ip
-        self._tx(f"IP:{ip}")
 
     def _maybe_send_pwr(self, raw_pct: int, force: bool = False) -> None:
         if not self._subscribed.is_set():
@@ -157,3 +169,32 @@ class BleStatusTelemetry:
         if ip:
             self._send_ip(ip, force=force)
         return ip
+
+    def push_ip_burst(
+        self,
+        count: int = IP_BURST_COUNT,
+        interval: float = IP_BURST_INTERVAL_SEC,
+    ) -> None:
+        """连接后连发 IP：立即一次，之后每隔 interval 秒，共 count 次。"""
+        self._cancel_ip_burst()
+        stop = threading.Event()
+        self._ip_burst_stop = stop
+        total = max(1, int(count))
+        gap = max(0.0, float(interval))
+
+        def _run() -> None:
+            for i in range(total):
+                if stop.is_set() or self._stop.is_set() or not self._subscribed.is_set():
+                    return
+                ip = read_lan_ip()
+                if ip:
+                    self._send_ip(ip, force=True)
+                    log_info(f"连接后上报 IP ({i + 1}/{total}): {ip}")
+                else:
+                    log_warn(f"连接后上报 IP ({i + 1}/{total}): 尚未拿到局域网地址")
+                if i + 1 < total and stop.wait(gap):
+                    return
+
+        thread = threading.Thread(target=_run, name="ble-ip-burst", daemon=True)
+        self._ip_burst_thread = thread
+        thread.start()

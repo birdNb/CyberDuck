@@ -442,7 +442,9 @@ class BleGattServer:
         self._connected_devices.add(path)
         self._last_connect_attempt_log_ts.pop(path, None)
         self._link_watchdog_disconnect_pending = False
-        self._notify_enabled = False
+        # 小程序可能先订阅 FFE2，Connected 才到。这时不要把已订阅清掉。
+        notifying = self._notify_active
+        self._notify_enabled = notifying
         self._ready_reported = False
         self._trust_device(path)
         label = self._device_label(path)
@@ -453,6 +455,11 @@ class BleGattServer:
             self._voice.on_ble_connected()
         self._schedule_connect_hint()
         self._start_link_watchdog()
+        if notifying:
+            if self._telemetry is not None:
+                self._telemetry.on_subscribed(emit_snapshot=False)
+            self._try_report_ready()
+            self._schedule_ip_burst()
         # AIC 上连接后立刻停广播容易打断 GATT 发现/订阅，延后到握手完成
         GLib.timeout_add(2500, self._deferred_stop_adv_cb)
 
@@ -539,6 +546,8 @@ class BleGattServer:
             self._notify_active = False
             self._pending_notifies.clear()
             self._adv_stop_pending = False
+            if self._telemetry is not None:
+                self._telemetry.on_unsubscribed()
             self._schedule_restart_advertising()
             GLib.timeout_add(2000, self._ble_ready_timeout_cb)
 
@@ -815,11 +824,17 @@ class BleGattServer:
             return
         pct = self._read_battery_pct()
         self._send_plain_notify(f"pwr:{max(0, min(100, int(pct)))}")
-        if self._telemetry is not None:
-            self._telemetry.push_ip(force=True)
         self._ready_reported = True
-        log_info("[ready] 已上报 pwr/IP（不含 mode/fsm）")
+        log_info("[ready] 已上报 pwr（不含 mode/fsm）")
         self._stop_advertising_while_connected()
+
+    def _schedule_ip_burst(self) -> None:
+        """每次 FFE2 订阅都重发 IP。微信会先订一次再立刻退订重订，第一次发出的包会被丢掉。"""
+        if not self._connected_devices or not self._notify_enabled:
+            return
+        if self._telemetry is None:
+            return
+        self._telemetry.push_ip_burst()
 
     def _handle_wifi(self, payload: str) -> None:
         """WIFI 配网：解析 SSID/密码 → nmcli 保存并连接 → FFE2 回最终结果。"""
@@ -1054,6 +1069,7 @@ class BleGattServer:
         if self._telemetry is not None:
             self._telemetry.on_subscribed(emit_snapshot=False)
         self._try_report_ready()
+        self._schedule_ip_burst()
 
     def _on_notify_stop(self) -> None:
         self._notify_active = False

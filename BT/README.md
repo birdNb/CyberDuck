@@ -42,7 +42,7 @@ cd app && ./scripts/check.sh
 | 服务 | `0000FFE0-0000-1000-8000-00805F9B34FB` |
 | 写入 | FFE1 |
 | 通知 | FFE2 |
-| 连接就绪 | 订阅 FFE2 后推送 `pwr:88` / `IP:`（无 `M_default` 模式握手） |
+| 连接就绪 | 订阅 FFE2 后推送 `pwr:88`，`IP:` 每隔 2 秒连发 3 次（无 `M_default` 模式握手） |
 | 对话语音 | FFE1 发拼音首字母短码，如 `BBMWX`，播放 `conversation_bag` |
 | 音量 | `V 0` … `V 100` |
 

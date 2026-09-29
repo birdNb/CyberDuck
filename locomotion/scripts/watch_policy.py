@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""进程序先站到采集的站立角，空格才执行策略。
+"""进程序先走到 pose_config.yaml 里的站立角，空格才执行策略。
 
 再按空格停止策略并回到站立。Ctrl+C 也先回到站立再退出，电机保持出力。
+按 q 立刻卸力并退出。
 腿和颈、头 pitch 的力矩保护是 1.2 N·m。头 yaw/roll 额定 0.3，不加。
 
 用法（在 locomotion/ 下，用带 onnxruntime 的解释器）:
@@ -22,6 +23,22 @@ import time
 import tty
 from pathlib import Path
 
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
+except (AttributeError, OSError):
+    pass
+
+
+def say(text: str = "") -> None:
+    """绕过缓冲，直接把一行写到终端。"""
+    data = (text + "\n").encode()
+    try:
+        os.write(sys.stdout.fileno(), data)
+    except OSError:
+        sys.stdout.write(text + "\n")
+        sys.stdout.flush()
+
 import numpy as np
 
 REPO = Path(__file__).resolve().parents[2]
@@ -33,41 +50,33 @@ import pose  # noqa: E402
 from ht_can import i16_le, pos_to_int, tqe_to_int  # noqa: E402
 from lsm6dsv16x import I2CGpioError, LSM6DSV16X, WHO_AM_I_VAL, ADDRS, load_lib, open_bus, scan_bus  # noqa: E402
 
-# kp 与文档 2.4 一致。力矩保护：腿、颈、头 pitch 为 1.2 N·m；头 yaw/roll 额定 0.3。
-# 同一拍采样 IMU 和关节。指令再经 0.06 s 平滑，去掉高频。
-# 腿的动作 1.2 倍。仍相对上一拍限速，不跟编码器跑，力矩顶住 1.2 N·m。
-# 站立前倾过多。两侧髋 pitch 只留 0.02 rad 的前移，观测里减掉同样的量。
+# 力矩：腿、颈、头 pitch 为 1.2 N·m；头 yaw/roll 额定 0.3。
+# 仿真角和电机角只在读写边界乘一次 SIGN。左腿和头颈为 +1，右腿五个关节全部为 -1。
+# 缩放是当前训练值：髋 pitch 0.80，小腿 1.00，踝 0.70。
 KP = (60, 60, 60, 60, 60, 20, 20, 8, 8, 60, 60, 60, 60, 60)
 TAU = (1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 0.3, 0.3, 1.2, 1.2, 1.2, 1.2, 1.2)
 STEP_SCALE = 2.0
-LEG_GAIN = 1.2
-CMD_TAU = 0.06
-HIP_PITCH_BIAS = 0.02
-# 下蹲时左腿 roll/pitch/小腿的编码器与右腿反向，URDF 左右却同向。观测和指令一起取反。
-# 右踝原来和左踝相反：前进时左脚往下踩、右脚往上提。右踝改成和左踝同一个符号。
-# 髋 yaw 不翻。
-ENC_SIGN = (1, -1, -1, -1, -1, 1, 1, 1, 1, 1, 1, 1, 1, -1)
-# 满杆 ±0.5 直接写入步频太高；0.6 倍大约 ±0.30。再放到 0.8 倍，满杆约 ±0.40。
-POLICY_VX_SCALE = 0.8
+SIGN = (1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1)
+# 训练速度 vx ∈ [-0.4, 0.4]。满杆写入策略再乘 0.50，满杆约 ±0.20 m/s。
+CMD_SCALE = 0.50
 
-# 策略下标，电机号，HOME，SCALE，URDF 下限/上限 rad，是否腿。
-# HOME 与 htdk_policy_joint_order copy.md 的训练站立零位一致。
-# 腿用 HOME+scale*action 后再裁切。颈和头锁在 HOME，不跟动作。
+# 策略下标，电机号，仿真 HOME，SCALE，仿真下限/上限 rad，是否腿。
+# 腿用 HOME+SCALE*action 后再裁切。颈和头锁在 HOME，不跟动作。
 JOINTS = (
     ("l_hip_yaw", 10, 0.0, 0.25, -0.436, 0.176, True),
     ("l_hip_roll", 9, 0.0, 0.10, -0.384, 0.080, True),
-    ("l_hip_pitch", 8, 0.68, 0.50, -1.571, 1.571, True),
-    ("l_calf", 7, -0.88, 0.50, -1.571, 1.571, True),
-    ("l_ankle", 6, 0.21, 0.40, -1.571, 1.571, True),
+    ("l_hip_pitch", 8, 0.68, 0.80, -1.571, 1.571, True),
+    ("l_calf", 7, -0.88, 1.00, -1.571, 1.571, True),
+    ("l_ankle", 6, 0.21, 0.70, -1.571, 1.571, True),
     ("neck_pitch", 12, 0.52, 0.40, -1.200, 1.571, False),
     ("head_pitch", 11, -0.50, 0.40, -1.240, 1.571, False),
     ("head_yaw", 14, 0.0, 0.50, -2.967, 2.967, False),
     ("head_roll", 13, 0.0, 0.20, -0.436, 0.436, False),
     ("r_hip_yaw", 5, 0.0, 0.25, -0.176, 0.436, True),
     ("r_hip_roll", 4, 0.0, 0.10, -0.080, 0.384, True),
-    ("r_hip_pitch", 3, 0.68, 0.50, -1.571, 1.571, True),
-    ("r_calf", 2, -0.88, 0.50, -1.571, 1.571, True),
-    ("r_ankle", 1, 0.21, 0.40, -1.571, 1.571, True),
+    ("r_hip_pitch", 3, 0.68, 0.80, -1.571, 1.571, True),
+    ("r_calf", 2, -0.88, 1.00, -1.571, 1.571, True),
+    ("r_ankle", 1, 0.21, 0.70, -1.571, 1.571, True),
 )
 
 DEFAULT_ONNX = (
@@ -77,7 +86,7 @@ DEFAULT_ONNX = (
     / "rsl_rl"
     / "velocity"
     / "2026-09-28_02-51-17_velocity"
-    / "model_3500.onnx"
+    / "model_30700.onnx"
 )
 
 
@@ -134,58 +143,66 @@ def open_imu():
     return lib, lock_fd, imu
 
 
-def encoder_command_deg(action: np.ndarray, stand_deg: dict[int, float]) -> tuple[list[float], list[bool]]:
-    """策略角先在 URDF 里限位，再换回编码器角度。
+def motor_command_deg(action: np.ndarray, stand_deg: dict[int, float]) -> tuple[list[float], list[bool]]:
+    """仿真目标先限位。电机角 = 采集站立角 + SIGN × (仿真目标 − HOME)。
 
-    站立采集角当作训练 HOME 对应的实机姿势。
-    电机指令 = 站立采集角 + 符号 × (q_des - HOME)。颈和头的 q_des 锁在 HOME，所以停在采集角。
+    动作是 0、脖子锁在 HOME 时，电机就停在采集的站立角。右腿 SIGN 为 -1。
     """
     cmd = []
     clipped = []
     for i, (_name, can, home, scale, lo, hi, leg) in enumerate(JOINTS):
-        raw = home + LEG_GAIN * scale * float(action[i]) if leg else home
-        if i in (2, 11):
-            raw += HIP_PITCH_BIAS
+        raw = home + scale * float(action[i]) if leg else home
         limited = min(hi, max(lo, raw))
         clipped.append(raw < lo - 1e-6 or raw > hi + 1e-6)
-        cmd.append(stand_deg[can] + ENC_SIGN[i] * math.degrees(limited - home))
+        cmd.append(stand_deg[can] + math.degrees(SIGN[i] * (limited - home)))
     return cmd, clipped
 
 
-def build_obs(gyro, gravity, q_rad, q_dot_prev, last_action, stand_deg: dict[int, float], vx: float) -> np.ndarray:
+def build_obs(gyro, gravity, q_motor_rad, q_dot_prev, last_action, stand_deg: dict[int, float], vx: float) -> np.ndarray:
     obs = np.zeros(61, dtype=np.float32)
     obs[0:3] = gyro
     obs[3:6] = gravity
-    # 采集站立角对应训练 HOME。joint_pos = 符号 × (编码器角 - 采集角)。
-    for i, (_name, can, _home, _scale, _lo, _hi, _leg) in enumerate(JOINTS):
-        pos = ENC_SIGN[i] * (q_rad[i] - math.radians(stand_deg[can]))
-        if i in (2, 11):
-            pos -= HIP_PITCH_BIAS
-        obs[6 + i] = pos
+    for i, (_name, can, home, _scale, _lo, _hi, _leg) in enumerate(JOINTS):
+        q_sim = home + SIGN[i] * (q_motor_rad[i] - math.radians(stand_deg[can]))
+        obs[6 + i] = q_sim - home
     obs[20:34] = q_dot_prev
     obs[34:48] = last_action
-    # 摇杆向前时实机往后退，写入策略前取反，再乘 0.8。满杆约 ±0.40。
-    # 打印仍是摇杆方向和满杆 ±0.5。
-    obs[48] = -vx * POLICY_VX_SCALE
+    obs[48] = max(-0.4, min(0.4, vx)) * CMD_SCALE
+    obs[49] = 0.0
+    obs[50] = 0.0
     return obs
 
 
 class Stick:
-    """左摇杆前后 → 机头方向速度，满杆 ±0.5 m/s。死区 0.12，约 0.1 s 低通。"""
+    """只读左摇杆前后。左右、右摇杆、扳机都不进观测。满杆 ±0.4 m/s。"""
 
     PATH = "/dev/input/js0"
     DEADZONE = 0.12
-    VX_MAX = 0.5
+    VX_MAX = 0.4
     TAU = 0.1
+    FORWARD_AXIS = 1
 
     def __init__(self) -> None:
         self.axis = [0.0] * 8
         self.vx = 0.0
+        self.raw = 0.0
+        self.name = ""
         self.fd = -1
         try:
             self.fd = os.open(self.PATH, os.O_RDONLY | os.O_NONBLOCK)
         except OSError as exc:
-            print(f"没有打开 {self.PATH}：{exc}。前后指令保持 0。", file=sys.stderr)
+            say(f"手柄未打开 {self.PATH}：{exc}。前后指令保持 0。")
+            return
+        buf = bytearray(128)
+        req = (2 << 30) | (128 << 16) | (ord("j") << 8) | 0x13
+        try:
+            import fcntl
+
+            fcntl.ioctl(self.fd, req, buf, True)
+            self.name = buf.split(b"\x00", 1)[0].decode(errors="replace")
+        except OSError:
+            self.name = self.PATH
+        say(f"手柄已接入 {self.name}（{self.PATH}）。只接受左摇杆前后，向前为正。")
 
     def poll(self, dt: float, enabled: bool) -> float:
         if self.fd >= 0:
@@ -199,9 +216,10 @@ class Stick:
                 _time, value, kind, number = struct.unpack("IhBB", raw)
                 if (kind & ~0x80) == 0x02 and number < 8:
                     self.axis[number] = max(-1.0, min(1.0, value / 32767.0))
-        ly = -self.axis[1]
+        ly = -self.axis[self.FORWARD_AXIS]
         if abs(ly) < self.DEADZONE:
             ly = 0.0
+        self.raw = ly
         target = ly * self.VX_MAX if enabled else 0.0
         target = max(-self.VX_MAX, min(self.VX_MAX, target))
         alpha = dt / (self.TAU + dt) if dt > 0 else 1.0
@@ -263,10 +281,12 @@ class Gravity:
         return self.g
 
 
-def smooth_command(target: list[float], prev: list[float], dt: float) -> list[float]:
-    """去掉策略目标里的高频。平滑后的角度仍由上一拍指令限速，不跟实测角跑。"""
-    alpha = 1.0 if dt <= 0.0 or dt > 0.2 else dt / (CMD_TAU + dt)
-    return [p + alpha * (g - p) for p, g in zip(prev, target)]
+def blend_stand(origin: list[float], goal: list[float], elapsed: float, duration: float) -> list[float]:
+    """从当前指令平滑到站立角。duration 秒内走完，两端速度为零。"""
+    if duration <= 0.0 or elapsed >= duration:
+        return list(goal)
+    scale = pose.smootherstep(elapsed / duration)
+    return [a + (b - a) * scale for a, b in zip(origin, goal)]
 
 
 def step_limited(cmd_deg: list[float], prev_deg: list[float]) -> list[float]:
@@ -320,6 +340,18 @@ def gravity_tilt_deg(gravity) -> float:
     return math.degrees(math.acos(dot))
 
 
+def tilt_axes_deg(gravity) -> tuple[float, float, float]:
+    """由机身重力向量得到倾斜角。直立时重力约 (0, 0, -1)。
+
+    绕 X 正值是左侧抬起，绕 Y 正值是机头抬起。离竖直是机身朝上轴偏离世界竖直的角度。
+    """
+    gx, gy, gz = (float(gravity[0]), float(gravity[1]), float(gravity[2]))
+    roll = math.degrees(math.atan2(-gy, -gz))
+    pitch = math.degrees(math.atan2(-gx, math.hypot(gy, gz)))
+    tilt = math.degrees(math.atan2(math.hypot(gx, gy), max(-gz, 0.0)))
+    return roll, pitch, tilt
+
+
 def refresh_motors(bus, ids: list[int], volt_id: int) -> None:
     """状态查询限在几毫秒内，避免把 50 Hz 堵成 10 Hz。电压每拍只问一个电机。"""
     for mid in ids:
@@ -330,6 +362,7 @@ def refresh_motors(bus, ids: list[int], volt_id: int) -> None:
 
 
 def main() -> int:
+    say("watch_policy 启动")
     parser = argparse.ArgumentParser(description="先站立，空格开始或停止策略")
     parser.add_argument("--onnx", default=str(DEFAULT_ONNX))
     parser.add_argument("--print-every", type=float, default=1.0)
@@ -338,6 +371,7 @@ def main() -> int:
     import onnxruntime as ort
 
     cfg = pose.load_config(pose.CONFIG_PATH)
+    stand_s = float(cfg.get("transition_s", 3.0))
     spec = pose.pose_spec(cfg, "stand")
     joints = spec.get("joints") or {}
     if not joints:
@@ -349,16 +383,18 @@ def main() -> int:
     if missing:
         print(f"stand 缺少电机 {missing}", file=sys.stderr)
         return 1
-
+    say("正在打开 CAN ...")
     bus, ids = pose.open_bus(cfg)
+    say(f"CAN 在线电机 {ids}")
+    say("正在加载策略 ...")
     session = ort.InferenceSession(args.onnx, providers=["CPUExecutionProvider"])
     in_name = session.get_inputs()[0].name
-    print(f"策略 {args.onnx}")
-    print(f"输入 {in_name} {session.get_inputs()[0].shape}  输出 {[o.name for o in session.get_outputs()]}")
-    print("进程序先站立，力矩保护 1.20 N·m。站稳后按空格执行策略，再按一次回到站立。")
-    print("摇杆向前为前进。指令平滑 0.06 s。腿部动作 1.2 倍。")
-    print("执行策略时左摇杆前后仍是 ±0.50 m/s。写入策略为 0.8 倍，满杆约 ±0.40。未执行时指令为 0。")
-    print("Ctrl+C 先回到站立再退出，电机保持出力。头 yaw/roll 仍是 0.30 N·m。")
+    say(f"策略 {args.onnx}")
+    say(f"输入 {in_name} {session.get_inputs()[0].shape}  输出 {[o.name for o in session.get_outputs()]}")
+    say(f"进程序用 {stand_s:.0f} 秒渐变到 pose_config.yaml 的站立角。右腿动作相对这个姿势取反。")
+    say("操作：空格 启动/停止策略 | Ctrl+C 回到站立并保持出力 | Q 立刻卸力")
+    say("站稳后再按空格。力矩保护 1.20 N·m。头 yaw/roll 仍是 0.30 N·m。")
+    say("控制频率目标 50 Hz。手柄只取前后：满杆 ±0.40 m/s，写入策略再乘 0.50，满杆约 ±0.20。未执行时指令为 0。")
 
     lib = lock_fd = imu = None
     keys = None
@@ -390,23 +426,20 @@ def main() -> int:
         period = 1.0 / 50.0
         phase = "stand"
         stand_cmd = [stand[can] for (_name, can, _home, _scale, _lo, _hi, _leg) in JOINTS]
+        stand_hold = {can: stand[can] for (_name, can, _home, _scale, _lo, _hi, _leg) in JOINTS}
         held: list[float] | None = None
-        shaped: list[float] | None = None
+        stand_origin: list[float] | None = None
+        stand_t0 = 0.0
         last_space = 0.0
         space_edge = False
         leave_t0 = 0.0
-        print("电机已使能，正在走向站立。", flush=True)
-
-        print("目标角和电机角都是编码器角度：站立采集角 + (限位后的 URDF 目标 - HOME)。")
-        print("空格下发的是限步后的这个角度。红字是电机还没跟上的角度。")
-        print(
-            f"{'idx':>3} {'关节':<12} {'电机':>4} {'动作':>8} {'策略角':>8} {'电机角':>8} "
-            f"{'力矩Nm':>8} {'角度差':>10}  备注"
-        )
+        say(f"电机已使能，{stand_s:.0f} 秒渐变到站立。")
+        say("电机角 = 采集站立角 + SIGN × (仿真目标 − HOME)。红字是还没跟上的角度。")
+        say("操作：空格 启停策略 | Ctrl+C 回站立保持 | Q 卸力")
         last_action = np.zeros(14, dtype=np.float32)
         q_dot_prev = np.zeros(14, dtype=np.float32)
         window_t = time.monotonic()
-        next_print = window_t + args.print_every
+        next_print = window_t
         loops = 0
         infer_us = 0.0
         can_drop = 0
@@ -418,8 +451,23 @@ def main() -> int:
             if leaving and leave_t0 == 0.0:
                 leave_t0 = tick
                 phase = "stand"
-                print("Ctrl+C：回到站立后退出，电机保持出力。再按一次立即退出。", flush=True)
-            if not leaving and keys.poll() == " " and tick - last_space > 0.3:
+                if held is not None:
+                    stand_origin = list(held)
+                    stand_t0 = tick
+                print(f"Ctrl+C：{stand_s:.0f} 秒回到站立后退出，电机保持出力。再按一次立即退出。", flush=True)
+            key = keys.poll()
+            if key in ("q", "Q"):
+                print("q：电机卸力。", flush=True)
+                for mid in ids:
+                    try:
+                        bus.disable(mid)
+                    except OSError as exc:
+                        if not can_send_failed(exc):
+                            raise
+                motors_on = False
+                print("已卸力。", flush=True)
+                break
+            if not leaving and key == " " and tick - last_space > 0.3:
                 last_space = tick
                 space_edge = True
             bus.can._drop_pending()
@@ -439,7 +487,7 @@ def main() -> int:
             q_dot = np.zeros(14, dtype=np.float32)
             for i, (_name, can, _home, _scale, _lo, _hi, _leg) in enumerate(JOINTS):
                 q_rad[i] = now_deg[can] * pose.DEG
-                q_dot[i] = ENC_SIGN[i] * bus.motors[can].state.velocity
+                q_dot[i] = SIGN[i] * bus.motors[can].state.velocity
             sample = raw_imu.to_policy()
             acc_n = 9.81 * math.sqrt(sum(c * c for c in raw_imu.acc_g))
             gravity = gravity_filt.update(sample.gravity, sample.gyro, acc_n, dt)
@@ -451,8 +499,8 @@ def main() -> int:
             loops += 1
             last_action = np.asarray(action, dtype=np.float32).copy()
             q_dot_prev = q_dot
-            q_cmd_deg, clipped = encoder_command_deg(action, stand)
-            stand_err_now = max(abs(now_deg[mid] - stand[mid]) for mid in ids)
+            q_cmd_deg, clipped = motor_command_deg(action, stand)
+            stand_err_now = max(abs(now_deg[JOINTS[i][1]] - stand_cmd[i]) for i in range(len(JOINTS)))
             if leaving:
                 phase = "stand"
                 space_edge = False
@@ -460,7 +508,9 @@ def main() -> int:
                 space_edge = False
                 if phase == "track":
                     phase = "stand"
-                    print("空格：停止策略，回到站立，力矩保持", flush=True)
+                    stand_origin = list(held) if held is not None else None
+                    stand_t0 = tick
+                    print(f"空格：停止策略，{stand_s:.0f} 秒回到站立，力矩保持", flush=True)
                 else:
                     tilt = gravity_tilt_deg(gravity)
                     if stand_err_now > math.degrees(0.35) or tilt > 8.0:
@@ -471,59 +521,77 @@ def main() -> int:
                     else:
                         phase = "track"
                         print("空格：开始执行策略。再按一次回到站立。", flush=True)
-            target = q_cmd_deg if phase == "track" else stand_cmd
             if held is None:
                 held = [now_deg[can] for (_name, can, _home, _scale, _lo, _hi, _leg) in JOINTS]
-                shaped = list(held)
-            shaped = smooth_command(target, shaped, dt)
-            held = step_limited(shaped, held)
+            if phase == "stand":
+                if stand_origin is None:
+                    stand_origin = list(held)
+                    stand_t0 = tick
+                target = blend_stand(stand_origin, stand_cmd, tick - stand_t0, stand_s)
+            else:
+                stand_origin = None
+                target = q_cmd_deg
+            held = step_limited(target, held)
             limited = held
             can_drop += send_degrees(bus, ids, {can: limited[i] for i, (_n, can, *_r) in enumerate(JOINTS)})
-            if leaving and (stand_err_now < 4.0 or tick - leave_t0 > 8.0):
+            if leaving and (stand_err_now < 4.0 or tick - leave_t0 > stand_s + 5.0):
                 if stand_err_now < 4.0:
                     for _ in range(8):
-                        send_degrees(bus, ids, stand)
+                        send_degrees(bus, ids, stand_hold)
                         time.sleep(period)
                 print(f"已退出，停在站立方向，偏差 {stand_err_now:.1f}°，电机继续保持出力。", flush=True)
                 break
             if tick >= next_print:
-                elapsed = max(tick - window_t, 1e-6)
+                elapsed = max(tick - window_t, period)
                 loop_hz = loops / elapsed
                 window_t = tick
                 loops = 0
-                hold_err = max(abs(now_deg[mid] - stand[mid]) for mid in ids)
+                hold_err = max(abs(now_deg[JOINTS[i][1]] - stand_cmd[i]) for i in range(len(JOINTS)))
                 bus_v = bus.motors[ids[0]].state.voltage
+                ramp_left = 0.0
+                if phase == "stand" and stand_origin is not None:
+                    ramp_left = max(0.0, stand_s - (tick - stand_t0))
                 if phase == "track":
                     state = "正在执行策略，按空格回到站立"
+                elif ramp_left > 0.05:
+                    state = f"正在站立，还剩 {ramp_left:.1f} 秒"
                 elif hold_err > 5.0:
                     state = "正在站立，站稳后再按空格"
                 else:
                     state = "已站立，按空格执行策略"
-                print(
-                    f"电机执行: {state}  循环 {loop_hz:.1f} Hz  推理 {infer_us:.0f} us  "
-                    f"力矩保护 1.20 N·m  电压 {bus_v:.1f} V  "
-                    f"stand偏差 {hold_err:.2f}°"
+                written = max(-0.4, min(0.4, vx)) * CMD_SCALE
+                say(
+                    f"控制频率 {loop_hz:.1f} Hz（目标 50）  {state}  推理 {infer_us:.0f} us  "
+                    f"电压 {bus_v:.1f} V  stand偏差 {hold_err:.2f}°  "
+                    f"指令速度 {vx:+.2f} m/s  写入策略 {written:+.2f}"
                     + (f"  CAN丢帧 {can_drop}" if can_drop else "")
                 )
+                say(f"手柄前后 {stick.raw:+.2f}  左右/转向 不接入")
+                say("操作：空格 启停策略 | Ctrl+C 回站立保持 | Q 卸力")
                 can_drop = 0
-                print(
+                say(
+                    f"{'idx':>3} {'关节':<12} {'电机':>4} {'动作':>8} {'策略角':>8} {'电机角':>8} "
+                    f"{'力矩Nm':>8} {'角度差':>10}  备注"
+                )
+                roll_deg, pitch_deg, tilt_deg = tilt_axes_deg(gravity)
+                say(
                     f"gravity {gravity[0]:+.3f} {gravity[1]:+.3f} {gravity[2]:+.3f}  "
                     f"gyro {sample.gyro[0]:+.3f} {sample.gyro[1]:+.3f} {sample.gyro[2]:+.3f} rad/s  "
-                    f"指令前后 {vx:+.2f} m/s"
+                    f"倾斜 绕X {roll_deg:+.1f}°  绕Y {pitch_deg:+.1f}°  离竖直 {tilt_deg:.1f}°"
                 )
                 for i, (name, can, _home, _scale, lo, hi, leg) in enumerate(JOINTS):
-                    pol = q_cmd_deg[i]
+                    pol = limited[i]
                     cur = now_deg[can]
                     note = ""
                     if clipped[i]:
                         note = f"已裁到 {math.degrees(lo):+.1f}°~{math.degrees(hi):+.1f}°"
                     elif not leg:
-                        note = "锁 HOME，不跟策略"
-                    print(
+                        note = "锁站立，不跟策略"
+                    say(
                         f"{i:3d} {name:<12} {can:4d} {float(action[i]):+8.3f} {pol:+8.2f} {cur:+8.2f} "
                         f"{yellow_nm(bus.motors[can].state.torque)} {red_diff(pol - cur)}  {note}"
                     )
-                print(flush=True)
+                say()
                 next_print = tick + args.print_every
             spent = time.monotonic() - tick
             if spent < period:
