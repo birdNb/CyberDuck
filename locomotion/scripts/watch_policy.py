@@ -72,10 +72,11 @@ KP = (60, 60, 60, 60, 60, 20, 20, 8, 8, 60, 60, 60, 60, 60)
 TAU = (1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 0.3, 0.3, 1.2, 1.2, 1.2, 1.2, 1.2)
 STEP_SCALE = 2.0
 SIGN = (1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1)
-# 摇杆满杆先映射到训练范围 ±0.4 m/s，再写入策略 ±0.15 m/s。
-CMD_SCALE = 0.15 / 0.4
-# 只放大腿的动作，脖子和头仍锁站立。1.25 让步幅大约再大两成。
-LEG_GAIN = 1.25
+# 摇杆满杆先映射到训练范围 ±0.4 m/s，再写入策略 ±0.25 m/s。
+CMD_SCALE = 0.25 / 0.4
+# 必须是 1。小腿 SCALE 已是 1，再乘 1.25 时，位置环增益超过 1：
+# 腿弯一点，策略就把目标送到更弯的地方，平放时会自己越蹲越深。
+LEG_GAIN = 1.0
 # 电机目标低通。约 0.035 s 去掉高频抖动，走路的步频还能通过。
 CMD_TAU = 0.035
 
@@ -181,8 +182,8 @@ def build_obs(gyro, gravity, q_motor_rad, q_dot_prev, last_action, stand_deg: di
     obs = np.zeros(61, dtype=np.float32)
     obs[0:3] = gyro
     obs[3:6] = gravity
-    # 实机前倾时 gx 变负，策略把这当成后仰，髋和踝继续往前送。只把送进网络的俯仰重力反过来。
-    obs[3] = -obs[3]
+    # 前倾时实测 gx>0，且低头时 gyro_y>0，与训练约定一致。不要再把 gx 取反，
+    # 否则策略把前倾看成后仰，左右髋 yaw、小腿会往相反方向踹。
     for i, (_name, can, home, _scale, _lo, _hi, _leg) in enumerate(JOINTS):
         q_sim = home + SIGN[i] * (q_motor_rad[i] - math.radians(stand_deg[can]))
         obs[6 + i] = q_sim - home
@@ -212,10 +213,23 @@ class Stick:
         self.button = ""
         self.name = ""
         self.fd = -1
+        self.warned = False
+        self._next_open = 0.0
+        self.try_open()
+
+    def try_open(self) -> None:
+        if self.fd >= 0:
+            return
+        now = time.monotonic()
+        if now < self._next_open:
+            return
+        self._next_open = now + 1.0
         try:
             self.fd = os.open(self.PATH, os.O_RDONLY | os.O_NONBLOCK)
         except OSError as exc:
-            say(f"手柄未打开 {self.PATH}：{exc}。前后指令保持 0。")
+            if not self.warned:
+                say(f"手柄未打开 {self.PATH}：{exc}。插上北通接收器后会自动重试。")
+                self.warned = True
             return
         buf = bytearray(128)
         req = (2 << 30) | (128 << 16) | (ord("j") << 8) | 0x13
@@ -226,15 +240,31 @@ class Stick:
             self.name = buf.split(b"\x00", 1)[0].decode(errors="replace")
         except OSError:
             self.name = self.PATH
-        say(f"手柄已接入 {self.name}（{self.PATH}）。只接受左摇杆前后，向前为正。A 启停策略，B 卸力。")
+        self.warned = False
+        say(f"手柄已接入 {self.name}（{self.PATH}）。左摇杆或十字键前后，向前为正。A 启停策略，B 卸力。")
+
+    def drop(self) -> None:
+        if self.fd >= 0:
+            os.close(self.fd)
+            self.fd = -1
+        self.axis = [0.0] * 8
+        self._next_open = time.monotonic() + 0.5
 
     def poll(self, dt: float, enabled: bool) -> float:
         del dt
+        self.try_open()
         if self.fd >= 0:
             while True:
                 try:
                     blob = os.read(self.fd, 8 * 64)
                 except BlockingIOError:
+                    break
+                except OSError:
+                    self.drop()
+                    break
+                if not blob:
+                    # 接收器重新枚举后，旧句柄会一直读到空，摇杆停在 0。
+                    self.drop()
                     break
                 if len(blob) < 8:
                     break
@@ -250,6 +280,8 @@ class Stick:
                         elif number == self.BTN_A and self.button != "B":
                             self.button = "A"
         ly = -self.axis[self.FORWARD_AXIS]
+        if abs(ly) < self.DEADZONE:
+            ly = -self.axis[7]
         if abs(ly) < self.DEADZONE:
             ly = 0.0
         self.raw = ly
@@ -472,7 +504,7 @@ def main() -> int:
     say(f"进程序用 {stand_s:.0f} 秒渐变到 pose_config.yaml 的站立角。右腿动作相对这个姿势取反。")
     say("操作：A 或空格 启动/停止策略 | B 或 Q 立刻卸力 | Ctrl+C 回到站立并保持出力")
     say("站稳后再按 A 或空格。力矩保护 1.20 N·m。头 yaw/roll 仍是 0.30 N·m。")
-    say("控制频率目标 50 Hz。手柄只取前后：满杆写入策略 ±0.15 m/s。未执行时指令为 0。")
+    say("控制频率目标 50 Hz。手柄只取前后：满杆写入策略 ±0.25 m/s。未执行时指令为 0。")
 
     lib = lock_fd = imu = None
     keys = None
