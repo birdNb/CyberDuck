@@ -66,14 +66,20 @@ from ht_can import i16_le, pos_to_int, tqe_to_int  # noqa: E402
 from lsm6dsv16x import I2CGpioError, LSM6DSV16X, WHO_AM_I_VAL, ADDRS, load_lib, open_bus, scan_bus  # noqa: E402
 
 # 力矩：腿、颈、头 pitch 为 1.2 N·m；头 yaw/roll 额定 0.3。
-# 仿真角和电机角只在读写边界乘一次 SIGN。左腿和头颈为 +1，右腿五个关节全部为 -1。
+# 仿真角和电机角只在读写边界乘一次 SIGN，一条腿五个关节必须同号。
+# 左腿和头颈 +1，右腿五个关节全部 -1。只翻小腿和踝会把仿真里成套的
+# 迈步、后退、转弯拆开：站立受扰约 10 Hz 自激，后退不后退，转身单脚踩。
 # 缩放是当前训练值：髋 pitch 0.80，小腿 1.00，踝 0.70。
 KP = (60, 60, 60, 60, 60, 20, 20, 8, 8, 60, 60, 60, 60, 60)
 TAU = (1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 0.3, 0.3, 1.2, 1.2, 1.2, 1.2, 1.2)
 STEP_SCALE = 2.0
 SIGN = (1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1)
-# 摇杆满杆先映射到训练范围 ±0.4 m/s，再写入策略 ±0.25 m/s。
-CMD_SCALE = 0.25 / 0.4
+# 向前满杆 +0.3 m/s，向后满杆 -0.2 m/s。训练范围是 ±0.4。
+VX_FWD = 0.3
+VX_BACK = 0.2
+# 右摇杆左右。训练上限是 ±1 rad/s，满杆用 0.5，避免髋 yaw 顶到限位后单脚拧。
+# 向左为正，逆时针。
+WZ_MAX = 0.5
 # 必须是 1。小腿 SCALE 已是 1，再乘 1.25 时，位置环增益超过 1：
 # 腿弯一点，策略就把目标送到更弯的地方，平放时会自己越蹲越深。
 LEG_GAIN = 1.0
@@ -163,10 +169,30 @@ def open_imu():
     return lib, lock_fd, imu
 
 
+# 只在执行策略时叠加。零速度网络把小腿送正约 2.6°、踝收负约 1.6°，机身因此再前倾。
+# 站立保持仍用采集角，不改 pose_config.yaml。
+POLICY_BIAS_DEG = {
+    "l_calf": -2.6,
+    "r_calf": -2.6,
+    "l_ankle": 1.6,
+    "r_ankle": 1.6,
+}
+
+
+def policy_stand(stand_deg: dict[int, float]) -> dict[int, float]:
+    out = dict(stand_deg)
+    for i, (name, can, _home, _scale, _lo, _hi, _leg) in enumerate(JOINTS):
+        if name not in POLICY_BIAS_DEG:
+            continue
+        out[can] = stand_deg[can] + SIGN[i] * POLICY_BIAS_DEG[name]
+    return out
+
+
 def motor_command_deg(action: np.ndarray, stand_deg: dict[int, float]) -> tuple[list[float], list[bool]]:
     """仿真目标先限位。电机角 = 采集站立角 + SIGN × (仿真目标 − HOME)。
 
-    动作是 0、脖子锁在 HOME 时，电机就停在采集的站立角。右腿 SIGN 为 -1。
+    动作是 0、脖子锁在 HOME 时，电机就停在采集的站立角。
+    右髋 SIGN 为 -1。右小腿、右踝为 +1，和左腿这两轴成对翻转。
     """
     cmd = []
     clipped = []
@@ -178,7 +204,7 @@ def motor_command_deg(action: np.ndarray, stand_deg: dict[int, float]) -> tuple[
     return cmd, clipped
 
 
-def build_obs(gyro, gravity, q_motor_rad, q_dot_prev, last_action, stand_deg: dict[int, float], vx: float) -> np.ndarray:
+def build_obs(gyro, gravity, q_motor_rad, q_dot_prev, last_action, stand_deg: dict[int, float], vx: float, wz: float) -> np.ndarray:
     obs = np.zeros(61, dtype=np.float32)
     obs[0:3] = gyro
     obs[3:6] = gravity
@@ -189,9 +215,9 @@ def build_obs(gyro, gravity, q_motor_rad, q_dot_prev, last_action, stand_deg: di
         obs[6 + i] = q_sim - home
     obs[20:34] = q_dot_prev
     obs[34:48] = last_action
-    obs[48] = max(-0.4, min(0.4, vx)) * CMD_SCALE
+    obs[48] = min(VX_FWD, max(-VX_BACK, vx))
     obs[49] = 0.0
-    obs[50] = 0.0
+    obs[50] = min(WZ_MAX, max(-WZ_MAX, wz))
     return obs
 
 
@@ -200,7 +226,6 @@ class Stick:
 
     PATH = "/dev/input/js0"
     DEADZONE = 0.12
-    VX_MAX = 0.4
     FORWARD_AXIS = 1
     BTN_A = 0
     BTN_B = 1
@@ -208,8 +233,10 @@ class Stick:
     def __init__(self) -> None:
         self.axis = [0.0] * 8
         self.vx = 0.0
+        self.wz = 0.0
         self.cmd = 0.0
         self.raw = 0.0
+        self.raw_wz = 0.0
         self.button = ""
         self.name = ""
         self.fd = -1
@@ -241,7 +268,7 @@ class Stick:
         except OSError:
             self.name = self.PATH
         self.warned = False
-        say(f"手柄已接入 {self.name}（{self.PATH}）。左摇杆或十字键前后，向前为正。A 启停策略，B 卸力。")
+        say(f"手柄已接入 {self.name}（{self.PATH}）。左摇杆前后，右摇杆左右转。向前为正，向左转为正。A 启停策略，B 卸力。")
 
     def drop(self) -> None:
         if self.fd >= 0:
@@ -279,14 +306,23 @@ class Stick:
                             self.button = "B"
                         elif number == self.BTN_A and self.button != "B":
                             self.button = "A"
-        ly = -self.axis[self.FORWARD_AXIS]
+        # 北通左摇杆往前推时 axis 为正，写入正速度。
+        ly = self.axis[self.FORWARD_AXIS]
         if abs(ly) < self.DEADZONE:
-            ly = -self.axis[7]
+            ly = self.axis[7]
         if abs(ly) < self.DEADZONE:
             ly = 0.0
         self.raw = ly
-        self.cmd = ly * self.VX_MAX
+        self.cmd = ly * VX_FWD if ly >= 0.0 else ly * VX_BACK
         self.vx = self.cmd if enabled else 0.0
+        # 右摇杆向左时 axis 为正，对应逆时针。十字键左右在摇杆回中时同样有效。
+        rx = self.axis[3]
+        if abs(rx) < self.DEADZONE:
+            rx = self.axis[6]
+        if abs(rx) < self.DEADZONE:
+            rx = 0.0
+        self.raw_wz = rx
+        self.wz = rx * WZ_MAX if enabled else 0.0
         return self.vx
 
     def take_button(self) -> str:
@@ -324,7 +360,7 @@ class CsvLog:
         cols += [f"cmd_deg_{n}" for n in names]
         cols += [f"motor_deg_{n}" for n in names]
         cols += [f"torque_{n}" for n in names]
-        cols += ["voltage_v", "can_drop"]
+        cols += ["voltage_v", "can_drop", "rx_n", "rx_age_s", "link_ok"]
         self.writer = csv.writer(self.file)
         self.writer.writerow(cols)
         self.rows = 0
@@ -442,7 +478,7 @@ def send_degrees(bus, ids: list[int], degrees: dict[int, float]) -> int:
 
 def can_send_failed(exc: OSError) -> bool:
     """缓冲满、总线掉线都不当成致命错误，避免抖动丢帧时把控制环打掉。"""
-    return exc.errno in (19, 100, 105) or "缓冲" in str(exc)
+    return exc.errno in (11, 19, 100, 105) or "缓冲" in str(exc)
 
 
 def gravity_tilt_deg(gravity) -> float:
@@ -504,7 +540,7 @@ def main() -> int:
     say(f"进程序用 {stand_s:.0f} 秒渐变到 pose_config.yaml 的站立角。右腿动作相对这个姿势取反。")
     say("操作：A 或空格 启动/停止策略 | B 或 Q 立刻卸力 | Ctrl+C 回到站立并保持出力")
     say("站稳后再按 A 或空格。力矩保护 1.20 N·m。头 yaw/roll 仍是 0.30 N·m。")
-    say("控制频率目标 50 Hz。手柄只取前后：满杆写入策略 ±0.25 m/s。未执行时指令为 0。")
+    say("控制频率目标 50 Hz。前后满杆 +0.3 / -0.2 m/s，左右转满杆 ±0.5 rad/s。未执行时指令为 0。")
 
     lib = lock_fd = imu = None
     keys = None
@@ -555,6 +591,12 @@ def main() -> int:
         loops = 0
         infer_us = 0.0
         can_drop = 0
+        ever_rx = any(bus.motors[mid].state.t_pos > 0.0 for mid in ids)
+        link_lost = False
+        link_good = 0
+        rx_n = 0
+        rx_age = -1.0
+        stale_ids: set[int] = set()
         stick = Stick()
         gravity_filt = Gravity()
         prev_tick = time.monotonic()
@@ -587,6 +629,7 @@ def main() -> int:
                 last_space = tick
                 space_edge = True
             bus.can._drop_pending()
+            seen_pos = {mid: bus.motors[mid].state.t_pos for mid in ids}
             try:
                 refresh_motors(bus, ids, ids[0])
             except OSError as exc:
@@ -594,6 +637,21 @@ def main() -> int:
                     raise
                 can_drop += 1
                 bus.can._drop_pending()
+            rx_n = sum(1 for mid in ids if bus.motors[mid].state.t_pos > seen_pos[mid])
+            if rx_n:
+                ever_rx = True
+            now_rx = time.monotonic()
+            ages = [
+                now_rx - bus.motors[mid].state.t_pos
+                for mid in ids
+                if bus.motors[mid].state.t_pos > 0.0
+            ]
+            rx_age = max(ages) if ages else -1.0
+            stale_ids = {
+                mid
+                for mid in ids
+                if bus.motors[mid].state.t_pos <= 0.0 or now_rx - bus.motors[mid].state.t_pos > 0.2
+            }
             now_deg = {mid: bus.motors[mid].state.position / pose.DEG for mid in ids}
             raw_imu = imu.read_raw()
             t_sample = time.monotonic()
@@ -623,14 +681,16 @@ def main() -> int:
             if btn == "A" and not leaving and tick - last_space > 0.3:
                 last_space = tick
                 space_edge = True
-            obs = build_obs(sample.gyro, gravity, q_rad, q_dot_prev, last_action, stand, vx)
+            obs = build_obs(
+                sample.gyro, gravity, q_rad, q_dot_prev, last_action, policy_stand(stand), vx, stick.wz
+            )
             t_infer = time.monotonic()
             action = session.run(None, {in_name: obs.reshape(1, 61)})[0][0]
             infer_us = (time.monotonic() - t_infer) * 1e6
             loops += 1
             last_action = np.asarray(action, dtype=np.float32).copy()
             q_dot_prev = q_dot
-            q_cmd_deg, clipped = motor_command_deg(action, stand)
+            q_cmd_deg, clipped = motor_command_deg(action, policy_stand(stand))
             stand_err_now = max(abs(now_deg[JOINTS[i][1]] - stand_cmd[i]) for i in range(len(JOINTS)))
             if leaving:
                 phase = "stand"
@@ -672,8 +732,23 @@ def main() -> int:
             limited = held
             dropped = send_degrees(bus, ids, {can: limited[i] for i, (_n, can, *_r) in enumerate(JOINTS)})
             can_drop += dropped
+            lost_now = ever_rx and (rx_n == 0 or dropped >= len(ids))
+            if lost_now:
+                link_good = 0
+                if not link_lost:
+                    link_lost = True
+                    say(
+                        f"CAN 断了：本拍 {dropped}/{len(ids)} 条位置指令没发出，"
+                        f"{rx_n}/{len(ids)} 个关节有新位置。"
+                        "下面的电机角和力矩是上次缓存，不是新反馈。"
+                    )
+            else:
+                link_good += 1
+                if link_lost and link_good >= 5:
+                    link_lost = False
+                    say("CAN 恢复，电机重新有反馈。")
             roll_deg, pitch_deg, tilt_deg = tilt_axes_deg(gravity)
-            obs_vx = float(max(-0.4, min(0.4, vx)) * CMD_SCALE)
+            obs_vx = float(min(VX_FWD, max(-VX_BACK, vx)))
             csv_log.write(
                 [
                     f"{tick - log_t0:.4f}",
@@ -693,7 +768,7 @@ def main() -> int:
                     f"{stick.cmd:.4f}",
                     f"{obs_vx:.4f}",
                     "0",
-                    "0",
+                    f"{stick.wz:.4f}",
                     *[f"{float(obs[6 + i]):.5f}" for i in range(14)],
                     *[f"{float(obs[20 + i]):.5f}" for i in range(14)],
                     *[f"{float(q_dot[i]):.5f}" for i in range(14)],
@@ -705,6 +780,9 @@ def main() -> int:
                     *[f"{bus.motors[JOINTS[i][1]].state.torque:.4f}" for i in range(14)],
                     f"{bus.motors[ids[0]].state.voltage:.2f}",
                     str(dropped),
+                    str(rx_n),
+                    f"{rx_age:.3f}",
+                    "0" if link_lost else "1",
                 ]
             )
             if leaving and (stand_err_now < 4.0 or tick - leave_t0 > stand_s + 5.0):
@@ -732,12 +810,19 @@ def main() -> int:
                     state = "正在站立，站稳后再按 A 或空格"
                 else:
                     state = "已站立，按 A 或空格执行策略"
-                written = max(-0.4, min(0.4, vx)) * CMD_SCALE
+                written = min(VX_FWD, max(-VX_BACK, vx))
+                if link_lost:
+                    say(
+                        f"CAN 无应答：本秒指令丢失 {can_drop}，新位置 {rx_n}/{len(ids)}，"
+                        f"最久 {rx_age:.2f}s 没收到。电机角和力矩是缓存。"
+                    )
                 say(
                     f"控制频率 {loop_hz:.1f} Hz（目标 50）  {state}  推理 {infer_us:.0f} us  "
                     f"电压 {bus_v:.1f} V  stand偏差 {hold_err:.2f}°  "
-                    f"手柄 {stick.raw:+.2f}  摇杆速度 {stick.cmd:+.2f} m/s  本拍写入 {written:+.2f}"
+                    f"手柄 {stick.raw:+.2f}  摇杆速度 {stick.cmd:+.2f} m/s  本拍写入 {written:+.2f}  "
+                    f"转向 {stick.wz:+.2f} rad/s"
                     + (f"  CAN丢帧 {can_drop}" if can_drop else "")
+                    + ("" if not link_lost else "  链路断开")
                 )
                 say("操作：A 或空格 启停策略 | B 或 Q 卸力 | Ctrl+C 回站立保持")
                 can_drop = 0
@@ -754,7 +839,9 @@ def main() -> int:
                     pol = limited[i]
                     cur = now_deg[can]
                     note = ""
-                    if clipped[i]:
+                    if can in stale_ids:
+                        note = "无反馈"
+                    elif clipped[i]:
                         note = f"已裁到 {math.degrees(lo):+.1f}°~{math.degrees(hi):+.1f}°"
                     elif not leg:
                         note = "锁站立，不跟策略"

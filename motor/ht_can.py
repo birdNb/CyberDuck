@@ -153,6 +153,7 @@ class MotorState:
     can_id: int = 0
     payload: bytes = b""
     t_rx: float = 0.0
+    t_pos: float = 0.0
 
 
 @dataclass
@@ -202,6 +203,9 @@ class SocketCan:
             SOL_CAN_RAW, CAN_RAW_RECV_OWN_MSGS, struct.pack("i", 1 if recv_own else 0)
         )
         self.sock.bind((iface,))
+        # 发送缓冲满时立刻返回，不能在 sock_alloc_send_pskb 里一直等。
+        # 控制环和终端按键在同一线程，这一等会让画面停住，Ctrl+C 也进不了循环。
+        self.sock.setblocking(False)
 
     def close(self) -> None:
         try:
@@ -224,35 +228,40 @@ class SocketCan:
         if extended:
             cid |= CAN_EFF_FLAG
         frame = struct.pack(CAN_FRAME_FMT, cid, min(len(data), 8), payload)
-        try:
-            n = self.sock.send(frame)
-        except OSError as exc:
-            if exc.errno != 105:
-                raise
+        n = self._send_frame(frame)
+        if n is None:
             for _ in range(2):
                 self._drop_pending()
                 time.sleep(0.001)
-                try:
-                    n = self.sock.send(frame)
+                n = self._send_frame(frame)
+                if n is not None:
                     break
-                except OSError as retry_exc:
-                    if retry_exc.errno != 105:
-                        raise
-                    exc = retry_exc
             else:
                 raise OSError(
                     105,
                     "CAN 发送缓冲满。位置保持时刷新太密，或总线暂时发不出去。",
-                ) from exc
+                )
         if n != CAN_FRAME_SIZE:
             raise OSError(f"CAN 发送不完整: {n}/{CAN_FRAME_SIZE}")
+
+    def _send_frame(self, frame: bytes) -> Optional[int]:
+        """缓冲满返回 None。EAGAIN 和 ENOBUFS 都算满，不能在这里阻塞。"""
+        try:
+            return self.sock.send(frame)
+        except OSError as exc:
+            if exc.errno in (11, 105):
+                return None
+            raise
 
     def recv(self, timeout: Optional[float] = 0.05) -> Optional[CanFrame]:
         if timeout is not None:
             ready, _, _ = select.select([self.sock], [], [], timeout)
             if not ready:
                 return None
-        raw = self.sock.recv(CAN_FRAME_SIZE)
+        try:
+            raw = self.sock.recv(CAN_FRAME_SIZE)
+        except BlockingIOError:
+            return None
         if len(raw) < CAN_FRAME_SIZE:
             return None
         cid, dlc, data = struct.unpack(CAN_FRAME_FMT, raw)
@@ -326,6 +335,7 @@ class Motor:
         self.state.position = pos_from_int(raw_pos)
         self.state.velocity = vel_from_int(raw_vel)
         self.state.torque = tqe_from_int(raw_tqe, self.type)
+        self.state.t_pos = time.monotonic()
         return True
 
 
