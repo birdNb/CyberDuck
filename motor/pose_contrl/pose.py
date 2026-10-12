@@ -11,6 +11,7 @@ release：失能 1..14，不再出力。
   python3 pose.py capture stand
   python3 pose.py read
   python3 pose.py list
+  python3 teach.py
 """
 
 from __future__ import annotations
@@ -377,6 +378,7 @@ def print_menu(cfg: dict) -> None:
         print(f"  {i}. {name}  ({extra})")
     print("  c. 采集当前角度到某个姿态")
     print("  r. 只读当前角度")
+    print("  t. 示教：30 Hz 记录动作序列")
     print("  q. 退出")
 
 
@@ -397,6 +399,11 @@ def interactive(cfg: dict, path: Path) -> int:
             name = input("写入哪个姿态（stand/squat/fold/damp/release）: ").strip()
             capture_pose(cfg, path, name)
             cfg = load_config(path)
+            continue
+        if choice in ("t", "T"):
+            from teach import main as teach_main
+
+            teach_main()
             continue
         if choice.isdigit() and 1 <= int(choice) <= len(POSE_ORDER):
             go_pose(cfg, POSE_ORDER[int(choice) - 1])
