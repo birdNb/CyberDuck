@@ -5,13 +5,13 @@
 # compile CXX with /usr/bin/c++
 C_DEFINES = 
 
-C_INCLUDES = -I/home/radxa/microDuckPro/IMU/cpp/include -I/home/radxa/microDuckPro/IMU/cpp/..
+C_INCLUDES = -I/home/radxa/cyberDuck/IMU/cpp/include -I/home/radxa/cyberDuck/IMU/cpp/..
 
 C_FLAGS = -O3 -DNDEBUG -O3 -Wall -Wextra -Wno-unused-parameter
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/radxa/microDuckPro/IMU/cpp/include -I/home/radxa/microDuckPro/IMU/cpp/..
+CXX_INCLUDES = -I/home/radxa/cyberDuck/IMU/cpp/include -I/home/radxa/cyberDuck/IMU/cpp/..
 
 CXX_FLAGS = -O3 -DNDEBUG -std=gnu++17 -O3 -Wall -Wextra -Wno-unused-parameter
 

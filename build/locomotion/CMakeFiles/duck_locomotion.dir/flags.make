@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/radxa/microDuckPro/locomotion/include -I/home/radxa/microDuckPro/locomotion/third_party/onnxruntime -I/home/radxa/microDuckPro/motor/cpp/include -I/home/radxa/microDuckPro/IMU/cpp/include -I/home/radxa/microDuckPro/IMU/cpp/..
+CXX_INCLUDES = -I/home/radxa/cyberDuck/locomotion/include -I/home/radxa/cyberDuck/locomotion/third_party/onnxruntime -I/home/radxa/cyberDuck/motor/cpp/include -I/home/radxa/cyberDuck/IMU/cpp/include -I/home/radxa/cyberDuck/IMU/cpp/..
 
 CXX_FLAGS = -O3 -DNDEBUG -std=gnu++17 -O3 -Wall -Wextra -Wno-unused-parameter
 

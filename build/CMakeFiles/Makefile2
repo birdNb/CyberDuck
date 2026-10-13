@@ -54,10 +54,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/radxa/microDuckPro
+CMAKE_SOURCE_DIR = /home/radxa/cyberDuck
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/radxa/microDuckPro/build
+CMAKE_BINARY_DIR = /home/radxa/cyberDuck/build
 
 #=============================================================================
 # Directory level rules for the build root directory
@@ -132,14 +132,14 @@ motor/cpp/clean: motor/cpp/CMakeFiles/motor_can.dir/clean
 motor/cpp/CMakeFiles/motor_can.dir/all:
 	$(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/depend
 	$(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=9,10,11 "Built target motor_can"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=9,10,11 "Built target motor_can"
 .PHONY : motor/cpp/CMakeFiles/motor_can.dir/all
 
 # Build rule for subdir invocation for target.
 motor/cpp/CMakeFiles/motor_can.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/microDuckPro/build/CMakeFiles 3
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/cyberDuck/build/CMakeFiles 3
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 motor/cpp/CMakeFiles/motor_can.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/microDuckPro/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/cyberDuck/build/CMakeFiles 0
 .PHONY : motor/cpp/CMakeFiles/motor_can.dir/rule
 
 # Convenience name for target.
@@ -158,14 +158,14 @@ motor/cpp/CMakeFiles/motor_can.dir/clean:
 IMU/cpp/CMakeFiles/imu_lsm6.dir/all:
 	$(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/depend
 	$(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=6,7,8 "Built target imu_lsm6"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=6,7,8 "Built target imu_lsm6"
 .PHONY : IMU/cpp/CMakeFiles/imu_lsm6.dir/all
 
 # Build rule for subdir invocation for target.
 IMU/cpp/CMakeFiles/imu_lsm6.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/microDuckPro/build/CMakeFiles 3
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/cyberDuck/build/CMakeFiles 3
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 IMU/cpp/CMakeFiles/imu_lsm6.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/microDuckPro/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/cyberDuck/build/CMakeFiles 0
 .PHONY : IMU/cpp/CMakeFiles/imu_lsm6.dir/rule
 
 # Convenience name for target.
@@ -185,14 +185,14 @@ locomotion/CMakeFiles/duck_locomotion.dir/all: motor/cpp/CMakeFiles/motor_can.di
 locomotion/CMakeFiles/duck_locomotion.dir/all: IMU/cpp/CMakeFiles/imu_lsm6.dir/all
 	$(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/depend
 	$(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=1,2,3,4,5 "Built target duck_locomotion"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=1,2,3,4,5 "Built target duck_locomotion"
 .PHONY : locomotion/CMakeFiles/duck_locomotion.dir/all
 
 # Build rule for subdir invocation for target.
 locomotion/CMakeFiles/duck_locomotion.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/microDuckPro/build/CMakeFiles 11
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/cyberDuck/build/CMakeFiles 11
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 locomotion/CMakeFiles/duck_locomotion.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/microDuckPro/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/cyberDuck/build/CMakeFiles 0
 .PHONY : locomotion/CMakeFiles/duck_locomotion.dir/rule
 
 # Convenience name for target.

@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/radxa/microDuckPro
+CMAKE_SOURCE_DIR = /home/radxa/cyberDuck
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/radxa/microDuckPro/build
+CMAKE_BINARY_DIR = /home/radxa/cyberDuck/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,14 +87,14 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/radxa/microDuckPro/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/microDuckPro/build/CMakeFiles /home/radxa/microDuckPro/build/locomotion//CMakeFiles/progress.marks
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 locomotion/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/microDuckPro/build/CMakeFiles 0
+	cd /home/radxa/cyberDuck/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/cyberDuck/build/CMakeFiles /home/radxa/cyberDuck/build/locomotion//CMakeFiles/progress.marks
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 locomotion/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/cyberDuck/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 locomotion/clean
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 locomotion/clean
 .PHONY : clean
 
 # The main clean target
@@ -103,22 +103,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 locomotion/preinstall
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 locomotion/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 locomotion/preinstall
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 locomotion/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/radxa/microDuckPro/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/radxa/cyberDuck/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 locomotion/CMakeFiles/duck_locomotion.dir/rule:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 locomotion/CMakeFiles/duck_locomotion.dir/rule
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 locomotion/CMakeFiles/duck_locomotion.dir/rule
 .PHONY : locomotion/CMakeFiles/duck_locomotion.dir/rule
 
 # Convenience name for target.
@@ -127,7 +127,7 @@ duck_locomotion: locomotion/CMakeFiles/duck_locomotion.dir/rule
 
 # fast build rule for target.
 duck_locomotion/fast:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/build
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/build
 .PHONY : duck_locomotion/fast
 
 src/engine.o: src/engine.cpp.o
@@ -135,7 +135,7 @@ src/engine.o: src/engine.cpp.o
 
 # target to build an object file
 src/engine.cpp.o:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o
 .PHONY : src/engine.cpp.o
 
 src/engine.i: src/engine.cpp.i
@@ -143,7 +143,7 @@ src/engine.i: src/engine.cpp.i
 
 # target to preprocess a source file
 src/engine.cpp.i:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.i
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.i
 .PHONY : src/engine.cpp.i
 
 src/engine.s: src/engine.cpp.s
@@ -151,7 +151,7 @@ src/engine.s: src/engine.cpp.s
 
 # target to generate assembly for a file
 src/engine.cpp.s:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.s
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.s
 .PHONY : src/engine.cpp.s
 
 src/gamepad.o: src/gamepad.cpp.o
@@ -159,7 +159,7 @@ src/gamepad.o: src/gamepad.cpp.o
 
 # target to build an object file
 src/gamepad.cpp.o:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o
 .PHONY : src/gamepad.cpp.o
 
 src/gamepad.i: src/gamepad.cpp.i
@@ -167,7 +167,7 @@ src/gamepad.i: src/gamepad.cpp.i
 
 # target to preprocess a source file
 src/gamepad.cpp.i:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.i
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.i
 .PHONY : src/gamepad.cpp.i
 
 src/gamepad.s: src/gamepad.cpp.s
@@ -175,7 +175,7 @@ src/gamepad.s: src/gamepad.cpp.s
 
 # target to generate assembly for a file
 src/gamepad.cpp.s:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.s
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.s
 .PHONY : src/gamepad.cpp.s
 
 src/layout.o: src/layout.cpp.o
@@ -183,7 +183,7 @@ src/layout.o: src/layout.cpp.o
 
 # target to build an object file
 src/layout.cpp.o:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o
 .PHONY : src/layout.cpp.o
 
 src/layout.i: src/layout.cpp.i
@@ -191,7 +191,7 @@ src/layout.i: src/layout.cpp.i
 
 # target to preprocess a source file
 src/layout.cpp.i:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.i
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.i
 .PHONY : src/layout.cpp.i
 
 src/layout.s: src/layout.cpp.s
@@ -199,7 +199,7 @@ src/layout.s: src/layout.cpp.s
 
 # target to generate assembly for a file
 src/layout.cpp.s:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.s
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.s
 .PHONY : src/layout.cpp.s
 
 src/main.o: src/main.cpp.o
@@ -207,7 +207,7 @@ src/main.o: src/main.cpp.o
 
 # target to build an object file
 src/main.cpp.o:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o
 .PHONY : src/main.cpp.o
 
 src/main.i: src/main.cpp.i
@@ -215,7 +215,7 @@ src/main.i: src/main.cpp.i
 
 # target to preprocess a source file
 src/main.cpp.i:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.i
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.i
 .PHONY : src/main.cpp.i
 
 src/main.s: src/main.cpp.s
@@ -223,7 +223,7 @@ src/main.s: src/main.cpp.s
 
 # target to generate assembly for a file
 src/main.cpp.s:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.s
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f locomotion/CMakeFiles/duck_locomotion.dir/build.make locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
 # Help Target
@@ -258,6 +258,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/radxa/microDuckPro/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/radxa/cyberDuck/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/radxa/microDuckPro
+CMAKE_SOURCE_DIR = /home/radxa/cyberDuck
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/radxa/microDuckPro/build
+CMAKE_BINARY_DIR = /home/radxa/cyberDuck/build
 
 # Include any dependencies generated for this target.
 include motor/cpp/CMakeFiles/motor_can.dir/depend.make
@@ -70,32 +70,32 @@ include motor/cpp/CMakeFiles/motor_can.dir/progress.make
 include motor/cpp/CMakeFiles/motor_can.dir/flags.make
 
 motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o: motor/cpp/CMakeFiles/motor_can.dir/flags.make
-motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o: /home/radxa/microDuckPro/motor/cpp/src/protocol.cpp
+motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o: /home/radxa/cyberDuck/motor/cpp/src/protocol.cpp
 motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o: motor/cpp/CMakeFiles/motor_can.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o"
-	cd /home/radxa/microDuckPro/build/motor/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o -MF CMakeFiles/motor_can.dir/src/protocol.cpp.o.d -o CMakeFiles/motor_can.dir/src/protocol.cpp.o -c /home/radxa/microDuckPro/motor/cpp/src/protocol.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o"
+	cd /home/radxa/cyberDuck/build/motor/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o -MF CMakeFiles/motor_can.dir/src/protocol.cpp.o.d -o CMakeFiles/motor_can.dir/src/protocol.cpp.o -c /home/radxa/cyberDuck/motor/cpp/src/protocol.cpp
 
 motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/motor_can.dir/src/protocol.cpp.i"
-	cd /home/radxa/microDuckPro/build/motor/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/microDuckPro/motor/cpp/src/protocol.cpp > CMakeFiles/motor_can.dir/src/protocol.cpp.i
+	cd /home/radxa/cyberDuck/build/motor/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/cyberDuck/motor/cpp/src/protocol.cpp > CMakeFiles/motor_can.dir/src/protocol.cpp.i
 
 motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/motor_can.dir/src/protocol.cpp.s"
-	cd /home/radxa/microDuckPro/build/motor/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/microDuckPro/motor/cpp/src/protocol.cpp -o CMakeFiles/motor_can.dir/src/protocol.cpp.s
+	cd /home/radxa/cyberDuck/build/motor/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/cyberDuck/motor/cpp/src/protocol.cpp -o CMakeFiles/motor_can.dir/src/protocol.cpp.s
 
 motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o: motor/cpp/CMakeFiles/motor_can.dir/flags.make
-motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o: /home/radxa/microDuckPro/motor/cpp/src/bus.cpp
+motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o: /home/radxa/cyberDuck/motor/cpp/src/bus.cpp
 motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o: motor/cpp/CMakeFiles/motor_can.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o"
-	cd /home/radxa/microDuckPro/build/motor/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o -MF CMakeFiles/motor_can.dir/src/bus.cpp.o.d -o CMakeFiles/motor_can.dir/src/bus.cpp.o -c /home/radxa/microDuckPro/motor/cpp/src/bus.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o"
+	cd /home/radxa/cyberDuck/build/motor/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o -MF CMakeFiles/motor_can.dir/src/bus.cpp.o.d -o CMakeFiles/motor_can.dir/src/bus.cpp.o -c /home/radxa/cyberDuck/motor/cpp/src/bus.cpp
 
 motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/motor_can.dir/src/bus.cpp.i"
-	cd /home/radxa/microDuckPro/build/motor/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/microDuckPro/motor/cpp/src/bus.cpp > CMakeFiles/motor_can.dir/src/bus.cpp.i
+	cd /home/radxa/cyberDuck/build/motor/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/cyberDuck/motor/cpp/src/bus.cpp > CMakeFiles/motor_can.dir/src/bus.cpp.i
 
 motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/motor_can.dir/src/bus.cpp.s"
-	cd /home/radxa/microDuckPro/build/motor/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/microDuckPro/motor/cpp/src/bus.cpp -o CMakeFiles/motor_can.dir/src/bus.cpp.s
+	cd /home/radxa/cyberDuck/build/motor/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/cyberDuck/motor/cpp/src/bus.cpp -o CMakeFiles/motor_can.dir/src/bus.cpp.s
 
 # Object files for target motor_can
 motor_can_OBJECTS = \
@@ -109,19 +109,19 @@ motor/cpp/libmotor_can.a: motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o
 motor/cpp/libmotor_can.a: motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o
 motor/cpp/libmotor_can.a: motor/cpp/CMakeFiles/motor_can.dir/build.make
 motor/cpp/libmotor_can.a: motor/cpp/CMakeFiles/motor_can.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX static library libmotor_can.a"
-	cd /home/radxa/microDuckPro/build/motor/cpp && $(CMAKE_COMMAND) -P CMakeFiles/motor_can.dir/cmake_clean_target.cmake
-	cd /home/radxa/microDuckPro/build/motor/cpp && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/motor_can.dir/link.txt --verbose=$(VERBOSE)
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX static library libmotor_can.a"
+	cd /home/radxa/cyberDuck/build/motor/cpp && $(CMAKE_COMMAND) -P CMakeFiles/motor_can.dir/cmake_clean_target.cmake
+	cd /home/radxa/cyberDuck/build/motor/cpp && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/motor_can.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
 motor/cpp/CMakeFiles/motor_can.dir/build: motor/cpp/libmotor_can.a
 .PHONY : motor/cpp/CMakeFiles/motor_can.dir/build
 
 motor/cpp/CMakeFiles/motor_can.dir/clean:
-	cd /home/radxa/microDuckPro/build/motor/cpp && $(CMAKE_COMMAND) -P CMakeFiles/motor_can.dir/cmake_clean.cmake
+	cd /home/radxa/cyberDuck/build/motor/cpp && $(CMAKE_COMMAND) -P CMakeFiles/motor_can.dir/cmake_clean.cmake
 .PHONY : motor/cpp/CMakeFiles/motor_can.dir/clean
 
 motor/cpp/CMakeFiles/motor_can.dir/depend:
-	cd /home/radxa/microDuckPro/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/radxa/microDuckPro /home/radxa/microDuckPro/motor/cpp /home/radxa/microDuckPro/build /home/radxa/microDuckPro/build/motor/cpp /home/radxa/microDuckPro/build/motor/cpp/CMakeFiles/motor_can.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/radxa/cyberDuck/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/radxa/cyberDuck /home/radxa/cyberDuck/motor/cpp /home/radxa/cyberDuck/build /home/radxa/cyberDuck/build/motor/cpp /home/radxa/cyberDuck/build/motor/cpp/CMakeFiles/motor_can.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : motor/cpp/CMakeFiles/motor_can.dir/depend
 

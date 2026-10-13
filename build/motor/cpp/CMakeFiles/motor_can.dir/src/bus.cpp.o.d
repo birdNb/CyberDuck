@@ -1,7 +1,7 @@
 motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o: \
- /home/radxa/microDuckPro/motor/cpp/src/bus.cpp \
+ /home/radxa/cyberDuck/motor/cpp/src/bus.cpp \
  /usr/include/stdc-predef.h \
- /home/radxa/microDuckPro/motor/cpp/include/motor/bus.hpp \
+ /home/radxa/cyberDuck/motor/cpp/include/motor/bus.hpp \
  /usr/include/c++/13/cstdint \
  /usr/include/aarch64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/aarch64-linux-gnu/c++/13/bits/os_defines.h \
@@ -145,7 +145,7 @@ motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o: \
  /usr/include/c++/13/bits/stl_vector.h \
  /usr/include/c++/13/bits/stl_bvector.h \
  /usr/include/c++/13/bits/vector.tcc \
- /home/radxa/microDuckPro/motor/cpp/include/motor/protocol.hpp \
+ /home/radxa/cyberDuck/motor/cpp/include/motor/protocol.hpp \
  /usr/include/linux/can.h /usr/include/linux/types.h \
  /usr/include/aarch64-linux-gnu/asm/types.h \
  /usr/include/asm-generic/types.h /usr/include/asm-generic/int-ll64.h \

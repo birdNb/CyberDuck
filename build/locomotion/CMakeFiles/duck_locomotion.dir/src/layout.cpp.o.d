@@ -1,7 +1,7 @@
 locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o: \
- /home/radxa/microDuckPro/locomotion/src/layout.cpp \
+ /home/radxa/cyberDuck/locomotion/src/layout.cpp \
  /usr/include/stdc-predef.h \
- /home/radxa/microDuckPro/locomotion/include/locomotion/layout.hpp \
+ /home/radxa/cyberDuck/locomotion/include/locomotion/layout.hpp \
  /usr/include/c++/13/array /usr/include/c++/13/compare \
  /usr/include/c++/13/initializer_list \
  /usr/include/aarch64-linux-gnu/c++/13/bits/c++config.h \

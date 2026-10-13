@@ -7,13 +7,13 @@ set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")
 # The top level Makefile was generated from the following files:
 set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
-  "/home/radxa/microDuckPro/CMakeLists.txt"
-  "/home/radxa/microDuckPro/IMU/cpp/CMakeLists.txt"
+  "/home/radxa/cyberDuck/CMakeLists.txt"
+  "/home/radxa/cyberDuck/IMU/cpp/CMakeLists.txt"
   "CMakeFiles/3.28.3/CMakeCCompiler.cmake"
   "CMakeFiles/3.28.3/CMakeCXXCompiler.cmake"
   "CMakeFiles/3.28.3/CMakeSystem.cmake"
-  "/home/radxa/microDuckPro/locomotion/CMakeLists.txt"
-  "/home/radxa/microDuckPro/motor/cpp/CMakeLists.txt"
+  "/home/radxa/cyberDuck/locomotion/CMakeLists.txt"
+  "/home/radxa/cyberDuck/motor/cpp/CMakeLists.txt"
   "/usr/share/cmake-3.28/Modules/CMakeCInformation.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeCXXInformation.cmake"
   "/usr/share/cmake-3.28/Modules/CMakeCommonLanguageInclude.cmake"

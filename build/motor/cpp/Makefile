@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/radxa/microDuckPro
+CMAKE_SOURCE_DIR = /home/radxa/cyberDuck
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/radxa/microDuckPro/build
+CMAKE_BINARY_DIR = /home/radxa/cyberDuck/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,14 +87,14 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/radxa/microDuckPro/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/microDuckPro/build/CMakeFiles /home/radxa/microDuckPro/build/motor/cpp//CMakeFiles/progress.marks
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 motor/cpp/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/microDuckPro/build/CMakeFiles 0
+	cd /home/radxa/cyberDuck/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/cyberDuck/build/CMakeFiles /home/radxa/cyberDuck/build/motor/cpp//CMakeFiles/progress.marks
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 motor/cpp/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/cyberDuck/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 motor/cpp/clean
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 motor/cpp/clean
 .PHONY : clean
 
 # The main clean target
@@ -103,22 +103,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 motor/cpp/preinstall
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 motor/cpp/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 motor/cpp/preinstall
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 motor/cpp/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/radxa/microDuckPro/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/radxa/cyberDuck/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 motor/cpp/CMakeFiles/motor_can.dir/rule:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 motor/cpp/CMakeFiles/motor_can.dir/rule
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 motor/cpp/CMakeFiles/motor_can.dir/rule
 .PHONY : motor/cpp/CMakeFiles/motor_can.dir/rule
 
 # Convenience name for target.
@@ -127,7 +127,7 @@ motor_can: motor/cpp/CMakeFiles/motor_can.dir/rule
 
 # fast build rule for target.
 motor_can/fast:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/build
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/build
 .PHONY : motor_can/fast
 
 src/bus.o: src/bus.cpp.o
@@ -135,7 +135,7 @@ src/bus.o: src/bus.cpp.o
 
 # target to build an object file
 src/bus.cpp.o:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o
 .PHONY : src/bus.cpp.o
 
 src/bus.i: src/bus.cpp.i
@@ -143,7 +143,7 @@ src/bus.i: src/bus.cpp.i
 
 # target to preprocess a source file
 src/bus.cpp.i:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.i
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.i
 .PHONY : src/bus.cpp.i
 
 src/bus.s: src/bus.cpp.s
@@ -151,7 +151,7 @@ src/bus.s: src/bus.cpp.s
 
 # target to generate assembly for a file
 src/bus.cpp.s:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.s
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.s
 .PHONY : src/bus.cpp.s
 
 src/protocol.o: src/protocol.cpp.o
@@ -159,7 +159,7 @@ src/protocol.o: src/protocol.cpp.o
 
 # target to build an object file
 src/protocol.cpp.o:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o
 .PHONY : src/protocol.cpp.o
 
 src/protocol.i: src/protocol.cpp.i
@@ -167,7 +167,7 @@ src/protocol.i: src/protocol.cpp.i
 
 # target to preprocess a source file
 src/protocol.cpp.i:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.i
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.i
 .PHONY : src/protocol.cpp.i
 
 src/protocol.s: src/protocol.cpp.s
@@ -175,7 +175,7 @@ src/protocol.s: src/protocol.cpp.s
 
 # target to generate assembly for a file
 src/protocol.cpp.s:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.s
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f motor/cpp/CMakeFiles/motor_can.dir/build.make motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.s
 .PHONY : src/protocol.cpp.s
 
 # Help Target
@@ -204,6 +204,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/radxa/microDuckPro/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/radxa/cyberDuck/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/radxa/microDuckPro
+CMAKE_SOURCE_DIR = /home/radxa/cyberDuck
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/radxa/microDuckPro/build
+CMAKE_BINARY_DIR = /home/radxa/cyberDuck/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,14 +87,14 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/radxa/microDuckPro/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/microDuckPro/build/CMakeFiles /home/radxa/microDuckPro/build/IMU/cpp//CMakeFiles/progress.marks
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 IMU/cpp/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/microDuckPro/build/CMakeFiles 0
+	cd /home/radxa/cyberDuck/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/cyberDuck/build/CMakeFiles /home/radxa/cyberDuck/build/IMU/cpp//CMakeFiles/progress.marks
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 IMU/cpp/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/radxa/cyberDuck/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 IMU/cpp/clean
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 IMU/cpp/clean
 .PHONY : clean
 
 # The main clean target
@@ -103,22 +103,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 IMU/cpp/preinstall
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 IMU/cpp/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 IMU/cpp/preinstall
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 IMU/cpp/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/radxa/microDuckPro/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/radxa/cyberDuck/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 IMU/cpp/CMakeFiles/imu_lsm6.dir/rule:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 IMU/cpp/CMakeFiles/imu_lsm6.dir/rule
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 IMU/cpp/CMakeFiles/imu_lsm6.dir/rule
 .PHONY : IMU/cpp/CMakeFiles/imu_lsm6.dir/rule
 
 # Convenience name for target.
@@ -127,7 +127,7 @@ imu_lsm6: IMU/cpp/CMakeFiles/imu_lsm6.dir/rule
 
 # fast build rule for target.
 imu_lsm6/fast:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/build
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/build
 .PHONY : imu_lsm6/fast
 
 __/i2c_gpio.o: __/i2c_gpio.c.o
@@ -135,7 +135,7 @@ __/i2c_gpio.o: __/i2c_gpio.c.o
 
 # target to build an object file
 __/i2c_gpio.c.o:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o
 .PHONY : __/i2c_gpio.c.o
 
 __/i2c_gpio.i: __/i2c_gpio.c.i
@@ -143,7 +143,7 @@ __/i2c_gpio.i: __/i2c_gpio.c.i
 
 # target to preprocess a source file
 __/i2c_gpio.c.i:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.i
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.i
 .PHONY : __/i2c_gpio.c.i
 
 __/i2c_gpio.s: __/i2c_gpio.c.s
@@ -151,7 +151,7 @@ __/i2c_gpio.s: __/i2c_gpio.c.s
 
 # target to generate assembly for a file
 __/i2c_gpio.c.s:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.s
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.s
 .PHONY : __/i2c_gpio.c.s
 
 src/lsm6.o: src/lsm6.cpp.o
@@ -159,7 +159,7 @@ src/lsm6.o: src/lsm6.cpp.o
 
 # target to build an object file
 src/lsm6.cpp.o:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o
 .PHONY : src/lsm6.cpp.o
 
 src/lsm6.i: src/lsm6.cpp.i
@@ -167,7 +167,7 @@ src/lsm6.i: src/lsm6.cpp.i
 
 # target to preprocess a source file
 src/lsm6.cpp.i:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.i
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.i
 .PHONY : src/lsm6.cpp.i
 
 src/lsm6.s: src/lsm6.cpp.s
@@ -175,7 +175,7 @@ src/lsm6.s: src/lsm6.cpp.s
 
 # target to generate assembly for a file
 src/lsm6.cpp.s:
-	cd /home/radxa/microDuckPro/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.s
+	cd /home/radxa/cyberDuck/build && $(MAKE) $(MAKESILENT) -f IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.s
 .PHONY : src/lsm6.cpp.s
 
 # Help Target
@@ -204,6 +204,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/radxa/microDuckPro/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/radxa/cyberDuck/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

@@ -8,10 +8,10 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/radxa/microDuckPro/locomotion/src/engine.cpp" "locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o" "gcc" "locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o.d"
-  "/home/radxa/microDuckPro/locomotion/src/gamepad.cpp" "locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o" "gcc" "locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o.d"
-  "/home/radxa/microDuckPro/locomotion/src/layout.cpp" "locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o" "gcc" "locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o.d"
-  "/home/radxa/microDuckPro/locomotion/src/main.cpp" "locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o" "gcc" "locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o.d"
+  "/home/radxa/cyberDuck/locomotion/src/engine.cpp" "locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o" "gcc" "locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o.d"
+  "/home/radxa/cyberDuck/locomotion/src/gamepad.cpp" "locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o" "gcc" "locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o.d"
+  "/home/radxa/cyberDuck/locomotion/src/layout.cpp" "locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o" "gcc" "locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o.d"
+  "/home/radxa/cyberDuck/locomotion/src/main.cpp" "locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o" "gcc" "locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

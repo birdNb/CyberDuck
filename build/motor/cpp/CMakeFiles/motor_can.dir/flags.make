@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/radxa/microDuckPro/motor/cpp/include
+CXX_INCLUDES = -I/home/radxa/cyberDuck/motor/cpp/include
 
 CXX_FLAGS = -O3 -DNDEBUG -std=gnu++17 -O3 -Wall -Wextra -Wno-unused-parameter
 

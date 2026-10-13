@@ -1,4 +1,4 @@
-# Install script for directory: /home/radxa/microDuckPro/IMU/cpp
+# Install script for directory: /home/radxa/cyberDuck/IMU/cpp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

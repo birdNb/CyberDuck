@@ -2,6 +2,7 @@
 """人脸跟踪：进模式后脖子先到 stand，再由 11(pitch)/13(yaw) 把人脸锁在画面中心。
 
 控制律对齐 Bird_ws/locate_face_cpp（死区、P 增益、步长钳位、EMA、丢脸回中）。
+退出时脖子 11~14 平滑回电机零位（0°）后失能泄力。
 """
 
 from __future__ import annotations
@@ -67,6 +68,8 @@ PITCH_DOWN_DEG = 60.0
 NECK_HZ = 50
 NO_FACE_RETURN_HOME_SEC = 1.0
 RETURN_HOME_RATE_DEG_PER_SEC = 45.0
+PARK_RATE_DEG_PER_SEC = 30.0
+FORCE_EXIT_SEC = 8.0
 TRACK_TORQUE_NM = 0.1
 TRACK_PITCH_TORQUE_NM = 0.3
 CAM_FPS = 15
@@ -139,13 +142,16 @@ def go_neck_home(
     cfg: dict,
     running,
     seconds: float = 2.0,
+    label: str = "stand",
+    start: dict[int, float] | None = None,
 ) -> dict[int, float]:
-    start = read_degrees(bus, ids)
+    if start is None:
+        start = read_degrees(bus, ids)
     duration = max(0.5, float(seconds))
     hz = max(20.0, float(cfg.get("hz", NECK_HZ)))
     period = 1.0 / hz
     torque = abs(float(cfg.get("torque_nm", 1.2)))
-    print("脖子过渡到 stand:")
+    print(f"脖子过渡到 {label}:")
     for mid in ids:
         print(f"  ID {mid:2d}  {start[mid]:+8.2f}° → {home[mid]:+8.2f}°")
     for mid in ids:
@@ -172,6 +178,31 @@ def go_neck_home(
         command_position(bus, ids, hold, torque)
         time.sleep(period)
     return hold
+
+
+def park_neck_and_release(
+    bus: MotorBus,
+    ids: list[int],
+    cfg: dict,
+    running,
+    fallback: dict[int, float],
+) -> None:
+    """脖子平滑回电机零位（0°）后失能。"""
+    try:
+        start = read_degrees(bus, ids)
+    except RuntimeError as exc:
+        print(f"读脖子角度失败，按最后指令估计起点: {exc}", flush=True)
+        start = {mid: fallback.get(mid, 0.0) for mid in ids}
+    zero = {mid: 0.0 for mid in ids}
+    peak = max((abs(start[mid]) for mid in ids), default=0.0)
+    seconds = max(1.0, peak / PARK_RATE_DEG_PER_SEC)
+    try:
+        go_neck_home(bus, ids, zero, cfg, running, seconds, label="零位", start=start)
+    finally:
+        for mid in ids:
+            bus.disable(mid)
+        time.sleep(0.05)
+        print("脖子已泄力", flush=True)
 
 
 class NeckServo:
@@ -301,24 +332,6 @@ class NeckServo:
                 cmd[mid] = home[YAW_ID] + self.invert_yaw * yaw
         return cmd
 
-    def return_home_blocking(self, running, hz: int = NECK_HZ) -> None:
-        yaw, pitch, *_ = self.snapshot()
-        if abs(yaw) <= 1e-4 and abs(pitch) <= 1e-4:
-            return
-        print(f"平滑回中 yaw={yaw:+.1f} pitch={pitch:+.1f}")
-        dt = 1.0 / hz
-        deadline = time.monotonic() + 8.0
-        while running() and time.monotonic() < deadline:
-            self.step_homing(dt)
-            yaw, pitch, *_ = self.snapshot()
-            if abs(yaw) <= 1e-4 and abs(pitch) <= 1e-4:
-                break
-            time.sleep(dt)
-        with self._lock:
-            self.target_yaw = self.ctrl_yaw = 0.0
-            self.target_pitch = self.ctrl_pitch = 0.0
-            self.state = "Home"
-
 
 def open_track_camera(width: int, height: int, fps: int):
     require_libcamerasrc()
@@ -402,7 +415,7 @@ def main() -> int:
     sig_hits = 0
 
     def _force_exit_later() -> None:
-        time.sleep(1.2)
+        time.sleep(FORCE_EXIT_SEC)
         print("退出超时，强制结束", flush=True)
         os._exit(130)
 
@@ -423,14 +436,18 @@ def main() -> int:
 
     bus = None
     ids: list[int] = []
+    neck_ids: list[int] = []
     if not args.no_motor:
         bus, ids = open_neck_bus(cfg)
+        neck_ids = list(ids)
         try:
             go_neck_home(bus, ids, home, cfg, lambda: running)
         except Exception:
             bus.close()
             raise
         if not running:
+            if sig_hits < 2:
+                park_neck_and_release(bus, neck_ids, cfg, lambda: sig_hits < 2, home)
             bus.close()
             return 0
         track_ids = [mid for mid in TRACK_IDS if mid in ids]
@@ -441,7 +458,7 @@ def main() -> int:
         print(
             f"进入视觉伺服：只动 11(pitch {TRACK_PITCH_TORQUE_NM:.2f} Nm) "
             f"和 13(yaw {TRACK_TORQUE_NM:.2f} Nm)，12/14 锁在 stand。"
-            "Ctrl+C 回 stand 后退出"
+            "Ctrl+C 回零位并泄力后退出"
         )
     else:
         print("仅检测，不控制电机")
@@ -556,16 +573,17 @@ def main() -> int:
                 )
                 last_log = now
     finally:
-        print("退出 → 回 stand", flush=True)
+        print("退出 → 脖子回零位并泄力", flush=True)
         stop_pub.set()
-        servo.return_home_blocking(lambda: sig_hits < 2)
-        if bus is not None and sig_hits < 2:
-            t_end = time.monotonic()
-            while time.monotonic() - t_end < 0.3 and sig_hits < 2:
-                command_neck(bus, ids, home)
-                time.sleep(period)
-        detect_thread.join(timeout=0.5)
         pub_thread.join(timeout=0.5)
+        detect_thread.join(timeout=0.5)
+        if bus is not None and sig_hits < 2:
+            last_cmd = dict(home)
+            last_cmd.update(servo.command_degrees(home, ids))
+            try:
+                park_neck_and_release(bus, neck_ids, cfg, lambda: sig_hits < 2, last_cmd)
+            except Exception as exc:
+                print(f"脖子回零/泄力失败: {exc}", flush=True)
         servo.write_state_file()
         releaser = threading.Thread(target=cap.release, daemon=True)
         releaser.start()

@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/radxa/microDuckPro
+CMAKE_SOURCE_DIR = /home/radxa/cyberDuck
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/radxa/microDuckPro/build
+CMAKE_BINARY_DIR = /home/radxa/cyberDuck/build
 
 # Include any dependencies generated for this target.
 include locomotion/CMakeFiles/duck_locomotion.dir/depend.make
@@ -70,60 +70,60 @@ include locomotion/CMakeFiles/duck_locomotion.dir/progress.make
 include locomotion/CMakeFiles/duck_locomotion.dir/flags.make
 
 locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o: locomotion/CMakeFiles/duck_locomotion.dir/flags.make
-locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o: /home/radxa/microDuckPro/locomotion/src/layout.cpp
+locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o: /home/radxa/cyberDuck/locomotion/src/layout.cpp
 locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o: locomotion/CMakeFiles/duck_locomotion.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o"
-	cd /home/radxa/microDuckPro/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o -MF CMakeFiles/duck_locomotion.dir/src/layout.cpp.o.d -o CMakeFiles/duck_locomotion.dir/src/layout.cpp.o -c /home/radxa/microDuckPro/locomotion/src/layout.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o"
+	cd /home/radxa/cyberDuck/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.o -MF CMakeFiles/duck_locomotion.dir/src/layout.cpp.o.d -o CMakeFiles/duck_locomotion.dir/src/layout.cpp.o -c /home/radxa/cyberDuck/locomotion/src/layout.cpp
 
 locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/duck_locomotion.dir/src/layout.cpp.i"
-	cd /home/radxa/microDuckPro/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/microDuckPro/locomotion/src/layout.cpp > CMakeFiles/duck_locomotion.dir/src/layout.cpp.i
+	cd /home/radxa/cyberDuck/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/cyberDuck/locomotion/src/layout.cpp > CMakeFiles/duck_locomotion.dir/src/layout.cpp.i
 
 locomotion/CMakeFiles/duck_locomotion.dir/src/layout.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/duck_locomotion.dir/src/layout.cpp.s"
-	cd /home/radxa/microDuckPro/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/microDuckPro/locomotion/src/layout.cpp -o CMakeFiles/duck_locomotion.dir/src/layout.cpp.s
+	cd /home/radxa/cyberDuck/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/cyberDuck/locomotion/src/layout.cpp -o CMakeFiles/duck_locomotion.dir/src/layout.cpp.s
 
 locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o: locomotion/CMakeFiles/duck_locomotion.dir/flags.make
-locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o: /home/radxa/microDuckPro/locomotion/src/gamepad.cpp
+locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o: /home/radxa/cyberDuck/locomotion/src/gamepad.cpp
 locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o: locomotion/CMakeFiles/duck_locomotion.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o"
-	cd /home/radxa/microDuckPro/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o -MF CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o.d -o CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o -c /home/radxa/microDuckPro/locomotion/src/gamepad.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o"
+	cd /home/radxa/cyberDuck/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o -MF CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o.d -o CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o -c /home/radxa/cyberDuck/locomotion/src/gamepad.cpp
 
 locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.i"
-	cd /home/radxa/microDuckPro/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/microDuckPro/locomotion/src/gamepad.cpp > CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.i
+	cd /home/radxa/cyberDuck/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/cyberDuck/locomotion/src/gamepad.cpp > CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.i
 
 locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.s"
-	cd /home/radxa/microDuckPro/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/microDuckPro/locomotion/src/gamepad.cpp -o CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.s
+	cd /home/radxa/cyberDuck/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/cyberDuck/locomotion/src/gamepad.cpp -o CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.s
 
 locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o: locomotion/CMakeFiles/duck_locomotion.dir/flags.make
-locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o: /home/radxa/microDuckPro/locomotion/src/engine.cpp
+locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o: /home/radxa/cyberDuck/locomotion/src/engine.cpp
 locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o: locomotion/CMakeFiles/duck_locomotion.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o"
-	cd /home/radxa/microDuckPro/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o -MF CMakeFiles/duck_locomotion.dir/src/engine.cpp.o.d -o CMakeFiles/duck_locomotion.dir/src/engine.cpp.o -c /home/radxa/microDuckPro/locomotion/src/engine.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o"
+	cd /home/radxa/cyberDuck/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o -MF CMakeFiles/duck_locomotion.dir/src/engine.cpp.o.d -o CMakeFiles/duck_locomotion.dir/src/engine.cpp.o -c /home/radxa/cyberDuck/locomotion/src/engine.cpp
 
 locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/duck_locomotion.dir/src/engine.cpp.i"
-	cd /home/radxa/microDuckPro/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/microDuckPro/locomotion/src/engine.cpp > CMakeFiles/duck_locomotion.dir/src/engine.cpp.i
+	cd /home/radxa/cyberDuck/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/cyberDuck/locomotion/src/engine.cpp > CMakeFiles/duck_locomotion.dir/src/engine.cpp.i
 
 locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/duck_locomotion.dir/src/engine.cpp.s"
-	cd /home/radxa/microDuckPro/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/microDuckPro/locomotion/src/engine.cpp -o CMakeFiles/duck_locomotion.dir/src/engine.cpp.s
+	cd /home/radxa/cyberDuck/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/cyberDuck/locomotion/src/engine.cpp -o CMakeFiles/duck_locomotion.dir/src/engine.cpp.s
 
 locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o: locomotion/CMakeFiles/duck_locomotion.dir/flags.make
-locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o: /home/radxa/microDuckPro/locomotion/src/main.cpp
+locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o: /home/radxa/cyberDuck/locomotion/src/main.cpp
 locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o: locomotion/CMakeFiles/duck_locomotion.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o"
-	cd /home/radxa/microDuckPro/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o -MF CMakeFiles/duck_locomotion.dir/src/main.cpp.o.d -o CMakeFiles/duck_locomotion.dir/src/main.cpp.o -c /home/radxa/microDuckPro/locomotion/src/main.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o"
+	cd /home/radxa/cyberDuck/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o -MF CMakeFiles/duck_locomotion.dir/src/main.cpp.o.d -o CMakeFiles/duck_locomotion.dir/src/main.cpp.o -c /home/radxa/cyberDuck/locomotion/src/main.cpp
 
 locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/duck_locomotion.dir/src/main.cpp.i"
-	cd /home/radxa/microDuckPro/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/microDuckPro/locomotion/src/main.cpp > CMakeFiles/duck_locomotion.dir/src/main.cpp.i
+	cd /home/radxa/cyberDuck/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/cyberDuck/locomotion/src/main.cpp > CMakeFiles/duck_locomotion.dir/src/main.cpp.i
 
 locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/duck_locomotion.dir/src/main.cpp.s"
-	cd /home/radxa/microDuckPro/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/microDuckPro/locomotion/src/main.cpp -o CMakeFiles/duck_locomotion.dir/src/main.cpp.s
+	cd /home/radxa/cyberDuck/build/locomotion && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/cyberDuck/locomotion/src/main.cpp -o CMakeFiles/duck_locomotion.dir/src/main.cpp.s
 
 # Object files for target duck_locomotion
 duck_locomotion_OBJECTS = \
@@ -143,18 +143,18 @@ locomotion/duck_locomotion: locomotion/CMakeFiles/duck_locomotion.dir/build.make
 locomotion/duck_locomotion: motor/cpp/libmotor_can.a
 locomotion/duck_locomotion: IMU/cpp/libimu_lsm6.a
 locomotion/duck_locomotion: locomotion/CMakeFiles/duck_locomotion.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX executable duck_locomotion"
-	cd /home/radxa/microDuckPro/build/locomotion && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/duck_locomotion.dir/link.txt --verbose=$(VERBOSE)
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX executable duck_locomotion"
+	cd /home/radxa/cyberDuck/build/locomotion && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/duck_locomotion.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
 locomotion/CMakeFiles/duck_locomotion.dir/build: locomotion/duck_locomotion
 .PHONY : locomotion/CMakeFiles/duck_locomotion.dir/build
 
 locomotion/CMakeFiles/duck_locomotion.dir/clean:
-	cd /home/radxa/microDuckPro/build/locomotion && $(CMAKE_COMMAND) -P CMakeFiles/duck_locomotion.dir/cmake_clean.cmake
+	cd /home/radxa/cyberDuck/build/locomotion && $(CMAKE_COMMAND) -P CMakeFiles/duck_locomotion.dir/cmake_clean.cmake
 .PHONY : locomotion/CMakeFiles/duck_locomotion.dir/clean
 
 locomotion/CMakeFiles/duck_locomotion.dir/depend:
-	cd /home/radxa/microDuckPro/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/radxa/microDuckPro /home/radxa/microDuckPro/locomotion /home/radxa/microDuckPro/build /home/radxa/microDuckPro/build/locomotion /home/radxa/microDuckPro/build/locomotion/CMakeFiles/duck_locomotion.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/radxa/cyberDuck/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/radxa/cyberDuck /home/radxa/cyberDuck/locomotion /home/radxa/cyberDuck/build /home/radxa/cyberDuck/build/locomotion /home/radxa/cyberDuck/build/locomotion/CMakeFiles/duck_locomotion.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : locomotion/CMakeFiles/duck_locomotion.dir/depend
 

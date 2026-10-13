@@ -1,7 +1,7 @@
 locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o: \
- /home/radxa/microDuckPro/locomotion/src/main.cpp \
+ /home/radxa/cyberDuck/locomotion/src/main.cpp \
  /usr/include/stdc-predef.h \
- /home/radxa/microDuckPro/IMU/cpp/include/imu/lsm6.hpp \
+ /home/radxa/cyberDuck/IMU/cpp/include/imu/lsm6.hpp \
  /usr/include/c++/13/cstdint \
  /usr/include/aarch64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/aarch64-linux-gnu/c++/13/bits/os_defines.h \
@@ -23,8 +23,8 @@ locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o: \
  /usr/include/aarch64-linux-gnu/bits/stdint-intn.h \
  /usr/include/aarch64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/aarch64-linux-gnu/bits/stdint-least.h \
- /home/radxa/microDuckPro/locomotion/include/locomotion/engine.hpp \
- /home/radxa/microDuckPro/locomotion/include/locomotion/layout.hpp \
+ /home/radxa/cyberDuck/locomotion/include/locomotion/engine.hpp \
+ /home/radxa/cyberDuck/locomotion/include/locomotion/layout.hpp \
  /usr/include/c++/13/array /usr/include/c++/13/compare \
  /usr/include/c++/13/initializer_list /usr/include/c++/13/type_traits \
  /usr/include/c++/13/bits/functexcept.h \
@@ -165,8 +165,8 @@ locomotion/CMakeFiles/duck_locomotion.dir/src/main.cpp.o: \
  /usr/include/c++/13/backward/auto_ptr.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
- /home/radxa/microDuckPro/locomotion/include/locomotion/gamepad.hpp \
- /home/radxa/microDuckPro/motor/cpp/include/motor/bus.hpp \
+ /home/radxa/cyberDuck/locomotion/include/locomotion/gamepad.hpp \
+ /home/radxa/cyberDuck/motor/cpp/include/motor/bus.hpp \
  /usr/include/c++/13/optional \
  /usr/include/c++/13/bits/enable_special_members.h \
  /usr/include/c++/13/unordered_map \

@@ -1,8 +1,8 @@
 locomotion/CMakeFiles/duck_locomotion.dir/src/gamepad.cpp.o: \
- /home/radxa/microDuckPro/locomotion/src/gamepad.cpp \
+ /home/radxa/cyberDuck/locomotion/src/gamepad.cpp \
  /usr/include/stdc-predef.h \
- /home/radxa/microDuckPro/locomotion/include/locomotion/gamepad.hpp \
- /home/radxa/microDuckPro/locomotion/include/locomotion/layout.hpp \
+ /home/radxa/cyberDuck/locomotion/include/locomotion/gamepad.hpp \
+ /home/radxa/cyberDuck/locomotion/include/locomotion/layout.hpp \
  /usr/include/c++/13/array /usr/include/c++/13/compare \
  /usr/include/c++/13/initializer_list \
  /usr/include/aarch64-linux-gnu/c++/13/bits/c++config.h \

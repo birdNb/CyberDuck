@@ -13,14 +13,14 @@
 ## 一键安装（开机自启）
 
 ```bash
-cd ~/microDuckPro/BT
+cd ~/cyberDuck/BT
 sudo ./install.sh
 ```
 
 ## 手动启动
 
 ```bash
-cd ~/microDuckPro/BT/app
+cd ~/cyberDuck/BT/app
 sudo ./start.sh
 # 首次若 GATT 注册失败：
 sudo ./start.sh --setup

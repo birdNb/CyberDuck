@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/radxa/microDuckPro
+CMAKE_SOURCE_DIR = /home/radxa/cyberDuck
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/radxa/microDuckPro/build
+CMAKE_BINARY_DIR = /home/radxa/cyberDuck/build
 
 # Include any dependencies generated for this target.
 include IMU/cpp/CMakeFiles/imu_lsm6.dir/depend.make
@@ -70,32 +70,32 @@ include IMU/cpp/CMakeFiles/imu_lsm6.dir/progress.make
 include IMU/cpp/CMakeFiles/imu_lsm6.dir/flags.make
 
 IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o: IMU/cpp/CMakeFiles/imu_lsm6.dir/flags.make
-IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o: /home/radxa/microDuckPro/IMU/cpp/src/lsm6.cpp
+IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o: /home/radxa/cyberDuck/IMU/cpp/src/lsm6.cpp
 IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o: IMU/cpp/CMakeFiles/imu_lsm6.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o"
-	cd /home/radxa/microDuckPro/build/IMU/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o -MF CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o.d -o CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o -c /home/radxa/microDuckPro/IMU/cpp/src/lsm6.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o"
+	cd /home/radxa/cyberDuck/build/IMU/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o -MF CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o.d -o CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o -c /home/radxa/cyberDuck/IMU/cpp/src/lsm6.cpp
 
 IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.i"
-	cd /home/radxa/microDuckPro/build/IMU/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/microDuckPro/IMU/cpp/src/lsm6.cpp > CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.i
+	cd /home/radxa/cyberDuck/build/IMU/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/radxa/cyberDuck/IMU/cpp/src/lsm6.cpp > CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.i
 
 IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.s"
-	cd /home/radxa/microDuckPro/build/IMU/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/microDuckPro/IMU/cpp/src/lsm6.cpp -o CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.s
+	cd /home/radxa/cyberDuck/build/IMU/cpp && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/radxa/cyberDuck/IMU/cpp/src/lsm6.cpp -o CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.s
 
 IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o: IMU/cpp/CMakeFiles/imu_lsm6.dir/flags.make
-IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o: /home/radxa/microDuckPro/IMU/i2c_gpio.c
+IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o: /home/radxa/cyberDuck/IMU/i2c_gpio.c
 IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o: IMU/cpp/CMakeFiles/imu_lsm6.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o"
-	cd /home/radxa/microDuckPro/build/IMU/cpp && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o -MF CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o.d -o CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o -c /home/radxa/microDuckPro/IMU/i2c_gpio.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o"
+	cd /home/radxa/cyberDuck/build/IMU/cpp && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o -MF CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o.d -o CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o -c /home/radxa/cyberDuck/IMU/i2c_gpio.c
 
 IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.i"
-	cd /home/radxa/microDuckPro/build/IMU/cpp && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/radxa/microDuckPro/IMU/i2c_gpio.c > CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.i
+	cd /home/radxa/cyberDuck/build/IMU/cpp && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/radxa/cyberDuck/IMU/i2c_gpio.c > CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.i
 
 IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.s"
-	cd /home/radxa/microDuckPro/build/IMU/cpp && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/radxa/microDuckPro/IMU/i2c_gpio.c -o CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.s
+	cd /home/radxa/cyberDuck/build/IMU/cpp && /usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/radxa/cyberDuck/IMU/i2c_gpio.c -o CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.s
 
 # Object files for target imu_lsm6
 imu_lsm6_OBJECTS = \
@@ -109,19 +109,19 @@ IMU/cpp/libimu_lsm6.a: IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o
 IMU/cpp/libimu_lsm6.a: IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o
 IMU/cpp/libimu_lsm6.a: IMU/cpp/CMakeFiles/imu_lsm6.dir/build.make
 IMU/cpp/libimu_lsm6.a: IMU/cpp/CMakeFiles/imu_lsm6.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/radxa/microDuckPro/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX static library libimu_lsm6.a"
-	cd /home/radxa/microDuckPro/build/IMU/cpp && $(CMAKE_COMMAND) -P CMakeFiles/imu_lsm6.dir/cmake_clean_target.cmake
-	cd /home/radxa/microDuckPro/build/IMU/cpp && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/imu_lsm6.dir/link.txt --verbose=$(VERBOSE)
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/radxa/cyberDuck/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX static library libimu_lsm6.a"
+	cd /home/radxa/cyberDuck/build/IMU/cpp && $(CMAKE_COMMAND) -P CMakeFiles/imu_lsm6.dir/cmake_clean_target.cmake
+	cd /home/radxa/cyberDuck/build/IMU/cpp && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/imu_lsm6.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
 IMU/cpp/CMakeFiles/imu_lsm6.dir/build: IMU/cpp/libimu_lsm6.a
 .PHONY : IMU/cpp/CMakeFiles/imu_lsm6.dir/build
 
 IMU/cpp/CMakeFiles/imu_lsm6.dir/clean:
-	cd /home/radxa/microDuckPro/build/IMU/cpp && $(CMAKE_COMMAND) -P CMakeFiles/imu_lsm6.dir/cmake_clean.cmake
+	cd /home/radxa/cyberDuck/build/IMU/cpp && $(CMAKE_COMMAND) -P CMakeFiles/imu_lsm6.dir/cmake_clean.cmake
 .PHONY : IMU/cpp/CMakeFiles/imu_lsm6.dir/clean
 
 IMU/cpp/CMakeFiles/imu_lsm6.dir/depend:
-	cd /home/radxa/microDuckPro/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/radxa/microDuckPro /home/radxa/microDuckPro/IMU/cpp /home/radxa/microDuckPro/build /home/radxa/microDuckPro/build/IMU/cpp /home/radxa/microDuckPro/build/IMU/cpp/CMakeFiles/imu_lsm6.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/radxa/cyberDuck/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/radxa/cyberDuck /home/radxa/cyberDuck/IMU/cpp /home/radxa/cyberDuck/build /home/radxa/cyberDuck/build/IMU/cpp /home/radxa/cyberDuck/build/IMU/cpp/CMakeFiles/imu_lsm6.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : IMU/cpp/CMakeFiles/imu_lsm6.dir/depend
 

@@ -8,8 +8,8 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/radxa/microDuckPro/IMU/i2c_gpio.c" "IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o" "gcc" "IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o.d"
-  "/home/radxa/microDuckPro/IMU/cpp/src/lsm6.cpp" "IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o" "gcc" "IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o.d"
+  "/home/radxa/cyberDuck/IMU/i2c_gpio.c" "IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o" "gcc" "IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o.d"
+  "/home/radxa/cyberDuck/IMU/cpp/src/lsm6.cpp" "IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o" "gcc" "IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

@@ -14,7 +14,7 @@ usage() {
 用法: $(basename "$0") [start|stop|restart|status] [--gui] [--invert-yaw] [--invert-pitch]
 
   start     后台启动人脸跟踪（脖子先到 stand，再 11/13 锁人脸居中）
-  stop      停止并回 stand
+  stop      停止，脖子回电机零位并泄力
   restart   重启
   status    是否在运行
 
@@ -60,7 +60,7 @@ cmd_stop() {
   pid="$(stream_pid)"
   if [[ -n "${pid:-}" ]]; then
     kill "$pid" 2>/dev/null || true
-    for _ in $(seq 1 20); do
+    for _ in $(seq 1 50); do
       kill -0 "$pid" 2>/dev/null || break
       sleep 0.2
     done

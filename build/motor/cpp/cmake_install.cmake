@@ -1,4 +1,4 @@
-# Install script for directory: /home/radxa/microDuckPro/motor/cpp
+# Install script for directory: /home/radxa/cyberDuck/motor/cpp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

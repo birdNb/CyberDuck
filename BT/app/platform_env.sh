@@ -1,5 +1,5 @@
 #!/bin/bash
-# 平台路径（microDuckPro/BT）
+# 平台路径（cyberDuck/BT）
 
 _pe_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 export BT_DIR="${BT_DIR:-${_pe_dir}}"

@@ -1,8 +1,8 @@
 locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o: \
- /home/radxa/microDuckPro/locomotion/src/engine.cpp \
+ /home/radxa/cyberDuck/locomotion/src/engine.cpp \
  /usr/include/stdc-predef.h \
- /home/radxa/microDuckPro/locomotion/include/locomotion/engine.hpp \
- /home/radxa/microDuckPro/locomotion/include/locomotion/layout.hpp \
+ /home/radxa/cyberDuck/locomotion/include/locomotion/engine.hpp \
+ /home/radxa/cyberDuck/locomotion/include/locomotion/layout.hpp \
  /usr/include/c++/13/array /usr/include/c++/13/compare \
  /usr/include/c++/13/initializer_list \
  /usr/include/aarch64-linux-gnu/c++/13/bits/c++config.h \
@@ -165,7 +165,7 @@ locomotion/CMakeFiles/duck_locomotion.dir/src/engine.cpp.o: \
  /usr/include/c++/13/backward/auto_ptr.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
- /home/radxa/microDuckPro/locomotion/third_party/onnxruntime/onnxruntime_c_api.h \
+ /home/radxa/cyberDuck/locomotion/third_party/onnxruntime/onnxruntime_c_api.h \
  /usr/lib/gcc/aarch64-linux-gnu/13/include/stdbool.h \
  /usr/include/c++/13/stdlib.h /usr/include/string.h \
  /usr/include/strings.h \

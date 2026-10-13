@@ -1,7 +1,7 @@
 motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o: \
- /home/radxa/microDuckPro/motor/cpp/src/protocol.cpp \
+ /home/radxa/cyberDuck/motor/cpp/src/protocol.cpp \
  /usr/include/stdc-predef.h \
- /home/radxa/microDuckPro/motor/cpp/include/motor/protocol.hpp \
+ /home/radxa/cyberDuck/motor/cpp/include/motor/protocol.hpp \
  /usr/include/c++/13/cstdint \
  /usr/include/aarch64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/aarch64-linux-gnu/c++/13/bits/os_defines.h \

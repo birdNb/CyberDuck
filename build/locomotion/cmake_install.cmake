@@ -1,4 +1,4 @@
-# Install script for directory: /home/radxa/microDuckPro/locomotion
+# Install script for directory: /home/radxa/cyberDuck/locomotion
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

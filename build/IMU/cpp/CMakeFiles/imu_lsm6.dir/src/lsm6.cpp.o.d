@@ -1,6 +1,6 @@
 IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o: \
- /home/radxa/microDuckPro/IMU/cpp/src/lsm6.cpp /usr/include/stdc-predef.h \
- /home/radxa/microDuckPro/IMU/cpp/include/imu/lsm6.hpp \
+ /home/radxa/cyberDuck/IMU/cpp/src/lsm6.cpp /usr/include/stdc-predef.h \
+ /home/radxa/cyberDuck/IMU/cpp/include/imu/lsm6.hpp \
  /usr/include/c++/13/cstdint \
  /usr/include/aarch64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/aarch64-linux-gnu/c++/13/bits/os_defines.h \
@@ -22,7 +22,7 @@ IMU/cpp/CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o: \
  /usr/include/aarch64-linux-gnu/bits/stdint-intn.h \
  /usr/include/aarch64-linux-gnu/bits/stdint-uintn.h \
  /usr/include/aarch64-linux-gnu/bits/stdint-least.h \
- /home/radxa/microDuckPro/IMU/cpp/../i2c_gpio.h \
+ /home/radxa/cyberDuck/IMU/cpp/../i2c_gpio.h \
  /usr/include/c++/13/chrono /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/c++/13/bits/chrono.h /usr/include/c++/13/ratio \
  /usr/include/c++/13/type_traits /usr/include/c++/13/limits \

@@ -8,8 +8,8 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/radxa/microDuckPro/motor/cpp/src/bus.cpp" "motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o" "gcc" "motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o.d"
-  "/home/radxa/microDuckPro/motor/cpp/src/protocol.cpp" "motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o" "gcc" "motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o.d"
+  "/home/radxa/cyberDuck/motor/cpp/src/bus.cpp" "motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o" "gcc" "motor/cpp/CMakeFiles/motor_can.dir/src/bus.cpp.o.d"
+  "/home/radxa/cyberDuck/motor/cpp/src/protocol.cpp" "motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o" "gcc" "motor/cpp/CMakeFiles/motor_can.dir/src/protocol.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

@@ -26,7 +26,7 @@
 ## 编译
 
 ```bash
-cd ~/microDuckPro
+cd ~/cyberDuck
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ./build/locomotion/duck_locomotion --self-test
@@ -37,7 +37,7 @@ cmake --build build -j
 先干跑，只打印，不给电机上力矩：
 
 ```bash
-cd ~/microDuckPro/locomotion
+cd ~/cyberDuck/locomotion
 ../build/locomotion/duck_locomotion
 ```
 

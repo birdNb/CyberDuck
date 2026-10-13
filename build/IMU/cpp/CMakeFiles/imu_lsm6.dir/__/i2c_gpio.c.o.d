@@ -1,5 +1,5 @@
 IMU/cpp/CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o: \
- /home/radxa/microDuckPro/IMU/i2c_gpio.c /usr/include/stdc-predef.h \
+ /home/radxa/cyberDuck/IMU/i2c_gpio.c /usr/include/stdc-predef.h \
  /usr/include/errno.h /usr/include/features.h \
  /usr/include/features-time64.h \
  /usr/include/aarch64-linux-gnu/bits/wordsize.h \

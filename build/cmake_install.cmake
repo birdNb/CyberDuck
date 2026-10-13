@@ -1,4 +1,4 @@
-# Install script for directory: /home/radxa/microDuckPro
+# Install script for directory: /home/radxa/cyberDuck
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -44,17 +44,17 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/home/radxa/microDuckPro/build/motor/cpp/cmake_install.cmake")
+  include("/home/radxa/cyberDuck/build/motor/cpp/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/home/radxa/microDuckPro/build/IMU/cpp/cmake_install.cmake")
+  include("/home/radxa/cyberDuck/build/IMU/cpp/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/home/radxa/microDuckPro/build/locomotion/cmake_install.cmake")
+  include("/home/radxa/cyberDuck/build/locomotion/cmake_install.cmake")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)
@@ -65,5 +65,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/radxa/microDuckPro/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/radxa/cyberDuck/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
