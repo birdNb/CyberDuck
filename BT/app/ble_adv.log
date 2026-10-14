@@ -8538,3 +8538,37 @@
 13:00:35 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
 15:49:29 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
 15:49:29 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+16:41:10 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:12 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:14 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:16 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:18 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:20 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:22 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:25 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:27 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+16:41:29 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:31 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:33 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:35 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+16:41:37 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:39 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:41 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:43 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:45 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:47 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:49 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:51 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:54 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+16:41:56 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:41:58 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:42:00 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:42:02 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+16:42:04 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:42:06 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:42:08 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+16:42:10 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
+16:42:12 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+                                                                                                                                                                                                                              16:41:59 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+10:58:06 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+11:07:04 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423

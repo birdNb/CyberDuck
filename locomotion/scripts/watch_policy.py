@@ -117,8 +117,8 @@ DEFAULT_ONNX = (
     / "logs"
     / "rsl_rl"
     / "velocity"
-    / "2026-10-13_19-38-51_velocity_fixneck"
-    / "model_7000.onnx"
+    / "2026-10-14_04-05-58_velocity_fixneck"
+    / "2026-10-14_04-05-58_velocity_fixneck.onnx"
 )
 
 
@@ -536,6 +536,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="先站立，空格开始或停止策略")
     parser.add_argument("--onnx", default=str(DEFAULT_ONNX))
     parser.add_argument("--print-every", type=float, default=1.0)
+    parser.add_argument("--max-tilt", type=float, default=12.0, help="启动策略时允许的最大重力倾斜（度）")
     parser.add_argument("--no-mirror", action="store_true", help="不做左右对称化，直接用网络原输出")
     args = parser.parse_args()
 
@@ -743,7 +744,7 @@ def main() -> int:
                     print(f"停止策略，{stand_s:.0f} 秒回到站立，力矩保持", flush=True)
                 else:
                     tilt = gravity_tilt_deg(gravity)
-                    if stand_err_now > math.degrees(0.35) or tilt > 8.0:
+                    if stand_err_now > math.degrees(0.35) or tilt > args.max_tilt:
                         print(
                             f"未执行：还在站立，离目标 {stand_err_now:.1f}°，重力偏 {tilt:.1f}°。",
                             flush=True,

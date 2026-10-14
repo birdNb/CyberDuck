@@ -1,0 +1,135 @@
+--- git commit ---
+072c8a84f1b05c07189b40b640463a33e49ea574
+
+
+--- git status ---
+On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+  (commit or discard the untracked or modified content in submodules)
+	modified:   cyberDuck_RL/src/mjlab_microduck/tasks/mdp.py
+	modified:   cyberDuck_RL/src/mjlab_microduck/tasks/microduck_velocity_env_cfg.py
+	modified:   microduck_rl (modified content, untracked content)
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	cyberDuck_RL/.dockerignore
+	cyberDuck_RL/Dockerfile
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/cyberDuck_RL/src/mjlab_microduck/tasks/mdp.py b/cyberDuck_RL/src/mjlab_microduck/tasks/mdp.py
+index b621de2..6b74fd3 100755
+--- a/cyberDuck_RL/src/mjlab_microduck/tasks/mdp.py
++++ b/cyberDuck_RL/src/mjlab_microduck/tasks/mdp.py
+@@ -1783,6 +1783,50 @@ def feet_grounded_reward(
+     return torch.clamp(found, 0.0, 2.0) / 2.0
+ 
+ 
++def feet_air_time_single_stance(
++    env: ManagerBasedRlEnv,
++    sensor_name: str,
++    threshold_min: float = 0.05,
++    threshold_max: float = 0.5,
++    command_name: str | None = None,
++    command_threshold: float = 0.5,
++) -> torch.Tensor:
++    """Air-time reward that only pays a swing foot while the OTHER foot is down.
++
++    mjlab's feet_air_time pays every airborne foot independently, so a hop
++    (both feet up) earns double — the policy learns to bounce. Here a swing
++    foot counts only if the other foot is in contact (single support).
++
++    The payout ramps linearly from 0 at lift-off to 1 at threshold_min and
++    stays 1 until threshold_max, then drops to 0. A binary window gives no
++    gradient to sub-threshold shuffling steps; the ramp makes each longer
++    swing strictly more valuable, so cadence drops and stride grows.
++    Two-foot sensor only.
++    """
++    sensor = env.scene.sensors[sensor_name]
++    air_time = sensor.data.current_air_time
++    contact = sensor.data.found > 0
++    ramp = torch.clamp(air_time / threshold_min, max=1.0) * (air_time < threshold_max)
++    other_down = contact.flip(dims=(1,))
++    reward = torch.sum(ramp * other_down.float(), dim=1)
++    in_air = air_time > 0
++    env.extras["log"]["Metrics/air_time_mean"] = (
++        torch.sum(air_time * in_air) / torch.clamp(in_air.sum(), min=1)
++    )
++    if command_name is not None:
++        command = env.command_manager.get_command(command_name)
++        if command is not None:
++            total = torch.norm(command[:, :2], dim=1) + torch.abs(command[:, 2])
++            reward *= (total > command_threshold).float()
++    return reward
++
++
++def flight_phase_cost(env: ManagerBasedRlEnv, sensor_name: str) -> torch.Tensor:
++    """1 while no foot touches the ground (hopping / flight phase), else 0."""
++    found = env.scene.sensors[sensor_name].data.found
++    return (found.sum(dim=-1) == 0).float()
++
++
+ def body_impact_cost(
+     env: ManagerBasedRlEnv,
+     sensor_name: str,
+diff --git a/cyberDuck_RL/src/mjlab_microduck/tasks/microduck_velocity_env_cfg.py b/cyberDuck_RL/src/mjlab_microduck/tasks/microduck_velocity_env_cfg.py
+index d63b1c1..46f59e6 100755
+--- a/cyberDuck_RL/src/mjlab_microduck/tasks/microduck_velocity_env_cfg.py
++++ b/cyberDuck_RL/src/mjlab_microduck/tasks/microduck_velocity_env_cfg.py
+@@ -346,10 +346,25 @@ def make_microduck_velocity_env_cfg(
+     # stands ~16.5 cm tall. NOTE: standing still at zero command is
+     # taught by the standing_envs curriculum (→25% standing envs by ~iter 2000),
+     # not by an explicit stillness/no-stepping term.
++    cfg.rewards["air_time"].func = microduck_mdp.feet_air_time_single_stance
+     cfg.rewards["air_time"].weight = 3.0
+     cfg.rewards["air_time"].params["command_threshold"] = 0.01
+-    cfg.rewards["air_time"].params["threshold_min"] = 0.150
+-    cfg.rewards["air_time"].params["threshold_max"] = 0.400
++    # Full payout from 0.25 s of swing: pushes cadence down to ~2 steps/s.
++    cfg.rewards["air_time"].params["threshold_min"] = 0.25
++    cfg.rewards["air_time"].params["threshold_max"] = 0.45
++
++    # Walking, not hopping: at least one foot must stay on the ground.
++    cfg.rewards["flight_phase"] = RewardTermCfg(
++        func=microduck_mdp.flight_phase_cost,
++        weight=-2.0,
++        params={"sensor_name": feet_ground_cfg.name},
++    )
++    # Soften landings: net foot force above ~1.5x body weight (3.34 kg -> 33 N).
++    cfg.rewards["foot_impact"] = RewardTermCfg(
++        func=microduck_mdp.body_impact_cost,
++        weight=-0.01,
++        params={"sensor_name": feet_ground_cfg.name, "threshold": 50.0},
++    )
+ 
+     cfg.rewards["body_ang_vel"].weight = -0.05
+     # ~4.4x the official duck's mass, so the same motion carries more angular
+@@ -369,6 +384,9 @@ def make_microduck_velocity_env_cfg(
+     cfg.rewards["foot_clearance"].params["command_threshold"] = 0.01
+     cfg.rewards["foot_clearance"].params["target_height"] = 0.05
+ 
++    # Charged once per landing; at -0.25 a 5 mm shuffle step was nearly free, so
++    # the policy walked with rapid dragging steps. -2.0 prices every low step.
++    cfg.rewards["foot_swing_height"].weight = -2.0
+     cfg.rewards["foot_swing_height"].params["command_threshold"] = 0.01
+     cfg.rewards["foot_swing_height"].params["target_height"] = 0.05
+ 
+@@ -996,7 +1014,7 @@ MicroduckRlCfg = RslRlOnPolicyRunnerCfg(
+     wandb_project="mjlab_microduck",
+     experiment_name="velocity",  # Directory name
+     run_name="velocity",  # Appended to datetime: <datetime>_velocity
+-    save_interval=100,
++    save_interval=500,
+     num_steps_per_env=24,
+     max_iterations=50_000,
+ )
+diff --git a/microduck_rl b/microduck_rl
+--- a/microduck_rl
++++ b/microduck_rl
+@@ -1 +1 @@
+-Subproject commit cb70b792312d559a4da09064d92009079671815f
++Subproject commit cb70b792312d559a4da09064d92009079671815f-dirty
