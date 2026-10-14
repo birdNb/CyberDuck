@@ -5,6 +5,7 @@
   python3 teach.py
   python3 teach.py list
   python3 teach.py play 名字
+  python3 teach.py mirror 源名字 新名字    左腿动作镜像到右腿
 
 记录中按键：
   r  开始记录（阻尼跟人掰）/ 停止并位置保持最后一帧
@@ -150,6 +151,7 @@ def playback(
     times = [t - t0 for t in times]
     duration = times[-1] if times else 0.0
     playing = False
+    finished = False
     progress = 0.0
     seg_t0 = time.monotonic()
     hold = dict(frames[0])
@@ -160,6 +162,14 @@ def playback(
             print("检查结束，位置保持当前帧。")
             return hold
         if key == " ":
+            if finished:
+                finished = False
+                print(f"{APPROACH_S:.0f} 秒回到起始姿态。按 q 取消。", flush=True)
+                origin = sample(bus, ids, hold)
+                if not blend_to(bus, ids, origin, frames[0], APPROACH_S, torque, keys):
+                    print("检查结束，停在当前位置。")
+                    return sample(bus, ids, hold)
+                hold = dict(frames[0])
             playing = not playing
             if playing:
                 seg_t0 = time.monotonic() - progress
@@ -170,9 +180,10 @@ def playback(
             elapsed = time.monotonic() - seg_t0
             if elapsed >= duration:
                 playing = False
+                finished = True
                 progress = 0.0
                 hold = dict(frames[-1])
-                print("播放结束，停在最后一帧。空格从头再播。", flush=True)
+                print(f"播放结束，停在最后一帧。空格 {APPROACH_S:.0f} 秒回到起点后再播。", flush=True)
             else:
                 index = 0
                 while index + 1 < len(times) and times[index + 1] < elapsed:
@@ -209,6 +220,38 @@ def load_clip(path: Path) -> tuple[list[int], list[dict[int, float]], list[float
         times.append(float(row[0]))
         frames.append({mid: float(row[i + 1]) for i, mid in enumerate(ids)})
     return ids, frames, times
+
+
+# 左腿电机 → 右腿电机：踝、小腿、髋 pitch、髋 roll、髋 yaw。
+# 两腿电机镜像安装，对称姿态下电机角左右反号（stand、fold、坐姿起点都如此）。
+LEFT_TO_RIGHT = {6: 1, 7: 2, 8: 3, 9: 4, 10: 5}
+MIRROR_SIGN = -1.0
+
+
+def mirror_clip(src: str, dst: str) -> int:
+    path = DIR / f"{src}.csv"
+    if not path.exists():
+        raise SystemExit(f"没有 {path}")
+    if not NAME_OK.match(dst):
+        raise SystemExit("名字只能用字母、数字、下划线、减号或中文。")
+    out = DIR / f"{dst}.csv"
+    if out.exists():
+        raise SystemExit(f"已经有同名文件: {out}")
+    ids, frames, times = load_clip(path)
+    missing = [mid for pair in LEFT_TO_RIGHT.items() for mid in pair if mid not in ids]
+    if missing:
+        raise SystemExit(f"示教里缺少关节: {missing}")
+    for frame in frames:
+        for left, right in LEFT_TO_RIGHT.items():
+            frame[right] = MIRROR_SIGN * frame[left]
+    with out.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["t_s", *[str(mid) for mid in ids]])
+        for t, frame in zip(times, frames):
+            writer.writerow([f"{t:.3f}", *[f"{frame[mid]:.2f}" for mid in ids]])
+    print(f"左腿 6..10 镜像到右腿 1..5，已保存 {out}")
+    summary(frames, ids)
+    return 0
 
 
 def list_clips() -> int:
@@ -358,7 +401,9 @@ def main() -> int:
         return list_clips()
     if cmd == "play" and len(sys.argv) == 3:
         return play_saved(sys.argv[2])
-    raise SystemExit("用法: python3 teach.py [list | play 名字]")
+    if cmd == "mirror" and len(sys.argv) == 4:
+        return mirror_clip(sys.argv[2], sys.argv[3])
+    raise SystemExit("用法: python3 teach.py [list | play 名字 | mirror 源名字 新名字]")
 
 
 if __name__ == "__main__":
