@@ -8572,3 +8572,9 @@
                                                                                                                                                                                                                               16:41:59 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
 10:58:06 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
 11:07:04 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+12:33:45 hci_le_cmd fail 0x08 0x0006 0x30: Invalid device: No such device
+12:33:45 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+12:33:47 hci_le_cmd fail 0x08 0x0006 0x30: Invalid device: No such device
+12:33:47 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
+12:33:49 hci_le_cmd fail 0x08 0x0006 0x30: Invalid device: No such device
+12:33:49 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device

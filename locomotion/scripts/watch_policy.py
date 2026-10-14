@@ -68,7 +68,7 @@ from lsm6dsv16x import I2CGpioError, LSM6DSV16X, WHO_AM_I_VAL, ADDRS, load_lib, 
 # 力矩：腿、颈、头 pitch 为 1.2 N·m。0.5 N·m 时小腿和髋 pitch 顶满仍差 20°–30°，迈不开步。
 # 头 yaw/roll 额定 0.3。
 # 仿真角和电机角只在读写边界乘一次 SIGN，一条腿五个关节必须同号。
-# 左腿和头颈 +1，右腿 -1；小腿例外，见下。
+# 左腿和头颈 +1，右腿 -1；小腿和髋 yaw 例外，见下。
 # 缩放是当前训练值：髋 pitch 0.80，小腿 1.00，踝 0.70。
 KP = (60, 60, 60, 60, 60, 20, 20, 8, 8, 60, 60, 60, 60, 60)
 TAU = (1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 0.3, 0.3, 1.2, 1.2, 1.2, 1.2, 1.2)
@@ -77,15 +77,19 @@ STEP_SCALE = 2.0
 # 策略每拍变化的 p95 约 14°，留到 15°，只挡异常跳变。
 TRACK_STEP_DEG = 15.0
 # 电机零位补偿，按电机号，单位度。站立和观测一起平移，策略看到的不变。
-# 左髋 roll 走路时比右侧多外展约 2.6°，往内收回。
-ZERO_OFFSET_DEG = {9: -2.5}
+# 原先左髋 roll 补 -2.5°，是髋 yaw 方向反了导致的走路不对称，站姿保持左右对称。
+ZERO_OFFSET_DEG: dict[int, float] = {}
 # 小腿电机和仿真反向：站立时左小腿电机 +41°，仿真 HOME 是 -50°。
 # 按反向算，髋 + 小腿 + 踝 = 24.68 − 41.08 + 16.44 ≈ 0，和仿真脚底平行一致。
 # 所以左小腿取 -1，右小腿再翻一次取 +1，保持镜像。髋 pitch、踝不翻。
-SIGN = (1, 1, 1, -1, 1, 1, 1, 1, 1, -1, -1, -1, 1, -1)
-# 训练范围 vx ±0.4 m/s。±0.10 时前进几乎没有步幅，后退略大。满杆用训练范围的一半。
+# 髋 yaw 两侧都和仿真反向：原先左 +1、右 -1 时，髋 yaw 角速度与 gyro_z 正相关（支撑腿应为负），
+# 策略想右转反而左转，直行越修越往左偏。
+SIGN = (-1, 1, 1, -1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1)
+# 训练范围 vx ±0.4 m/s。±0.10 时前进几乎没有步幅，后退略大。满杆用训练范围的一半，后退再取 60%。
 VX_MAX = 0.4 * 0.5
-WZ_MAX = 1.0 * 0.25
+VX_BACK_MAX = VX_MAX * 0.6
+# 训练范围 wz ±1.0 rad/s，角速度奖励 std 0.707：0.25 时不转也能拿约 90% 奖励，策略只晃不迈步。
+WZ_MAX = 1.0 * 0.6
 # 必须是 1。小腿 SCALE 已是 1，再乘 1.25 时，位置环增益超过 1：
 # 腿弯一点，策略就把目标送到更弯的地方，平放时会自己越蹲越深。
 LEG_GAIN = 1.0
@@ -179,7 +183,7 @@ def motor_command_deg(action: np.ndarray, stand_deg: dict[int, float]) -> tuple[
     """仿真目标先限位。电机角 = 采集站立角 + SIGN × (仿真目标 − HOME)。
 
     动作是 0、脖子锁在 HOME 时，电机就停在采集的站立角。
-    小腿左 -1、右 +1，其余右腿关节为 -1，和左腿保持镜像。
+    小腿和髋 yaw 左 -1、右 +1，其余右腿关节为 -1，和左腿保持镜像。
     编码器零点不是 URDF 零点，所以相对采集站姿加减。
     """
     cmd = []
@@ -197,6 +201,11 @@ def motor_command_deg(action: np.ndarray, stand_deg: dict[int, float]) -> tuple[
 # 只扣掉镜像差的慢变部分。每拍直接平均会让对称站姿得到对称动作，两腿同时动，迈不出第一步；
 # 交替迈步约 2 Hz，1 s 的低通基本滤掉它，留下的是长期偏向一侧的量。
 MIRROR_TAU = 1.0
+# 两髋 yaw 动作的共模（仿真里同向转）就是转向动作。直行时右髋 yaw 会停在约 2° 偏置上，
+# 策略看到自己的关节角和上一拍动作后一直维持它，对 gyro_z 几乎不反馈，走成左弧线。
+# 转向摇杆回中时把共模的慢变部分扣掉；推转向时冻结，不抵消手动转向。
+YAW_TRIM_TAU = 1.5
+YAW_TRIM_MAX = 0.4
 MIRROR_PERM = (9, 10, 11, 12, 13, 5, 6, 7, 8, 0, 1, 2, 3, 4)
 MIRROR_SIGN = np.array((-1, -1, 1, 1, 1, 1, 1, -1, -1, -1, -1, 1, 1, 1), dtype=np.float32)
 
@@ -241,6 +250,7 @@ class Stick:
     PATH = "/dev/input/js0"
     DEADZONE = 0.12
     FORWARD_AXIS = 1
+    TURN_AXIS = 2
     BTN_A = 0
     BTN_B = 1
 
@@ -328,12 +338,12 @@ class Stick:
         if abs(ly) < self.DEADZONE:
             ly = 0.0
         self.raw = ly
-        self.cmd = ly * VX_MAX
+        self.cmd = ly * (VX_MAX if ly >= 0.0 else VX_BACK_MAX)
         self.vx = self.cmd if enabled else 0.0
-        # 右摇杆向左时 axis 为正，对应逆时针。十字键左右在摇杆回中时同样有效。
-        rx = self.axis[3]
+        # 北通 A2P3A：右摇杆横向是 axis 2，十字键左右是 axis 6，向左都为负，取反后左转为正（逆时针）。
+        rx = -self.axis[self.TURN_AXIS]
         if abs(rx) < self.DEADZONE:
-            rx = self.axis[6]
+            rx = -self.axis[6]
         if abs(rx) < self.DEADZONE:
             rx = 0.0
         self.raw_wz = rx
@@ -537,6 +547,7 @@ def main() -> int:
     parser.add_argument("--onnx", default=str(DEFAULT_ONNX))
     parser.add_argument("--print-every", type=float, default=1.0)
     parser.add_argument("--max-tilt", type=float, default=12.0, help="启动策略时允许的最大重力倾斜（度）")
+    parser.add_argument("--no-yaw-trim", action="store_true", help="不扣髋 yaw 共模偏置")
     parser.add_argument("--no-mirror", action="store_true", help="不做左右对称化，直接用网络原输出")
     args = parser.parse_args()
 
@@ -571,7 +582,10 @@ def main() -> int:
     say(f"进程序用 {stand_s:.0f} 秒渐变到站立：腿用训练站姿 SIGN×HOME，脖子和头用 pose_config.yaml。")
     say("操作：A 或空格 启动/停止策略 | B 或 Q 立刻卸力 | Ctrl+C 回到站立并保持出力")
     say("站稳后再按 A 或空格。力矩保护 1.20 N·m。头 yaw/roll 仍是 0.30 N·m。")
-    say("控制频率目标 50 Hz。前后满杆 ±0.20 m/s，左右转满杆 ±0.25 rad/s。未执行时指令为 0。")
+    say(
+        f"控制频率目标 50 Hz。前进满杆 {VX_MAX:.2f} m/s，后退满杆 {VX_BACK_MAX:.2f} m/s，"
+        f"左右转满杆 ±{WZ_MAX:.2f} rad/s。未执行时指令为 0。"
+    )
 
     lib = lock_fd = imu = None
     keys = None
@@ -617,6 +631,7 @@ def main() -> int:
         say("操作：A 或空格 启停策略 | B 或 Q 卸力 | Ctrl+C 回站立保持")
         last_action = np.zeros(14, dtype=np.float32)
         mirror_bias = np.zeros(14, dtype=np.float32)
+        yaw_trim = 0.0
         q_dot_prev = np.zeros(14, dtype=np.float32)
         window_t = time.monotonic()
         next_print = window_t
@@ -726,6 +741,16 @@ def main() -> int:
                 action = action + mirror_bias
             else:
                 mirror_bias = np.zeros(14, dtype=np.float32)
+            if phase == "track" and not args.no_yaw_trim:
+                if stick.wz == 0.0 and dt > 0.0:
+                    yaw_cm = 0.5 * float(action[0] + action[9])
+                    yaw_trim += dt / (YAW_TRIM_TAU + dt) * (yaw_cm - yaw_trim)
+                    yaw_trim = min(YAW_TRIM_MAX, max(-YAW_TRIM_MAX, yaw_trim))
+                action = action.copy()
+                action[0] -= yaw_trim
+                action[9] -= yaw_trim
+            else:
+                yaw_trim = 0.0
             infer_us = (time.monotonic() - t_infer) * 1e6
             loops += 1
             last_action = np.asarray(action, dtype=np.float32).copy()
@@ -860,7 +885,7 @@ def main() -> int:
                     f"控制频率 {loop_hz:.1f} Hz（目标 50）  {state}  推理 {infer_us:.0f} us  "
                     f"电压 {bus_v:.1f} V 电量 {battery_text(bus_v)}  stand偏差 {hold_err:.2f}°  "
                     f"手柄 {stick.raw:+.2f}  摇杆速度 {stick.cmd:+.2f} m/s  本拍写入 {written:+.2f}  "
-                    f"转向 {stick.wz:+.2f} rad/s"
+                    f"转向 {stick.wz:+.2f} rad/s  髋yaw修正 {yaw_trim:+.3f}"
                     + (f"  CAN丢帧 {can_drop}" if can_drop else "")
                     + ("" if not link_lost else "  链路断开")
                 )
