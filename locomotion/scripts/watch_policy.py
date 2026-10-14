@@ -85,16 +85,50 @@ ZERO_OFFSET_DEG: dict[int, float] = {}
 # 髋 yaw 两侧都和仿真反向：原先左 +1、右 -1 时，髋 yaw 角速度与 gyro_z 正相关（支撑腿应为负），
 # 策略想右转反而左转，直行越修越往左偏。
 SIGN = (-1, 1, 1, -1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1)
-# 训练范围 vx ±0.4 m/s。±0.10 时前进几乎没有步幅，后退略大。满杆用训练范围的一半，后退再取 60%。
-VX_MAX = 0.4 * 0.5
+# 训练范围 vx ±0.4 m/s。±0.10 时前进几乎没有步幅，后退略大。满杆用训练范围的一半再取 70%，后退再取 60%。
+VX_MAX = 0.4 * 0.5 * 0.7
 VX_BACK_MAX = VX_MAX * 0.6
 # 训练范围 wz ±1.0 rad/s，角速度奖励 std 0.707：0.25 时不转也能拿约 90% 奖励，策略只晃不迈步。
 WZ_MAX = 1.0 * 0.6
-# 必须是 1。小腿 SCALE 已是 1，再乘 1.25 时，位置环增益超过 1：
+# 训练范围 vy ±0.3 m/s。±0.15 时左移、右移的髋 roll 动作几乎一样，盖不过往左的漂移，满杆用满训练范围。
+VY_MAX = 0.3
+# 不能大于 1。小腿 SCALE 已是 1，再乘 1.25 时，位置环增益超过 1：
 # 腿弯一点，策略就把目标送到更弯的地方，平放时会自己越蹲越深。
-LEG_GAIN = 1.0
-# 电机目标低通。约 0.035 s 去掉高频抖动，走路的步频还能通过。
-CMD_TAU = 0.035
+# 小于 1 用来减幅且不加滞后：目标低通越大，策略越陷进 5–7 Hz 小碎步；不滤波时是 0.5–1 Hz 踏步，只是摆幅太大。
+LEG_GAIN_DEFAULT = 0.85
+# 左腿抬腿比右腿低：直行时左小腿电机摆幅 16.7°，右 19.9°，往左前方偏。
+# 只放大左小腿往弯的一侧（仿真里比 HOME 更负，动作 < 0），伸直一侧不动，站立不会越蹲越深。
+L_CALF_LIFT_GAIN = 1.3
+# 左髋 pitch 摆幅放大 10%，压往左偏。
+L_HIP_PITCH_GAIN = 1.1
+# 电机目标二阶巴特沃斯低通，截止频率 Hz。策略自身输出在 6–12.5 Hz 有约 20–40% 的能量，
+# 平滑 dq、q 观测去不掉，只能滤指令。一阶低通压住 8 Hz 时低频滞后同样大，10–12 Hz 却衰减不够；
+# 6 Hz 二阶：1–2 Hz 增益约 1、延迟约 37 ms，8/10/12 Hz 增益约 0.46/0.28/0.18。
+CMD_FC_DEFAULT = 6.0
+
+
+class Butter2:
+    """每个关节一个二阶巴特沃斯低通（双线性变换，直接 II 型转置）。"""
+
+    def __init__(self, fc: float, fs: float, init: list[float]) -> None:
+        k = math.tan(math.pi * fc / fs)
+        q = math.sqrt(2.0)
+        norm = 1.0 / (1.0 + q * k + k * k)
+        self.b0 = k * k * norm
+        self.b1 = 2.0 * self.b0
+        self.b2 = self.b0
+        self.a1 = 2.0 * (k * k - 1.0) * norm
+        self.a2 = (1.0 - q * k + k * k) * norm
+        x = np.asarray(init, dtype=np.float64)
+        self.z1 = x * (1.0 - self.b0)
+        self.z2 = x * (self.b2 - self.a2)
+
+    def step(self, x: list[float]) -> list[float]:
+        x = np.asarray(x, dtype=np.float64)
+        y = self.b0 * x + self.z1
+        self.z1 = self.b1 * x - self.a1 * y + self.z2
+        self.z2 = self.b2 * x - self.a2 * y
+        return y.tolist()
 
 # 策略下标，电机号，仿真 HOME，SCALE，仿真下限/上限 rad，是否腿。
 # 腿用 HOME+SCALE*action 后再裁切。颈和头锁在 HOME，不跟动作。
@@ -179,7 +213,9 @@ def open_imu():
     return lib, lock_fd, imu
 
 
-def motor_command_deg(action: np.ndarray, stand_deg: dict[int, float]) -> tuple[list[float], list[bool]]:
+def motor_command_deg(
+    action: np.ndarray, stand_deg: dict[int, float], leg_gain: float
+) -> tuple[list[float], list[bool]]:
     """仿真目标先限位。电机角 = 采集站立角 + SIGN × (仿真目标 − HOME)。
 
     动作是 0、脖子锁在 HOME 时，电机就停在采集的站立角。
@@ -189,7 +225,12 @@ def motor_command_deg(action: np.ndarray, stand_deg: dict[int, float]) -> tuple[
     cmd = []
     clipped = []
     for i, (_name, can, home, scale, lo, hi, leg) in enumerate(JOINTS):
-        raw = home + scale * LEG_GAIN * float(action[i]) if leg else home
+        a = float(action[i])
+        if i == 3 and a < 0.0:
+            a *= L_CALF_LIFT_GAIN
+        elif i == 2:
+            a *= L_HIP_PITCH_GAIN
+        raw = home + scale * leg_gain * a if leg else home
         limited = min(hi, max(lo, raw))
         clipped.append(raw < lo - 1e-6 or raw > hi + 1e-6)
         cmd.append(stand_deg[can] + math.degrees(SIGN[i] * (limited - home)))
@@ -227,7 +268,7 @@ def mirror_obs(obs: np.ndarray) -> np.ndarray:
     return m
 
 
-def build_obs(gyro, gravity, q_motor_rad, q_dot_prev, last_action, stand_deg: dict[int, float], vx: float, wz: float) -> np.ndarray:
+def build_obs(gyro, gravity, q_motor_rad, q_dot_prev, last_action, stand_deg: dict[int, float], vx: float, vy: float, wz: float) -> np.ndarray:
     obs = np.zeros(61, dtype=np.float32)
     obs[0:3] = gyro
     obs[3:6] = gravity
@@ -239,17 +280,18 @@ def build_obs(gyro, gravity, q_motor_rad, q_dot_prev, last_action, stand_deg: di
     obs[20:34] = q_dot_prev
     obs[34:48] = last_action
     obs[48] = min(VX_MAX, max(-VX_MAX, vx))
-    obs[49] = 0.0
+    obs[49] = min(VY_MAX, max(-VY_MAX, vy))
     obs[50] = min(WZ_MAX, max(-WZ_MAX, wz))
     return obs
 
 
 class Stick:
-    """只读左摇杆前后。每拍把积压事件读完，只用最新位置，不再做低通。"""
+    """左摇杆前后和左右平移，右摇杆转向。每拍把积压事件读完，只用最新位置，不再做低通。"""
 
     PATH = "/dev/input/js0"
     DEADZONE = 0.12
     FORWARD_AXIS = 1
+    SIDE_AXIS = 0
     TURN_AXIS = 2
     BTN_A = 0
     BTN_B = 1
@@ -261,6 +303,8 @@ class Stick:
         self.cmd = 0.0
         self.raw = 0.0
         self.raw_wz = 0.0
+        self.vy = 0.0
+        self.raw_vy = 0.0
         self.button = ""
         self.name = ""
         self.fd = -1
@@ -292,7 +336,7 @@ class Stick:
         except OSError:
             self.name = self.PATH
         self.warned = False
-        say(f"手柄已接入 {self.name}（{self.PATH}）。左摇杆前后，右摇杆左右转。向前为正，向左转为正。A 启停策略，B 卸力。")
+        say(f"手柄已接入 {self.name}（{self.PATH}）。左摇杆前后和左右平移，右摇杆左右转。向前、向左平移、向左转为正。A 启停策略，B 卸力。")
 
     def drop(self) -> None:
         if self.fd >= 0:
@@ -348,6 +392,12 @@ class Stick:
             rx = 0.0
         self.raw_wz = rx
         self.wz = rx * WZ_MAX if enabled else 0.0
+        # 左摇杆横向 axis 0，向左为负，取反后向左平移为正（+y）。
+        lx = -self.axis[self.SIDE_AXIS]
+        if abs(lx) < self.DEADZONE:
+            lx = 0.0
+        self.raw_vy = lx
+        self.vy = lx * VY_MAX if enabled else 0.0
         return self.vx
 
     def take_button(self) -> str:
@@ -547,9 +597,13 @@ def main() -> int:
     parser.add_argument("--onnx", default=str(DEFAULT_ONNX))
     parser.add_argument("--print-every", type=float, default=1.0)
     parser.add_argument("--max-tilt", type=float, default=12.0, help="启动策略时允许的最大重力倾斜（度）")
+    parser.add_argument("--leg-gain", type=float, default=LEG_GAIN_DEFAULT, help="腿部动作整体缩放，不能大于 1")
+    parser.add_argument("--cmd-fc", type=float, default=CMD_FC_DEFAULT, help="电机目标二阶低通截止频率（Hz），0 为不滤波")
     parser.add_argument("--no-yaw-trim", action="store_true", help="不扣髋 yaw 共模偏置")
     parser.add_argument("--no-mirror", action="store_true", help="不做左右对称化，直接用网络原输出")
     args = parser.parse_args()
+    if not 0.0 < args.leg_gain <= 1.0:
+        parser.error("--leg-gain 必须在 (0, 1] 之间")
 
     import onnxruntime as ort
 
@@ -584,7 +638,7 @@ def main() -> int:
     say("站稳后再按 A 或空格。力矩保护 1.20 N·m。头 yaw/roll 仍是 0.30 N·m。")
     say(
         f"控制频率目标 50 Hz。前进满杆 {VX_MAX:.2f} m/s，后退满杆 {VX_BACK_MAX:.2f} m/s，"
-        f"左右转满杆 ±{WZ_MAX:.2f} rad/s。未执行时指令为 0。"
+        f"左右平移满杆 ±{VY_MAX:.2f} m/s，左右转满杆 ±{WZ_MAX:.2f} rad/s。未执行时指令为 0。"
     )
 
     lib = lock_fd = imu = None
@@ -620,7 +674,7 @@ def main() -> int:
         stand_cmd = [stand[can] for (_name, can, _home, _scale, _lo, _hi, _leg) in JOINTS]
         stand_hold = {can: stand[can] for (_name, can, _home, _scale, _lo, _hi, _leg) in JOINTS}
         held: list[float] | None = None
-        cmd_filt: list[float] | None = None
+        cmd_filt: Butter2 | None = None
         stand_origin: list[float] | None = None
         stand_t0 = 0.0
         last_space = 0.0
@@ -729,7 +783,7 @@ def main() -> int:
                 last_space = tick
                 space_edge = True
             obs = build_obs(
-                sample.gyro, gravity, q_rad, q_dot_prev, last_action, stand, vx, stick.wz
+                sample.gyro, gravity, q_rad, q_dot_prev, last_action, stand, vx, stick.vy, stick.wz
             )
             t_infer = time.monotonic()
             action = session.run(None, {in_name: obs.reshape(1, 61)})[0][0]
@@ -755,7 +809,7 @@ def main() -> int:
             loops += 1
             last_action = np.asarray(action, dtype=np.float32).copy()
             q_dot_prev = q_dot
-            q_cmd_deg, clipped = motor_command_deg(action, stand)
+            q_cmd_deg, clipped = motor_command_deg(action, stand, args.leg_gain)
             stand_err_now = max(abs(now_deg[JOINTS[i][1]] - stand_cmd[i]) for i in range(len(JOINTS)))
             if leaving:
                 phase = "stand"
@@ -786,11 +840,12 @@ def main() -> int:
                 target = blend_stand(stand_origin, stand_cmd, tick - stand_t0, stand_s)
             else:
                 stand_origin = None
-                if cmd_filt is None:
-                    cmd_filt = list(held)
-                alpha = dt / (CMD_TAU + dt) if dt > 0.0 else 1.0
-                cmd_filt = [a + alpha * (b - a) for a, b in zip(cmd_filt, q_cmd_deg)]
-                target = cmd_filt
+                if args.cmd_fc > 0.0:
+                    if cmd_filt is None:
+                        cmd_filt = Butter2(args.cmd_fc, 1.0 / period, held)
+                    target = cmd_filt.step(q_cmd_deg)
+                else:
+                    target = list(q_cmd_deg)
             if phase != "track":
                 cmd_filt = None
             held = step_limited(target, held, phase == "track")
@@ -832,7 +887,7 @@ def main() -> int:
                     f"{stick.raw:.4f}",
                     f"{stick.cmd:.4f}",
                     f"{obs_vx:.4f}",
-                    "0",
+                    f"{float(obs[49]):.4f}",
                     f"{stick.wz:.4f}",
                     *[f"{float(obs[6 + i]):.5f}" for i in range(14)],
                     *[f"{float(obs[20 + i]):.5f}" for i in range(14)],
@@ -885,7 +940,7 @@ def main() -> int:
                     f"控制频率 {loop_hz:.1f} Hz（目标 50）  {state}  推理 {infer_us:.0f} us  "
                     f"电压 {bus_v:.1f} V 电量 {battery_text(bus_v)}  stand偏差 {hold_err:.2f}°  "
                     f"手柄 {stick.raw:+.2f}  摇杆速度 {stick.cmd:+.2f} m/s  本拍写入 {written:+.2f}  "
-                    f"转向 {stick.wz:+.2f} rad/s  髋yaw修正 {yaw_trim:+.3f}"
+                    f"平移 {stick.vy:+.2f} m/s  转向 {stick.wz:+.2f} rad/s  髋yaw修正 {yaw_trim:+.3f}"
                     + (f"  CAN丢帧 {can_drop}" if can_drop else "")
                     + ("" if not link_lost else "  链路断开")
                 )
