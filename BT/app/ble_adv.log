@@ -8580,3 +8580,7 @@
 12:33:49 hci_le_cmd fail 0x08 0x0036 0x01: Invalid device: No such device
 13:12:18 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
 13:12:18 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+17:36:54 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
+17:36:54 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+18:33:25 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
+18:33:25 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423

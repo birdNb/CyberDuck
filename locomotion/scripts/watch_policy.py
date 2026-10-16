@@ -18,6 +18,7 @@ import os
 import select
 import signal
 import struct
+import subprocess
 import sys
 import termios
 import time
@@ -85,9 +86,11 @@ ZERO_OFFSET_DEG: dict[int, float] = {}
 # 髋 yaw 两侧都和仿真反向：原先左 +1、右 -1 时，髋 yaw 角速度与 gyro_z 正相关（支撑腿应为负），
 # 策略想右转反而左转，直行越修越往左偏。
 SIGN = (-1, 1, 1, -1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1)
-# 训练范围 vx ±0.4 m/s。±0.10 时前进几乎没有步幅，后退略大。满杆用训练范围的一半再取 70%，后退再取 60%。
+# 训练范围 vx ±0.4 m/s。前进满杆用训练范围的一半再取 70%（0.14）：再大容易冲。
+# 后退满杆 0.10。0.084 时步幅很小，0.25 又冲得太猛。
+# 观测负向按 VX_BACK_MAX 裁，不再裁回 ±VX_MAX。
 VX_MAX = 0.4 * 0.5 * 0.7
-VX_BACK_MAX = VX_MAX * 0.6
+VX_BACK_MAX = 0.10
 # 训练范围 wz ±1.0 rad/s，角速度奖励 std 0.707：0.25 时不转也能拿约 90% 奖励，策略只晃不迈步。
 WZ_MAX = 1.0 * 0.6
 # 训练范围 vy ±0.3 m/s。±0.15 时左移、右移的髋 roll 动作几乎一样，盖不过往左的漂移，满杆用满训练范围。
@@ -247,6 +250,14 @@ MIRROR_TAU = 1.0
 # 转向摇杆回中时把共模的慢变部分扣掉；推转向时冻结，不抵消手动转向。
 YAW_TRIM_TAU = 1.5
 YAW_TRIM_MAX = 0.4
+# 直行偏左不是髋 yaw 偏置：共模扣掉之后两侧动作仍对称，18 s 直行仍往左转了约 120°。
+# 左脚支撑时 gyro_z 约 +0.41 rad/s，右脚支撑时约 -0.15，净剩约 +0.12 rad/s。
+# 北通正 wz（左转）对应两侧髋 yaw 动作为负，所以加正的共模把机身往右拧。
+# 前馈按前进速度给一个底，积分吃掉剩下的 gyro_z；摇杆在转向时不加。
+YAW_FF_PER_MPS = 1.2
+YAW_KI = 0.8
+YAW_I_MAX = 0.45
+YAW_FIX_MAX = 0.55
 MIRROR_PERM = (9, 10, 11, 12, 13, 5, 6, 7, 8, 0, 1, 2, 3, 4)
 MIRROR_SIGN = np.array((-1, -1, 1, 1, 1, 1, 1, -1, -1, -1, -1, 1, 1, 1), dtype=np.float32)
 
@@ -279,7 +290,7 @@ def build_obs(gyro, gravity, q_motor_rad, q_dot_prev, last_action, stand_deg: di
         obs[6 + i] = q_sim - home
     obs[20:34] = q_dot_prev
     obs[34:48] = last_action
-    obs[48] = min(VX_MAX, max(-VX_MAX, vx))
+    obs[48] = min(VX_MAX, max(-VX_BACK_MAX, vx))
     obs[49] = min(VY_MAX, max(-VY_MAX, vy))
     obs[50] = min(WZ_MAX, max(-WZ_MAX, wz))
     return obs
@@ -295,6 +306,8 @@ class Stick:
     TURN_AXIS = 2
     BTN_A = 0
     BTN_B = 1
+    # 北通 HID 第 3 键（丝印 X）在 js 2；内核 BTN_X 是 js 3。两个都算 X。
+    BTN_X = (2, 3)
 
     def __init__(self) -> None:
         self.axis = [0.0] * 8
@@ -336,7 +349,7 @@ class Stick:
         except OSError:
             self.name = self.PATH
         self.warned = False
-        say(f"手柄已接入 {self.name}（{self.PATH}）。左摇杆前后和左右平移，右摇杆左右转。向前、向左平移、向左转为正。A 启停策略，B 卸力。")
+        say(f"手柄已接入 {self.name}（{self.PATH}）。左摇杆前后和左右平移，右摇杆左右转。向前、向左平移、向左转为正。A 启停策略，B 卸力，键盘或手柄 X 切换灯效。")
 
     def drop(self) -> None:
         if self.fd >= 0:
@@ -372,7 +385,9 @@ class Stick:
                     elif kind == 0x01 and not init and value == 1:
                         if number == self.BTN_B:
                             self.button = "B"
-                        elif number == self.BTN_A and self.button != "B":
+                        elif number in self.BTN_X and self.button != "B":
+                            self.button = "X"
+                        elif number == self.BTN_A and self.button not in ("B", "X"):
                             self.button = "A"
         # 摇杆和十字键往前推时 axis 为负，取反后写入正速度。
         # 不取反时往前推写成 -0.20 m/s，策略在后退，机身却前倾，看起来像向前走时栽倒。
@@ -411,6 +426,132 @@ class Stick:
             self.fd = -1
 
 
+class LedRing:
+    """灯环在单独进程里刷新，避免 WS2812 位bang 卡住 50 Hz。按 X 轮询。"""
+
+    ORDER = (
+        ("off", "熄灭"),
+        ("flow", "流水灯"),
+        ("ironman", "钢铁侠"),
+        ("breathe", "呼吸灯"),
+        ("white", "100%白光"),
+        ("white50", "50%白光"),
+        ("duck", "鸭黄心跳"),
+        ("comet", "彗星"),
+    )
+
+    def __init__(self) -> None:
+        self.proc: subprocess.Popen[str] | None = None
+        self.index = -1
+        self.label = "未连接"
+        self.fifo = Path("/tmp/cyberduck-led.fifo")
+        self.fifo_fd = -1
+
+    def _open_fifo(self) -> None:
+        if self.fifo.exists():
+            self.fifo.unlink()
+        os.mkfifo(self.fifo, 0o666)
+        os.chmod(self.fifo, 0o666)
+
+    def start(self) -> None:
+        script = REPO / "LED_Ring" / "white_flow.py"
+        try:
+            self._open_fifo()
+        except OSError as exc:
+            say(f"灯环命令管道没建起来：{exc}")
+            return
+        # 命令走 fifo。sudo 默认 use_pty 时，写给子进程的 stdin 到不了灯环。
+        cmd = ["/usr/bin/python3", "-u", str(script), "--remote", "--fifo", str(self.fifo)]
+        if os.geteuid() != 0:
+            cmd = ["sudo", "-E", *cmd]
+            say("灯环要 root。若出现密码提示，请在站立前输入。")
+        try:
+            self.proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+            )
+        except OSError as exc:
+            say(f"灯环没启动：{exc}")
+            self.proc = None
+            return
+        deadline = time.monotonic() + 25.0
+        while time.monotonic() < deadline:
+            if self.proc.poll() is not None:
+                err = ""
+                if self.proc.stdout is not None:
+                    err = self.proc.stdout.read() or ""
+                say(f"灯环退出了。{err.strip()}")
+                self.proc = None
+                return
+            if self.proc.stdout is None:
+                break
+            ready, _, _ = select.select([self.proc.stdout], [], [], 0.2)
+            if not ready:
+                continue
+            line = self.proc.stdout.readline().strip()
+            if line == "READY":
+                try:
+                    self.fifo_fd = os.open(self.fifo, os.O_WRONLY | os.O_NONBLOCK)
+                except OSError as exc:
+                    say(f"灯环命令管道打不开：{exc}")
+                self.index = next(i for i, (key, _label) in enumerate(self.ORDER) if key == "flow")
+                self.label = self.ORDER[self.index][1]
+                say("灯环已接通，当前流水灯。键盘 X 或手柄 X 切换灯效。")
+                return
+            if line:
+                say(line)
+        say("灯环等待超时，按 X 不会切灯。")
+        self.close()
+
+    def drain(self) -> None:
+        proc = self.proc
+        if proc is None or proc.stdout is None or proc.poll() is not None:
+            return
+        while True:
+            ready, _, _ = select.select([proc.stdout], [], [], 0)
+            if not ready:
+                return
+            if not proc.stdout.readline():
+                return
+
+    def cycle(self) -> str:
+        self.drain()
+        self.index = (self.index + 1) % len(self.ORDER)
+        key, label = self.ORDER[self.index]
+        self.label = label
+        if self.proc is None or self.proc.poll() is not None or self.fifo_fd < 0:
+            return f"{label}（灯环没接通）"
+        try:
+            os.write(self.fifo_fd, (key + "\n").encode())
+        except OSError:
+            return f"{label}（灯环写失败）"
+        return label
+
+    def close(self) -> None:
+        proc = self.proc
+        self.proc = None
+        if self.fifo_fd >= 0:
+            try:
+                os.write(self.fifo_fd, b"quit\n")
+            except OSError:
+                pass
+            os.close(self.fifo_fd)
+            self.fifo_fd = -1
+        if proc is not None:
+            try:
+                proc.wait(timeout=1.0)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+        try:
+            if self.fifo.exists():
+                self.fifo.unlink()
+        except OSError:
+            pass
+
+
 class CsvLog:
     """每拍一行，50 Hz。缓冲写入，不跟着终端打印堵住控制环。"""
 
@@ -435,7 +576,7 @@ class CsvLog:
         cols += [f"cmd_deg_{n}" for n in names]
         cols += [f"motor_deg_{n}" for n in names]
         cols += [f"torque_{n}" for n in names]
-        cols += ["voltage_v", "can_drop", "rx_n", "rx_age_s", "link_ok"]
+        cols += ["voltage_v", "can_drop", "rx_n", "rx_age_s", "link_ok", "yaw_trim", "yaw_fix"]
         self.writer = csv.writer(self.file)
         self.writer.writerow(cols)
         self.rows = 0
@@ -600,7 +741,9 @@ def main() -> int:
     parser.add_argument("--leg-gain", type=float, default=LEG_GAIN_DEFAULT, help="腿部动作整体缩放，不能大于 1")
     parser.add_argument("--cmd-fc", type=float, default=CMD_FC_DEFAULT, help="电机目标二阶低通截止频率（Hz），0 为不滤波")
     parser.add_argument("--no-yaw-trim", action="store_true", help="不扣髋 yaw 共模偏置")
+    parser.add_argument("--no-yaw-fix", action="store_true", help="直行时不按 gyro_z 补髋 yaw")
     parser.add_argument("--no-mirror", action="store_true", help="不做左右对称化，直接用网络原输出")
+    parser.add_argument("--no-led", action="store_true", help="不接灯环，手柄 X 无效")
     args = parser.parse_args()
     if not 0.0 < args.leg_gain <= 1.0:
         parser.error("--leg-gain 必须在 (0, 1] 之间")
@@ -634,7 +777,7 @@ def main() -> int:
     say(f"策略 {args.onnx}")
     say(f"输入 {in_name} {session.get_inputs()[0].shape}  输出 {[o.name for o in session.get_outputs()]}")
     say(f"进程序用 {stand_s:.0f} 秒渐变到站立：腿用训练站姿 SIGN×HOME，脖子和头用 pose_config.yaml。")
-    say("操作：A 或空格 启动/停止策略 | B 或 Q 立刻卸力 | Ctrl+C 回到站立并保持出力")
+    say("操作：A 或空格 启动/停止策略 | B 或 Q 立刻卸力 | 键盘或手柄 X 切换灯效 | Ctrl+C 回到站立并保持出力")
     say("站稳后再按 A 或空格。力矩保护 1.20 N·m。头 yaw/roll 仍是 0.30 N·m。")
     say(
         f"控制频率目标 50 Hz。前进满杆 {VX_MAX:.2f} m/s，后退满杆 {VX_BACK_MAX:.2f} m/s，"
@@ -644,6 +787,7 @@ def main() -> int:
     lib = lock_fd = imu = None
     keys = None
     stick = None
+    led = None
     csv_log = None
     motors_on = False
     running = True
@@ -660,6 +804,9 @@ def main() -> int:
     signal.signal(signal.SIGTERM, stop)
 
     try:
+        led = LedRing()
+        if not args.no_led:
+            led.start()
         keys = Keys()
         if not keys.ok:
             print("标准输入不是终端，读不到空格。", file=sys.stderr)
@@ -682,10 +829,12 @@ def main() -> int:
         leave_t0 = 0.0
         say(f"电机已使能，{stand_s:.0f} 秒渐变到站立。")
         say("电机角 = 采集站立角 + SIGN × (仿真目标 − HOME)。红字是还没跟上的角度。")
-        say("操作：A 或空格 启停策略 | B 或 Q 卸力 | Ctrl+C 回站立保持")
+        say("操作：A 或空格 启停策略 | B 或 Q 卸力 | 键盘或手柄 X 切换灯效 | Ctrl+C 回站立保持")
         last_action = np.zeros(14, dtype=np.float32)
         mirror_bias = np.zeros(14, dtype=np.float32)
         yaw_trim = 0.0
+        yaw_int = 0.0
+        yaw_fix = 0.0
         q_dot_prev = np.zeros(14, dtype=np.float32)
         window_t = time.monotonic()
         next_print = window_t
@@ -729,6 +878,9 @@ def main() -> int:
             if not leaving and key == " " and tick - last_space > 0.3:
                 last_space = tick
                 space_edge = True
+            elif not leaving and key in ("x", "X") and led is not None and tick - last_space > 0.3:
+                last_space = tick
+                say(f"灯效：{led.cycle()}")
             bus.can._drop_pending()
             seen_pos = {mid: bus.motors[mid].state.t_pos for mid in ids}
             try:
@@ -782,6 +934,10 @@ def main() -> int:
             if btn == "A" and not leaving and tick - last_space > 0.3:
                 last_space = tick
                 space_edge = True
+            elif btn == "X" and led is not None:
+                say(f"灯效：{led.cycle()}")
+            if led is not None:
+                led.drain()
             obs = build_obs(
                 sample.gyro, gravity, q_rad, q_dot_prev, last_action, stand, vx, stick.vy, stick.wz
             )
@@ -795,16 +951,32 @@ def main() -> int:
                 action = action + mirror_bias
             else:
                 mirror_bias = np.zeros(14, dtype=np.float32)
+            action = np.array(action, dtype=np.float32, copy=True)
             if phase == "track" and not args.no_yaw_trim:
                 if stick.wz == 0.0 and dt > 0.0:
                     yaw_cm = 0.5 * float(action[0] + action[9])
                     yaw_trim += dt / (YAW_TRIM_TAU + dt) * (yaw_cm - yaw_trim)
                     yaw_trim = min(YAW_TRIM_MAX, max(-YAW_TRIM_MAX, yaw_trim))
-                action = action.copy()
                 action[0] -= yaw_trim
                 action[9] -= yaw_trim
             else:
                 yaw_trim = 0.0
+            yaw_fix = 0.0
+            if (
+                phase == "track"
+                and not args.no_yaw_fix
+                and stick.wz == 0.0
+                and vx > 0.04
+                and dt > 0.0
+            ):
+                yaw_int += float(sample.gyro[2]) * dt
+                yaw_int = min(YAW_I_MAX, max(-YAW_I_MAX, yaw_int))
+                yaw_fix = YAW_FF_PER_MPS * float(vx) + YAW_KI * yaw_int
+                yaw_fix = min(YAW_FIX_MAX, max(-YAW_FIX_MAX, yaw_fix))
+            elif dt > 0.0:
+                yaw_int *= math.exp(-dt / 8.0)
+            action[0] += yaw_fix
+            action[9] += yaw_fix
             infer_us = (time.monotonic() - t_infer) * 1e6
             loops += 1
             last_action = np.asarray(action, dtype=np.float32).copy()
@@ -868,7 +1040,7 @@ def main() -> int:
                     link_lost = False
                     say("CAN 恢复，电机重新有反馈。")
             roll_deg, pitch_deg, tilt_deg = tilt_axes_deg(gravity)
-            obs_vx = float(min(VX_MAX, max(-VX_MAX, vx)))
+            obs_vx = float(min(VX_MAX, max(-VX_BACK_MAX, vx)))
             csv_log.write(
                 [
                     f"{tick - log_t0:.4f}",
@@ -903,6 +1075,8 @@ def main() -> int:
                     str(rx_n),
                     f"{rx_age:.3f}",
                     "0" if link_lost else "1",
+                    f"{yaw_trim:.4f}",
+                    f"{yaw_fix:.4f}",
                 ]
             )
             if leaving and (stand_err_now < 4.0 or tick - leave_t0 > stand_s + 5.0):
@@ -930,7 +1104,7 @@ def main() -> int:
                     state = "正在站立，站稳后再按 A 或空格"
                 else:
                     state = "已站立，按 A 或空格执行策略"
-                written = min(VX_MAX, max(-VX_MAX, vx))
+                written = min(VX_MAX, max(-VX_BACK_MAX, vx))
                 if link_lost:
                     say(
                         f"CAN 无应答：本秒指令丢失 {can_drop}，新位置 {rx_n}/{len(ids)}，"
@@ -940,11 +1114,12 @@ def main() -> int:
                     f"控制频率 {loop_hz:.1f} Hz（目标 50）  {state}  推理 {infer_us:.0f} us  "
                     f"电压 {bus_v:.1f} V 电量 {battery_text(bus_v)}  stand偏差 {hold_err:.2f}°  "
                     f"手柄 {stick.raw:+.2f}  摇杆速度 {stick.cmd:+.2f} m/s  本拍写入 {written:+.2f}  "
-                    f"平移 {stick.vy:+.2f} m/s  转向 {stick.wz:+.2f} rad/s  髋yaw修正 {yaw_trim:+.3f}"
+                    f"平移 {stick.vy:+.2f} m/s  转向 {stick.wz:+.2f} rad/s  髋yaw修正 {yaw_trim:+.3f}  "
+                    f"直行补偿 {yaw_fix:+.3f}  灯 {led.label if led is not None else '关'}"
                     + (f"  CAN丢帧 {can_drop}" if can_drop else "")
                     + ("" if not link_lost else "  链路断开")
                 )
-                say("操作：A 或空格 启停策略 | B 或 Q 卸力 | Ctrl+C 回站立保持")
+                say("操作：A 或空格 启停策略 | B 或 Q 卸力 | 键盘或手柄 X 切换灯效 | Ctrl+C 回站立保持")
                 can_drop = 0
                 say(
                     f"{'idx':>3} {'关节':<12} {'电机':>4} {'动作':>8} {'策略角':>8} {'电机角':>8} "
@@ -985,6 +1160,8 @@ def main() -> int:
         if csv_log is not None:
             csv_log.close()
             say(f"记录已写入 {csv_log.path}  共 {csv_log.rows} 行")
+        if led is not None:
+            led.close()
         if stick is not None:
             stick.close()
         if keys is not None:

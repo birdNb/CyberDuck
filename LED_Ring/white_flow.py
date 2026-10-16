@@ -23,6 +23,7 @@ import ctypes
 import math
 import os
 import random
+import select
 import signal
 import subprocess
 import sys
@@ -248,6 +249,53 @@ def effect_ironman(n: int, count: int, brightness: int, _tail: int, _st: Sparkle
     return buf
 
 
+def effect_white_full(_n: int, count: int, _brightness: int, _tail: int, _st: SparkleState) -> bytearray:
+    """整圈 100% 白光，不吃 --brightness。"""
+    return solid_white(count, 255)
+
+
+def effect_white_half(_n: int, count: int, _brightness: int, _tail: int, _st: SparkleState) -> bytearray:
+    """整圈 50% 白光。"""
+    return solid_white(count, 128)
+
+
+def effect_duck(n: int, count: int, brightness: int, _tail: int, _st: SparkleState) -> bytearray:
+    """鸭黄心跳：暖黄连跳两下，再歇一拍。"""
+    buf = bytearray(count * 3)
+    period = 78
+    p = n % period
+
+    def pulse(center: float, width: float) -> float:
+        d = abs(p - center)
+        if d >= width:
+            return 0.0
+        x = d / width
+        return 0.5 + 0.5 * math.cos(math.pi * x)
+
+    beat = max(pulse(8, 8), pulse(24, 6) * 0.85)
+    level = 0.045 + 0.955 * beat
+    v = scale_v(brightness) * level
+    pixel = hsv_to_grb(0.105 - 0.02 * beat, 0.9, v)
+    for i in range(count):
+        put_grb(buf, i, pixel)
+    return buf
+
+
+def effect_comet(n: int, count: int, brightness: int, _tail: int, _st: SparkleState) -> bytearray:
+    """彗星：金色彗头拖青色尾巴，绕环走。"""
+    buf = bytearray(count * 3)
+    v = scale_v(min(255, int(brightness * 1.6)))
+    head = n % count
+    for t in range(min(count, 8)):
+        i = (head - t) % count
+        if t == 0:
+            put_grb(buf, i, hsv_to_grb(0.12, 0.25, min(1.0, v)))
+        else:
+            fade = ((8 - t) / 8.0) ** 1.6
+            put_grb(buf, i, hsv_to_grb(0.52, 0.9, v * 0.75 * fade))
+    return buf
+
+
 def effect_sparkle(n: int, count: int, brightness: int, _tail: int, st: SparkleState) -> bytearray:
     """星闪：随机亮点淡出。"""
     buf = bytearray(count * 3)
@@ -275,6 +323,10 @@ EFFECTS: Dict[str, Tuple[str, EffectFn]] = {
     "wave": ("波浪", effect_wave),
     "fill": ("堆积", effect_fill),
     "sparkle": ("星闪", effect_sparkle),
+    "white": ("100%白光", effect_white_full),
+    "white50": ("50%白光", effect_white_half),
+    "duck": ("鸭黄心跳", effect_duck),
+    "comet": ("彗星", effect_comet),
 }
 
 CYCLE_ORDER = [
@@ -287,6 +339,9 @@ CYCLE_ORDER = [
     "flow",
     "fill",
     "sparkle",
+    "white",
+    "duck",
+    "comet",
 ]
 
 
@@ -417,6 +472,96 @@ def run_boot(
         lib.ws2812_close()
 
 
+def run_remote(
+    lib,
+    count: int,
+    brightness: int,
+    tail: int,
+    delay: float,
+    fifo_path: str,
+    start_name: str,
+) -> None:
+    """fifo 一行一个灯效名。off 熄灭，quit 退出。给手柄轮询用。"""
+    running = True
+
+    def _stop(_signum=None, _frame=None):
+        nonlocal running
+        running = False
+
+    signal.signal(signal.SIGINT, _stop)
+    signal.signal(signal.SIGTERM, _stop)
+
+    st = SparkleState()
+    name = start_name if start_name == "off" or start_name in EFFECTS else "flow"
+    n = 0
+    pending = ""
+    fifo_fd = -1
+    watch: List[int] = []
+    if fifo_path:
+        # 先打开读端，父进程才能连上写端。O_RDWR 避免写端还没来时读端收到 EOF。
+        fifo_fd = os.open(fifo_path, os.O_RDWR | os.O_NONBLOCK)
+        watch.append(fifo_fd)
+    else:
+        watch.append(sys.stdin.fileno())
+    print("READY", flush=True)
+    next_t = time.monotonic()
+    try:
+        while running:
+            ready, _, _ = select.select(watch, [], [], 0)
+            if ready:
+                try:
+                    if fifo_fd >= 0:
+                        chunk = os.read(fifo_fd, 256)
+                    else:
+                        chunk = os.read(sys.stdin.fileno(), 256)
+                except BlockingIOError:
+                    chunk = b""
+                if chunk == b"" and fifo_fd < 0:
+                    break
+                pending += chunk.decode(errors="replace")
+                while "\n" in pending:
+                    cmd, pending = pending.split("\n", 1)
+                    cmd = cmd.strip()
+                    if not cmd:
+                        continue
+                    if cmd in ("quit", "exit"):
+                        running = False
+                        break
+                    if cmd == "off" or cmd in EFFECTS:
+                        if cmd != name:
+                            name = cmd
+                            n = 0
+                            st.reset()
+                        label = "熄灭" if name == "off" else EFFECTS[name][0]
+                        print(f"灯效 {label}", flush=True)
+                    else:
+                        print(f"未知灯效 {cmd}", flush=True)
+            if not running:
+                break
+            if name == "off":
+                frame = bytearray(count * 3)
+            else:
+                frame = EFFECTS[name][1](n, count, brightness, tail, st)
+                n += 1
+            show_frame(lib, frame)
+            if name == "off":
+                lib.ws2812_hold_low()
+            next_t = tick_delay(next_t, delay)
+        off = bytearray(count * 3)
+        show_frame(lib, off)
+        lib.ws2812_hold_low()
+    finally:
+        try:
+            off = bytearray(count * 3)
+            show_frame(lib, off)
+            lib.ws2812_hold_low()
+        except Exception:
+            pass
+        lib.ws2812_close()
+        if fifo_fd >= 0:
+            os.close(fifo_fd)
+
+
 def run_loop(
     lib,
     names: List[str],
@@ -492,6 +637,8 @@ def main() -> int:
     parser.add_argument("--idle", type=int, default=IDLE_BRIGHTNESS, help="保留参数，开机结束已改为熄灭")
     parser.add_argument("--list", action="store_true", help="列出灯效")
     parser.add_argument("--off", action="store_true", help="发送全灭后退出")
+    parser.add_argument("--remote", action="store_true", help="从 fifo 或 stdin 读灯效名，一行一个，给手柄轮询")
+    parser.add_argument("--fifo", default="", help="灯效命令管道，优先于 stdin")
     parser.add_argument("--no-sudo", action="store_true", help="不要自动 sudo（systemd 用）")
     args = parser.parse_args()
 
@@ -539,6 +686,22 @@ def main() -> int:
         finally:
             lib.ws2812_hold_low()
             lib.ws2812_close()
+        return 0
+
+    if args.remote:
+        if lib.ws2812_open(args.chip, args.line, args.count) != 0:
+            err = lib.ws2812_error() or b"unknown"
+            print(f"打开 GPIO_{args.line} 失败: {err.decode('utf-8', 'replace')}", file=sys.stderr)
+            return 1
+        run_remote(
+            lib,
+            args.count,
+            args.brightness,
+            args.tail,
+            args.delay,
+            args.fifo,
+            args.effect if args.effect in EFFECTS else "flow",
+        )
         return 0
 
     if args.boot or args.boot_demo:
