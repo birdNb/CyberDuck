@@ -16,6 +16,7 @@
     腿完全伸直时机身最高，脖子正好到达 stand 的脖子方向。
   B 键：停车并退出
   X 键：切换灯效（和 watch_policy.py 同一套灯环）
+  Y 键：立即进入 / 退出实时平衡（默认不进入，不需要先前进）
 
 全程力矩保护 1 N·m：站立保持、升降和轮电机的力矩上限都限制在 1 N·m。
 
@@ -32,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
 import os
 import select
 import signal
@@ -42,6 +44,7 @@ import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "IMU"))
 
 ROOT = Path(__file__).resolve().parents[1]
 RUN_DIR = Path(__file__).resolve().parent
@@ -111,6 +114,14 @@ def wheel_targets(
     left = max(-cap, min(cap, left))
     right = max(-cap, min(cap, right))
     return left, right
+
+
+def step_limit(cur: float, goal: float, step: float = 5.0) -> float:
+    """朝目标最多走 step 度，不会越过目标。"""
+    err = goal - cur
+    if abs(err) <= step:
+        return goal
+    return cur + math.copysign(step, err)
 
 
 def ramp(cur: float, goal: float, accel: float, dt: float) -> float:
@@ -253,6 +264,157 @@ class LedRing:
             pass
 
 
+class BodyImu:
+    """LSM6DSV16X 直连读取，和 watch_policy.py 的 open_imu 同一套总线。"""
+
+    def __init__(self) -> None:
+        self.lib = None
+        self.lock_fd = -1
+        self.dev = None
+        try:
+            import fcntl
+
+            from lsm6dsv16x import (
+                ADDRS,
+                LSM6DSV16X,
+                WHO_AM_I_VAL,
+                I2CGpioError,
+                load_lib,
+                open_bus,
+                scan_bus,
+            )
+
+            self.lock_fd = os.open("/tmp/microduck-imu-i2c6.lock", os.O_CREAT | os.O_RDWR, 0o644)
+            try:
+                fcntl.flock(self.lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise I2CGpioError("IMU 被占用，可能有另一个程序在读")
+            os.write(self.lock_fd, f"{os.getpid()}\n".encode())
+            self.lib = load_lib()
+            open_bus(self.lib, pullup=False)
+            found = scan_bus(self.lib)
+            for addr in [a for a in found if a in ADDRS] or list(ADDRS):
+                candidate = LSM6DSV16X(self.lib, addr)
+                try:
+                    who = candidate.who_am_i()
+                except I2CGpioError:
+                    continue
+                if who == WHO_AM_I_VAL:
+                    candidate.init()
+                    self.dev = candidate
+                    break
+            if self.dev is None:
+                raise I2CGpioError("未找到 LSM6DSV16X")
+            print("IMU 已打开，自平衡启用。")
+        except Exception as exc:
+            print(f"IMU 未打开（{exc}），自平衡禁用，其余驾驶功能正常。")
+            self.close()
+
+    @property
+    def ok(self) -> bool:
+        return self.dev is not None
+
+    def read(self):
+        """返回 (gyro rad/s, gravity 单位向量)。直立时 gravity 约 (0, 0, -1)，前倾时 gx > 0。"""
+        sample = self.dev.read_raw().to_policy()
+        return sample.gyro, sample.gravity
+
+    def close(self) -> None:
+        if self.lib is not None:
+            try:
+                self.lib.i2c_gpio_close()
+            except Exception:
+                pass
+            self.lib = None
+        if self.lock_fd >= 0:
+            try:
+                os.close(self.lock_fd)
+            except OSError:
+                pass
+            self.lock_fd = -1
+        self.dev = None
+
+
+class Balance:
+    """机身俯仰负反馈。前倾为正，补偿方向已按实测翻正。
+
+    倾角不用重力低通。重力低通会把观测拖后一两百毫秒，补偿按过时角度去追就会震荡。
+    这里用互补滤波：陀螺积分给出几乎无延迟的倾角，加速度只以较慢的时间常数
+    把漂移拉回来。阻尼按角速度的「度/秒」计算，和比例项同一量纲。
+    """
+
+    ACC_TAU_S = 0.8
+    # 比例只看倾角的慢变化（坡度）。4 秒左右的来回晃不进比例环，避免髋追着自己晃。
+    HOLD_TAU_S = 0.7
+    RATE_DEG_S = 50.0
+    DEAD_DEG = 1.5
+    RATE_LPF_S = 0.08
+    RATE_DEAD_DPS = 4.0
+
+    def __init__(self, imu: BodyImu, kp: float, kd: float, max_deg: float, neck_ratio: float, flip: bool) -> None:
+        self.imu = imu
+        self.kp = kp
+        self.kd = kd
+        self.max_deg = max_deg
+        self.neck_ratio = neck_ratio
+        self.flip = -1.0 if flip else 1.0
+        self.lean_deg: float | None = None
+        self.lean_hold: float | None = None
+        self.rate_f = 0.0
+        self.delta = 0.0
+
+    @staticmethod
+    def _accel_lean_deg(gravity: tuple[float, float, float]) -> float:
+        gx, gy, gz = gravity
+        return math.degrees(math.atan2(gx, math.hypot(gy, gz)))
+
+    def update(self, dt: float, active: bool = True) -> tuple[float, float, float]:
+        """返回（前倾角°，髋补偿°，颈补偿°）。关闭时补偿按速率平滑回零，倾角估计不停。"""
+        if not self.imu.ok:
+            return 0.0, 0.0, 0.0
+        try:
+            gyro, gravity = self.imu.read()
+        except Exception:
+            lean = 0.0 if self.lean_deg is None else self.lean_deg
+            return lean, self.delta, self.delta * self.neck_ratio
+        dt = max(0.001, min(0.05, dt))
+        meas = self._accel_lean_deg(gravity)
+        rate_deg_s = math.degrees(float(gyro[1]))
+        if self.lean_deg is None:
+            self.lean_deg = meas
+        else:
+            # 倾角仍用这一拍陀螺积分，保持坡上的响应。阻尼另走低通。
+            self.lean_deg += rate_deg_s * dt
+            self.lean_deg += (meas - self.lean_deg) * (dt / self.ACC_TAU_S)
+        a = dt / (self.RATE_LPF_S + dt)
+        self.rate_f += a * (rate_deg_s - self.rate_f)
+        rate_d = 0.0 if abs(self.rate_f) < self.RATE_DEAD_DPS else self.rate_f
+        lean = self.lean_deg
+        if self.lean_hold is None:
+            self.lean_hold = lean
+        else:
+            b = dt / (self.HOLD_TAU_S + dt)
+            self.lean_hold += b * (lean - self.lean_hold)
+        hold = self.lean_hold
+        hold_eff = hold - math.copysign(self.DEAD_DEG, hold) if abs(hold) > self.DEAD_DEG else 0.0
+        raw = (self.kp * hold_eff + self.kd * rate_d) * self.flip
+        raw = max(-self.max_deg, min(self.max_deg, raw))
+        if not active:
+            raw = 0.0
+        step = self.RATE_DEG_S * dt
+        self.delta += max(-step, min(step, raw - self.delta))
+        return lean, self.delta, self.delta * self.neck_ratio
+
+
+# 髋 pitch 两侧电机符号：左 8 号为正向、右 3 号镜像为负向，补偿按机身方向施加时先乘这个。
+HIP_SIGN = {8: 1.0, 3: -1.0}
+NECK_PITCH_ID = 12
+# 脖子每次最多走 5°，剩余不足 5° 时停在目标上，不冲过去。
+NECK_STEP_DEG = 5.0
+NECK_STEP_S = 0.12
+NECK_BALANCE_DEG = 25.0
+
+
 class Gamepad:
     """读 /dev/input/js* 的最新摇杆位置。轴号和 watch_policy.py 一致。"""
 
@@ -265,6 +427,7 @@ class Gamepad:
         self.buttons = [False] * 16
         self.button_b = False
         self.button_x = False
+        self.button_y = False
         self.fd = -1
         self.path = ""
         self._next_open = 0.0
@@ -332,6 +495,9 @@ class Gamepad:
                         # 北通丝印 X 在 js 2，内核 BTN_X 在 js 3，两个都算。
                         if not init and value == 1 and number in (2, 3):
                             self.button_x = True
+                        # Y 键切换自平衡（js 4）。
+                        if not init and value == 1 and number == 4:
+                            self.button_y = True
         fwd = -self.axis[1]
         turn = -self.axis[0]
         # 北通右摇杆横向是 axis 2、纵向是 axis 3，推上为正（升高）。
@@ -367,6 +533,18 @@ def main() -> int:
     parser.add_argument("--swap-wheels", action="store_true", help="交换左右轮（改回 1 号当左轮、6 号当右轮）")
     parser.add_argument("--neck-seconds", type=float, default=1.5, help="结束时脖子回 0 位的过渡秒数")
     parser.add_argument("--no-led", action="store_true", help="不接灯环，手柄 X 无效")
+    parser.add_argument("--no-balance", action="store_true", help="关闭 IMU 自平衡负反馈")
+    parser.add_argument("--balance-kp", type=float, default=1.0, help="平衡 P：倾角每 1° 出 1° 髋补偿，用来在坡上拉平")
+    parser.add_argument("--balance-kd", type=float, default=0.1, help="平衡 D：只抑制真实转动，不跟着晃动加码")
+    parser.add_argument("--balance-max", type=float, default=40.0, help="平衡补偿限幅（度）")
+    parser.add_argument("--balance-neck", type=float, default=0.45, help="neck pitch 随髋平衡补偿的倍率")
+    parser.add_argument(
+        "--neck-forward",
+        type=float,
+        default=110.0,
+        help="完全收缩时脖子前伸角度，不会超过站立姿态的脖子角度",
+    )
+    parser.add_argument("--balance-flip", action="store_true", help="平衡补偿方向反了时整体翻转")
     args = parser.parse_args()
 
     cfg = pose.load_config(pose.CONFIG_PATH)
@@ -429,10 +607,30 @@ def main() -> int:
     cmd_left = 0.0
     cmd_right = 0.0
     led = None
+    imu = None
+    balance = None
     try:
         led = LedRing()
         if not args.no_led:
             led.start()
+        if not args.no_balance:
+            imu = BodyImu()
+            if imu.ok:
+                balance = Balance(
+                    imu,
+                    args.balance_kp,
+                    args.balance_kd,
+                    args.balance_max,
+                    args.balance_neck,
+                    args.balance_flip,
+                )
+                print(
+                    f"平衡估计：陀螺积分 + 加速度 {Balance.ACC_TAU_S:.1f}s 修正，"
+                    f"kp={args.balance_kp:.2f} kd={args.balance_kd:.2f} °/(°/s) 限幅 ±{args.balance_max:.0f}°。"
+                    "默认关闭，按 Y 立即进入实时平衡，再按 Y 退出。"
+                )
+        # 默认不进入自平衡。按 Y 立刻出力，不需要先前进。
+        balance_on = False
         # 进入站立：只给非轮关节发站立指令。轮电机保持失能，禁止状态下不转。
         for mid in hold_ids:
             bus.enable(mid)
@@ -444,6 +642,9 @@ def main() -> int:
         start_deg = pose.read_degrees(bus, hold_ids)
         duration = max(0.5, float(cfg.get("transition_s", 3.0)))
         print(f"进入站立姿态 {args.pose}，过渡 {duration:.1f}s ...")
+        print("脖子保持 0 位。右摇杆向下收缩；自平衡倾角超过 25° 才前伸。")
+        neck_cmd = {mid: 0.0 for mid in NECK_IDS}
+        neck_step_at = 0.0
 
         t0 = time.monotonic()
         while running:
@@ -453,6 +654,15 @@ def main() -> int:
             cmd_deg = {
                 mid: start_deg[mid] + (stand_deg[mid] - start_deg[mid]) * s for mid in hold_ids
             }
+            for mid in NECK_IDS:
+                if mid in cmd_deg:
+                    cmd_deg[mid] = 0.0
+            if balance is not None:
+                # 站立过渡阶段静止，不输出平衡补偿，避免原地来回抢。
+                _lean, d_hip, _d_neck = balance.update(period, False)
+                for hid, sign in HIP_SIGN.items():
+                    if hid in cmd_deg:
+                        cmd_deg[hid] += sign * d_hip
             pose.command_position(bus, hold_ids, cmd_deg, torque_nm)
             bus.collect(timeout=min(0.004, period * 0.3))
             if u >= 1.0:
@@ -508,7 +718,7 @@ def main() -> int:
                 "t_s", "fwd", "turn", "spin", "gear", "height_stick", "height_u", "height_cap",
                 "cmd_left_rad_s", "cmd_right_rad_s",
                 "fb_left_rad_s", "fb_right_rad_s", "torque_left_nm", "torque_right_nm",
-                "voltage_v", "battery_pct",
+                "voltage_v", "battery_pct", "lean_deg", "balance_hip_deg", "balance_on",
             ]
         )
         pose_ids = [
@@ -553,6 +763,14 @@ def main() -> int:
                     pad.button_x = False
                     print(f"灯效：{led.cycle()}", flush=True)
                 led.drain()
+                if pad.button_y:
+                    pad.button_y = False
+                    if balance is not None:
+                        balance_on = not balance_on
+                        print(
+                            "Y：进入自平衡。" if balance_on else "Y：退出自平衡，补偿平滑回零。",
+                            flush=True,
+                        )
                 if gear_now != boost_prev:
                     print(
                         f"{gear_names[gear_now]}档：速度上限 ±{gear_caps[gear_now]:.0f} rad/s",
@@ -592,20 +810,46 @@ def main() -> int:
                 if height_u > height_cap:
                     height_u = height_cap
 
+                # 按 Y 后立即实时平衡，静止、坡上、行驶都出力。再按 Y 才平滑回零。
+                balance_active = balance_on
+                if balance is not None:
+                    lean_deg, d_hip, d_neck = balance.update(dt_real, balance_active)
+                else:
+                    lean_deg, d_hip, d_neck = 0.0, 0.0, 0.0
+
                 pose.command_position(bus, pose_ids, stand_deg, torque_nm)
                 lift_deg = {
                     mid: stand_deg[mid] + (extended_deg[mid] - stand_deg[mid]) * height_u
                     for mid in lift_ids
                 }
+                for hid, sign in HIP_SIGN.items():
+                    if hid in lift_deg:
+                        lift_deg[hid] += sign * d_hip
                 pose.command_position(bus, lift_ids, lift_deg, torque_nm)
-                if neck_ids:
-                    # 脖子同步：u=0（收缩）时在 drive 方向，u=1（伸直最高）到达 stand 方向。
-                    neck_deg = {
-                        mid: stand_deg[mid]
-                        + (upright_deg[mid] - stand_deg[mid]) * height_u
-                        for mid in neck_ids
-                    }
-                    pose.command_position(bus, neck_ids, neck_deg, torque_nm)
+                if neck_ids and loop_t >= neck_step_at:
+                    neck_step_at = loop_t + NECK_STEP_S
+                    # 平时停在当前角度。右摇杆向下把脖子收回到 0。
+                    # 自平衡倾角超过 25° 时才前伸，最远到站立角度。
+                    neck_goal = neck_cmd.get(NECK_PITCH_ID, 0.0)
+                    stand_neck = upright_deg.get(NECK_PITCH_ID)
+                    if deadzone(height_s) < 0.0:
+                        neck_goal = 0.0
+                    elif (
+                        balance_active
+                        and abs(lean_deg) >= NECK_BALANCE_DEG
+                        and stand_neck is not None
+                    ):
+                        neck_goal = stand_neck
+                    neck_cmd[NECK_PITCH_ID] = step_limit(neck_cmd.get(NECK_PITCH_ID, 0.0), neck_goal)
+                    if 11 in upright_deg and stand_neck is not None:
+                        level = upright_deg[11] + stand_neck
+                        head_goal = level - neck_cmd[NECK_PITCH_ID]
+                        neck_cmd[11] = step_limit(neck_cmd.get(11, 0.0), head_goal)
+                    for mid in neck_ids:
+                        neck_cmd.setdefault(mid, 0.0)
+                    pose.command_position(bus, neck_ids, neck_cmd, torque_nm)
+                elif neck_ids:
+                    pose.command_position(bus, neck_ids, neck_cmd, torque_nm)
                 send_speed(bus, bus.motors[left_id], cmd_left * wheel_sign(left_id), args.wheel_tqe)
                 send_speed(bus, bus.motors[right_id], cmd_right * wheel_sign(right_id), args.wheel_tqe)
 
@@ -630,6 +874,7 @@ def main() -> int:
                         f"{fb_left:.3f}", f"{fb_right:.3f}",
                         f"{tor_left:.4f}", f"{tor_right:.4f}",
                         f"{volts:.2f}", f"{battery_percent(volts):.1f}",
+                        f"{lean_deg:.3f}", f"{d_hip:.3f}", "1" if balance_active else "0",
                     ]
                 )
 
@@ -640,6 +885,9 @@ def main() -> int:
                     print(
                         f"t={elapsed:5.1f}s  杆 前{fwd_s:+.2f} 转{turn_s:+.2f} 自{spin_s:+.2f}  "
                         f"档{gear_names[gear_now]}  升降 {height_u:4.2f}/≤{height_cap:4.2f}  "
+                        f"前倾 {lean_deg:+5.1f}° 补偿 {d_hip:+5.2f}° "
+                        f"颈 {neck_cmd.get(NECK_PITCH_ID, 0.0):+5.1f}° 头 {neck_cmd.get(11, 0.0):+5.1f}° "
+                        f"自平衡{'开' if balance_active else '关'}  "
                         f"轮指令 左{cmd_left:+6.2f} 右{cmd_right:+6.2f}  "
                         f"反馈 左{fb_left:+6.2f} 右{fb_right:+6.2f}  "
                         f"电压 {volts:.1f} V 电量 {battery_text(volts)}  灯 {led.label}  "
@@ -656,36 +904,33 @@ def main() -> int:
             log_f.close()
             print(f"驾驶日志 {log_path}")
 
-        print("停车：轮速归零，其余关节保持站立 ...")
+        print("停车：轮速归零，脖子平滑回 0 位后保持。")
+        body_hold = {mid: stand_deg[mid] for mid in hold_ids if mid not in NECK_IDS}
+        neck_ids = [mid for mid in NECK_IDS if mid in ids]
+        for mid in neck_ids:
+            neck_cmd.setdefault(mid, 0.0)
+        arrived = False
+        hold_zero_until = 0.0
         t_b = time.monotonic()
-        while time.monotonic() - t_b < 0.5:
-            pose.command_position(bus, hold_ids, stand_deg, torque_nm)
+        next_neck_step = t_b
+        while time.monotonic() - t_b < 6.0:
+            now = time.monotonic()
+            if now >= next_neck_step:
+                next_neck_step = now + NECK_STEP_S
+                for mid in neck_ids:
+                    neck_cmd[mid] = step_limit(neck_cmd[mid], 0.0)
+            pose.command_position(bus, list(body_hold), body_hold, torque_nm)
+            if neck_ids:
+                pose.command_position(bus, neck_ids, neck_cmd, torque_nm)
             send_speed(bus, bus.motors[left_id], 0.0, args.wheel_tqe)
             send_speed(bus, bus.motors[right_id], 0.0, args.wheel_tqe)
+            if not arrived and all(abs(neck_cmd[mid]) < 0.5 for mid in neck_ids):
+                arrived = True
+                hold_zero_until = time.monotonic() + 0.4
+                print("脖子已在 0 位，保持后卸力。")
+            if arrived and time.monotonic() >= hold_zero_until:
+                break
             time.sleep(period)
-
-        # 脖子（11..14）平滑回 0 位，其余关节继续保持站立，轮子保持停止。
-        neck_ids = [mid for mid in NECK_IDS if mid in ids]
-        if neck_ids:
-            print(f"脖子 {neck_ids} 回 0 位，用时 {args.neck_seconds:.1f}s。请扶稳机器人，随后卸力。")
-            try:
-                neck_start = pose.read_degrees(bus, neck_ids)
-            except RuntimeError:
-                neck_start = {mid: stand_deg[mid] for mid in neck_ids}
-            neck_t0 = time.monotonic()
-            while True:
-                now = time.monotonic()
-                u = (now - neck_t0) / max(0.2, args.neck_seconds)
-                s = pose.smootherstep(u)
-                cmd_deg = dict(stand_deg)
-                for mid in neck_ids:
-                    cmd_deg[mid] = neck_start[mid] * (1.0 - s)
-                pose.command_position(bus, hold_ids, cmd_deg, torque_nm)
-                send_speed(bus, bus.motors[left_id], 0.0, args.wheel_tqe)
-                send_speed(bus, bus.motors[right_id], 0.0, args.wheel_tqe)
-                if u >= 1.0:
-                    break
-                time.sleep(period)
 
         print("卸力：失能全部关节 ...")
         for mid in ids:
@@ -695,6 +940,8 @@ def main() -> int:
         pad.close()
         return 0
     finally:
+        if imu is not None:
+            imu.close()
         if led is not None:
             led.close()
         bus.close()
