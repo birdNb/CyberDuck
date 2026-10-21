@@ -9,8 +9,9 @@
   左摇杆上下：前进 / 后退
   左摇杆左右：行进中转弯（差速）
   右摇杆左右：原地自转
-  右摇杆上下：机身升降。双腿髋 pitch 和膝（2、3、7、8 号）按 drive
-    姿态角同步缩放：推上腿伸直、机身升高，拉下腿收缩、机身降低。
+  右摇杆上下：机身升降。双腿髋 pitch 和膝（2、3、7、8 号）在收缩点
+    （drive 姿态）和伸直点（extended 姿态，腿物理伸直时的实测读数）之间
+    逐关节一一对应插值：推上升高，拉下降低。零位不准，所以不拟合到 0。
     升降同时脖子（11、12、13、14 号）从 drive 角度同步滑向 stand 角度：
     腿完全伸直时机身最高，脖子正好到达 stand 的脖子方向。
   B 键：停车并退出
@@ -256,8 +257,7 @@ class Gamepad:
     """读 /dev/input/js* 的最新摇杆位置。轴号和 watch_policy.py 一致。"""
 
     PATHS = ("/dev/input/js0", "/dev/input/js1", "/dev/input/js2", "/dev/input/js3")
-    # LT 在北通上可能是数字按钮 6/7，也可能是模拟扳机轴 5，任一触发都算按下。
-    LT_BUTTONS = (6, 7)
+    # 模拟扳机轴。数字键按北通常见布局：左侧 6/4，右侧 7/5。
     LT_AXIS = 5
 
     def __init__(self) -> None:
@@ -304,8 +304,8 @@ class Gamepad:
         self.buttons = [False] * 16
         self._next_open = time.monotonic() + 0.5
 
-    def poll(self) -> tuple[float, float, float, bool, float]:
-        """返回（前进，左转弯，左自转，LT高速档，升降），摇杆量 -1..1，推左/推前/推上为正。"""
+    def poll(self) -> tuple[float, float, float, int, float, bool, bool]:
+        """返回（前进，左转，左自转，档位 0/1/2，升降，LT按下，RT按下）。摇杆量推左/推前/推上为正。"""
         self.try_open()
         if self.fd >= 0:
             while True:
@@ -337,13 +337,14 @@ class Gamepad:
         # 北通右摇杆横向是 axis 2、纵向是 axis 3，推上为正（升高）。
         spin = -self.axis[2]
         height = -self.axis[3]
-        boost = (
-            any(self.buttons[n] for n in self.LT_BUTTONS)
-            or self.axis[self.LT_AXIS] > 0.3
-        )
+        # 档位：0 普通，1 按 LT 高速（实测 20 已到电机上限，不设更高档）。
+        # 高度联动：左侧键（LT/LB）随速度把高度压到 1/3 以内，右侧键（RT/RB）压到最低。
+        lt = self.buttons[6] or self.buttons[4] or self.axis[self.LT_AXIS] > 0.3
+        rt = self.buttons[7] or self.buttons[5]
+        gear = 1 if lt else 0
         if self.fd < 0:
-            return 0.0, 0.0, 0.0, False, 0.0
-        return fwd, turn, spin, boost, height
+            return 0.0, 0.0, 0.0, 0, 0.0, False, False
+        return fwd, turn, spin, gear, height, lt, rt
 
     def close(self) -> None:
         if self.fd >= 0:
@@ -356,7 +357,7 @@ def main() -> int:
     parser.add_argument("--iface", default="can0")
     parser.add_argument("--pose", default="drive", help="初始姿态名，用 pose_config.yaml 里的 drive")
     parser.add_argument("--vmax", type=float, default=10.0, help="普通档前进后退最大轮速 rad/s")
-    parser.add_argument("--vmax-fast", type=float, default=20.0, help="按住 LT 后前进后退最大轮速 rad/s")
+    parser.add_argument("--vmax-fast", type=float, default=20.0, help="按住 LT 后前进后退最大轮速 rad/s，实测已是电机上限")
     parser.add_argument("--turn", type=float, default=6.0, help="左摇杆左右转弯的差速上限 rad/s")
     parser.add_argument("--spin", type=float, default=8.0, help="右摇杆自转的差速上限 rad/s")
     parser.add_argument("--accel", type=float, default=18.0, help="轮速变化率 rad/s^2，跟手又平滑")
@@ -387,6 +388,16 @@ def main() -> int:
         }
     except SystemExit:
         print("没有 stand 姿态，升降时脖子不联动。")
+
+    # 升降的伸直点：extended 姿态是腿物理伸直时的实测角度，逐关节对应。
+    extended_deg: dict[int, float] = {}
+    try:
+        extended_spec = pose.pose_spec(cfg, "extended")
+        extended_deg = {
+            int(k): float(v) for k, v in (extended_spec.get("joints") or {}).items()
+        }
+    except SystemExit:
+        print("没有 extended 姿态，升降锁定在收缩位。先把腿摆到物理伸直再采集 extended。")
 
     bus, ids = pose.open_bus(cfg)
     left_id, right_id = (WHEEL_RIGHT, WHEEL_LEFT) if args.swap_wheels else (WHEEL_LEFT, WHEEL_RIGHT)
@@ -494,7 +505,7 @@ def main() -> int:
         writer = csv.writer(log_f)
         writer.writerow(
             [
-                "t_s", "fwd", "turn", "spin", "boost", "height_stick", "height_factor",
+                "t_s", "fwd", "turn", "spin", "gear", "height_stick", "height_u", "height_cap",
                 "cmd_left_rad_s", "cmd_right_rad_s",
                 "fb_left_rad_s", "fb_right_rad_s", "torque_left_nm", "torque_right_nm",
                 "voltage_v", "battery_pct",
@@ -511,24 +522,30 @@ def main() -> int:
         ]
         if neck_ids:
             print(f"脖子 {neck_ids} 随升降联动：升高时从 drive 方向滑向 stand 方向。")
-        # 高度因子：1 是 drive 收缩位（最低），0 是两关节归零、腿伸直（最高）。
-        height_factor = 1.0
+        # 升降进度 u：0 是 drive 收缩位（最低），1 是 extended 伸直位（最高）。
+        # 升降关节在两组实测角度之间逐关节插值，不拟合数学 0 位。
+        lift_ok = all(mid in extended_deg for mid in lift_ids)
+        height_u = 0.0
         print(
             "开始驾驶。左摇杆上下前进后退，左摇杆左右转弯，右摇杆左右自转，右摇杆上下升降。"
-            f"普通档 ±{args.vmax:.0f} rad/s，按住 LT 切高速档 ±{args.vmax_fast:.0f} rad/s。"
+            f"普通档 ±{args.vmax:.0f} rad/s，按住 LT 切高速档 ±{args.vmax_fast:.0f} rad/s。LT 时高度随速度压到 1/3 以内，RT 时压到最低。"
             f"全程力矩保护 {torque_nm:.1f} N·m。B 键或 Ctrl+C 停车退出。"
         )
         drive_t0 = time.monotonic()
         next_print = drive_t0
         prev_t = drive_t0
-        boost_prev = False
+        boost_prev = 0
+        trig_prev = 0
+        gear_names = ("普通", "高速")
+        gear_caps = (args.vmax, args.vmax_fast)
         try:
             while running and takeover_ok:
                 loop_t = time.monotonic()
                 # 用真实循环间隔算斜坡，循环被拖慢时指令也不会滞后。
                 dt_real = max(0.001, min(0.1, loop_t - prev_t))
                 prev_t = loop_t
-                fwd_s, turn_s, spin_s, boost, height_s = pad.poll()
+                fwd_s, turn_s, spin_s, boost, height_s, lt_on, rt_on = pad.poll()
+                gear_now = int(boost)
                 if pad.button_b:
                     print("B 键停车，退出驾驶。")
                     break
@@ -536,34 +553,56 @@ def main() -> int:
                     pad.button_x = False
                     print(f"灯效：{led.cycle()}", flush=True)
                 led.drain()
-                # 右摇杆上推升高（因子减小、腿伸直），下拉降低（因子增大、腿收缩）。
-                height_factor = max(
-                    0.0,
-                    min(1.0, height_factor - deadzone(height_s) * args.height_rate * dt_real),
-                )
-                if boost != boost_prev:
+                if gear_now != boost_prev:
                     print(
-                        f"高速档{'开' if boost else '关'}：速度上限 "
-                        f"±{args.vmax_fast if boost else args.vmax:.0f} rad/s",
+                        f"{gear_names[gear_now]}档：速度上限 ±{gear_caps[gear_now]:.0f} rad/s",
                         flush=True,
                     )
-                    boost_prev = boost
-                vmax_now = args.vmax_fast if boost else args.vmax
+                    boost_prev = gear_now
+                vmax_now = gear_caps[gear_now]
                 tgt_left, tgt_right = wheel_targets(
                     fwd_s, turn_s, spin_s, vmax_now, args.turn, args.spin
                 )
                 cmd_left = ramp(cmd_left, tgt_left, args.accel, dt_real)
                 cmd_right = ramp(cmd_right, tgt_right, args.accel, dt_real)
 
+                # 右摇杆上推升高（u 增大、走向伸直点），下拉降低（走向收缩点）。
+                if lift_ok:
+                    height_u = max(
+                        0.0,
+                        min(1.0, height_u + deadzone(height_s) * args.height_rate * dt_real),
+                    )
+                # 扳机联动：高度随当前轮速同步变化。按下过程中速度一涨，
+                # 高度上限立刻跟着降：LT 封顶 1/3，RT 封顶最低。
+                vel_mag = max(abs(cmd_left), abs(cmd_right))
+                speed_frac = min(1.0, vel_mag / max(args.vmax_fast, 1.0))
+                if rt_on:
+                    height_cap = 1.0 - speed_frac
+                elif lt_on:
+                    height_cap = 1.0 - speed_frac * (2.0 / 3.0)
+                else:
+                    height_cap = 1.0
+                trig_now = 2 if rt_on else (1 if lt_on else 0)
+                if trig_now != trig_prev:
+                    if trig_now == 2:
+                        print("RT 联动：高度随速度同步降到最低。", flush=True)
+                    elif trig_now == 1:
+                        print("LT 联动：高度随速度同步降到 1/3 以内。", flush=True)
+                    trig_prev = trig_now
+                if height_u > height_cap:
+                    height_u = height_cap
+
                 pose.command_position(bus, pose_ids, stand_deg, torque_nm)
-                lift_deg = {mid: stand_deg[mid] * height_factor for mid in lift_ids}
+                lift_deg = {
+                    mid: stand_deg[mid] + (extended_deg[mid] - stand_deg[mid]) * height_u
+                    for mid in lift_ids
+                }
                 pose.command_position(bus, lift_ids, lift_deg, torque_nm)
                 if neck_ids:
-                    # 脖子同步：高度因子 1（收缩）时在 drive 方向，
-                    # 0（伸直最高）时到达 stand 方向。
+                    # 脖子同步：u=0（收缩）时在 drive 方向，u=1（伸直最高）到达 stand 方向。
                     neck_deg = {
                         mid: stand_deg[mid]
-                        + (upright_deg[mid] - stand_deg[mid]) * (1.0 - height_factor)
+                        + (upright_deg[mid] - stand_deg[mid]) * height_u
                         for mid in neck_ids
                     }
                     pose.command_position(bus, neck_ids, neck_deg, torque_nm)
@@ -585,8 +624,8 @@ def main() -> int:
                 writer.writerow(
                     [
                         f"{elapsed:.3f}", f"{fwd_s:.3f}", f"{turn_s:.3f}", f"{spin_s:.3f}",
-                        "1" if boost else "0",
-                        f"{height_s:.3f}", f"{height_factor:.4f}",
+                        str(gear_now),
+                        f"{height_s:.3f}", f"{height_u:.4f}", f"{height_cap:.4f}",
                         f"{cmd_left:.3f}", f"{cmd_right:.3f}",
                         f"{fb_left:.3f}", f"{fb_right:.3f}",
                         f"{tor_left:.4f}", f"{tor_right:.4f}",
@@ -600,7 +639,7 @@ def main() -> int:
                     volts = bus.motors[WHEEL_LEFT].state.voltage
                     print(
                         f"t={elapsed:5.1f}s  杆 前{fwd_s:+.2f} 转{turn_s:+.2f} 自{spin_s:+.2f}  "
-                        f"档{'高速' if boost else '普通'}  高度 {height_factor:4.2f}  脖子 {1.0 - height_factor:4.2f}  "
+                        f"档{gear_names[gear_now]}  升降 {height_u:4.2f}/≤{height_cap:4.2f}  "
                         f"轮指令 左{cmd_left:+6.2f} 右{cmd_right:+6.2f}  "
                         f"反馈 左{fb_left:+6.2f} 右{fb_right:+6.2f}  "
                         f"电压 {volts:.1f} V 电量 {battery_text(volts)}  灯 {led.label}  "
