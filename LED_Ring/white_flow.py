@@ -186,6 +186,16 @@ def effect_breathe(n: int, count: int, brightness: int, _tail: int, _st: Sparkle
     return buf
 
 
+def effect_breathe_fast(n: int, count: int, brightness: int, _tail: int, _st: SparkleState) -> bytearray:
+    """整圈白色快闪呼吸。约 0.5 秒一个来回。"""
+    buf = bytearray(count * 3)
+    level = int(brightness * breathe_level(n, period=12) + 0.5)
+    pixel = (level, level, level)
+    for i in range(count):
+        put_grb(buf, i, pixel)
+    return buf
+
+
 def effect_neon_breathe(n: int, count: int, brightness: int, _tail: int, _st: SparkleState) -> bytearray:
     """整圈霓虹变色 + 呼吸。"""
     buf = bytearray(count * 3)
@@ -319,6 +329,7 @@ EFFECTS: Dict[str, Tuple[str, EffectFn]] = {
     "color-flow": ("彩色流水", effect_color_flow),
     "neon": ("霓虹变换", effect_neon),
     "breathe": ("呼吸灯", effect_breathe),
+    "breathe-fast": ("快闪呼吸", effect_breathe_fast),
     "neon-breathe": ("霓虹呼吸", effect_neon_breathe),
     "wave": ("波浪", effect_wave),
     "fill": ("堆积", effect_fill),
