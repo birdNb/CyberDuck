@@ -141,10 +141,11 @@ class LedRing:
     """
 
     ORDER = (
+        ("torque", "力矩亮度"),
+        ("breathe-fast", "快闪呼吸"),
         ("off", "熄灭"),
         ("flow", "流水灯"),
         ("ironman", "钢铁侠"),
-        ("breathe-fast", "快闪呼吸"),
         ("breathe", "呼吸灯"),
         ("white", "100%白光"),
         ("white50", "50%白光"),
@@ -158,6 +159,7 @@ class LedRing:
         self.label = "未连接"
         self.fifo = Path("/tmp/cyberduck-led.fifo")
         self.fifo_fd = -1
+        self._bright = -1
 
     def _open_fifo(self) -> None:
         if self.fifo.exists():
@@ -175,7 +177,7 @@ class LedRing:
         # 命令走 fifo。sudo 默认 use_pty 时，写给子进程的 stdin 到不了灯环。
         cmd = [
             "/usr/bin/python3", "-u", str(script),
-            "--remote", "--fifo", str(self.fifo), "--effect", "breathe-fast",
+            "--remote", "--fifo", str(self.fifo), "--effect", "torque",
         ]
         if os.geteuid() != 0:
             cmd = ["sudo", "-E", *cmd]
@@ -213,10 +215,10 @@ class LedRing:
                 except OSError as exc:
                     print(f"灯环命令管道打不开：{exc}")
                 self.index = next(
-                    i for i, (key, _label) in enumerate(self.ORDER) if key == "breathe-fast"
+                    i for i, (key, _label) in enumerate(self.ORDER) if key == "torque"
                 )
                 self.label = self.ORDER[self.index][1]
-                print("灯环已接通，当前快闪呼吸。手柄 X 切换灯效。")
+                print("灯环已接通，当前力矩亮度，最低 5%。手柄 X 下一档是快闪呼吸。")
                 return
             if line:
                 print(line)
@@ -242,10 +244,29 @@ class LedRing:
         if self.proc is None or self.proc.poll() is not None or self.fifo_fd < 0:
             return f"{label}（灯环没接通）"
         try:
+            if key == "torque":
+                self._bright = -1
+            else:
+                os.write(self.fifo_fd, b"b 64\n")
+                self._bright = 64
             os.write(self.fifo_fd, (key + "\n").encode())
         except OSError:
             return f"{label}（灯环写失败）"
         return label
+
+    def set_torque_level(self, ratio: float) -> None:
+        """默认灯效：亮度 = 5% + 95% × 最大力矩 / 力矩上限。"""
+        if self.fifo_fd < 0 or self.index < 0 or self.ORDER[self.index][0] != "torque":
+            return
+        ratio = max(0.0, min(1.0, ratio))
+        level = int(round(255 * (0.05 + 0.95 * ratio)))
+        if abs(level - self._bright) < 4:
+            return
+        self._bright = level
+        try:
+            os.write(self.fifo_fd, f"b {level}\n".encode())
+        except OSError:
+            self.fifo_fd = -1
 
     def close(self) -> None:
         proc = self.proc
@@ -921,6 +942,14 @@ def main() -> int:
                 fb_right = rm.state.velocity * wheel_sign(right_id)
                 tor_left = lm.state.torque * wheel_sign(left_id)
                 tor_right = rm.state.torque * wheel_sign(right_id)
+                hip_now = 0.0
+                for hid in HIP_SIGN:
+                    if hid in bus.motors:
+                        hip_now = max(hip_now, abs(bus.motors[hid].state.torque))
+                torque_space = max(args.hip_tqe, args.wheel_tqe, 0.2)
+                torque_ratio = max(abs(tor_left), abs(tor_right), hip_now) / torque_space
+                if led is not None:
+                    led.set_torque_level(torque_ratio)
                 volts = bus.motors[WHEEL_LEFT].state.voltage
                 elapsed = loop_t - drive_t0
                 writer.writerow(

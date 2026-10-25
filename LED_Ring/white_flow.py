@@ -259,6 +259,16 @@ def effect_ironman(n: int, count: int, brightness: int, _tail: int, _st: Sparkle
     return buf
 
 
+def effect_torque(_n: int, count: int, brightness: int, _tail: int, _st: SparkleState) -> bytearray:
+    """常亮。亮度由外部按力矩比例写入。"""
+    level = max(1, min(255, brightness))
+    pixel = (level, level, level)
+    buf = bytearray(count * 3)
+    for i in range(count):
+        put_grb(buf, i, pixel)
+    return buf
+
+
 def effect_white_full(_n: int, count: int, _brightness: int, _tail: int, _st: SparkleState) -> bytearray:
     """整圈 100% 白光，不吃 --brightness。"""
     return solid_white(count, 255)
@@ -334,6 +344,7 @@ EFFECTS: Dict[str, Tuple[str, EffectFn]] = {
     "wave": ("波浪", effect_wave),
     "fill": ("堆积", effect_fill),
     "sparkle": ("星闪", effect_sparkle),
+    "torque": ("力矩亮度", effect_torque),
     "white": ("100%白光", effect_white_full),
     "white50": ("50%白光", effect_white_half),
     "duck": ("鸭黄心跳", effect_duck),
@@ -504,6 +515,7 @@ def run_remote(
 
     st = SparkleState()
     name = start_name if start_name == "off" or start_name in EFFECTS else "flow"
+    bright = brightness
     n = 0
     pending = ""
     fifo_fd = -1
@@ -538,6 +550,12 @@ def run_remote(
                     if cmd in ("quit", "exit"):
                         running = False
                         break
+                    if cmd.startswith("b ") or cmd.startswith("bright "):
+                        try:
+                            bright = max(1, min(255, int(float(cmd.split()[1]))))
+                        except (IndexError, ValueError):
+                            print(f"亮度需要 1-255：{cmd}", flush=True)
+                        continue
                     if cmd == "off" or cmd in EFFECTS:
                         if cmd != name:
                             name = cmd
@@ -552,7 +570,7 @@ def run_remote(
             if name == "off":
                 frame = bytearray(count * 3)
             else:
-                frame = EFFECTS[name][1](n, count, brightness, tail, st)
+                frame = EFFECTS[name][1](n, count, bright, tail, st)
                 n += 1
             show_frame(lib, frame)
             if name == "off":
