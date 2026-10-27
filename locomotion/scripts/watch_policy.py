@@ -4,7 +4,7 @@
 
 再按空格停止策略并回到站立。Ctrl+C 也先回到站立再退出，电机保持出力。
 按 q 立刻卸力并退出。
-腿和颈、头 pitch 的力矩保护是 1.2 N·m。头 yaw/roll 额定 0.3，不加。
+腿和颈、头 pitch 的力矩保护是 3 N·m。头 yaw/roll 额定 0.3，不加。
 
 用法（在 locomotion/ 下，用带 onnxruntime 的解释器）:
   python3 scripts/watch_policy.py
@@ -66,13 +66,12 @@ import pose  # noqa: E402
 from ht_can import i16_le, pos_to_int, tqe_to_int  # noqa: E402
 from lsm6dsv16x import I2CGpioError, LSM6DSV16X, WHO_AM_I_VAL, ADDRS, load_lib, open_bus, scan_bus  # noqa: E402
 
-# 力矩：腿、颈、头 pitch 为 1.2 N·m。0.5 N·m 时小腿和髋 pitch 顶满仍差 20°–30°，迈不开步。
-# 头 yaw/roll 额定 0.3。
+# 力矩：腿、颈、头 pitch 为 3 N·m。头 yaw/roll 额定 0.3。
 # 仿真角和电机角只在读写边界乘一次 SIGN，一条腿五个关节必须同号。
 # 左腿和头颈 +1，右腿 -1；小腿和髋 yaw 例外，见下。
 # 缩放是当前训练值：髋 pitch 0.80，小腿 1.00，踝 0.70。
 KP = (60, 60, 60, 60, 60, 20, 20, 8, 8, 60, 60, 60, 60, 60)
-TAU = (1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 0.3, 0.3, 1.2, 1.2, 1.2, 1.2, 1.2)
+TAU = (3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 0.3, 0.3, 3.0, 3.0, 3.0, 3.0, 3.0)
 STEP_SCALE = 2.0
 # 执行策略时腿每拍最多走的角度。2.3°/拍时小腿 91% 的拍顶在上限，摆幅只剩策略的一半，抬不起腿。
 # 策略每拍变化的 p95 约 14°，留到 15°，只挡异常跳变。
@@ -99,15 +98,9 @@ VY_MAX = 0.3
 # 腿弯一点，策略就把目标送到更弯的地方，平放时会自己越蹲越深。
 # 小于 1 用来减幅且不加滞后：目标低通越大，策略越陷进 5–7 Hz 小碎步；不滤波时是 0.5–1 Hz 踏步，只是摆幅太大。
 LEG_GAIN_DEFAULT = 0.85
-# 左腿抬腿比右腿低：直行时左小腿电机摆幅 16.7°，右 19.9°，往左前方偏。
-# 只放大左小腿往弯的一侧（仿真里比 HOME 更负，动作 < 0），伸直一侧不动，站立不会越蹲越深。
-L_CALF_LIFT_GAIN = 1.3
-# 左髋 pitch 摆幅放大 10%，压往左偏。
-L_HIP_PITCH_GAIN = 1.1
-# 电机目标二阶巴特沃斯低通，截止频率 Hz。策略自身输出在 6–12.5 Hz 有约 20–40% 的能量，
-# 平滑 dq、q 观测去不掉，只能滤指令。一阶低通压住 8 Hz 时低频滞后同样大，10–12 Hz 却衰减不够；
-# 6 Hz 二阶：1–2 Hz 增益约 1、延迟约 37 ms，8/10/12 Hz 增益约 0.46/0.28/0.18。
-CMD_FC_DEFAULT = 6.0
+# 电机目标二阶巴特沃斯低通，截止频率就是步频上限。
+# 2 Hz：踏步能量留在 2 Hz 以内，更快的小碎步被衰减。控制环仍是 50 Hz。
+CMD_FC_DEFAULT = 2.0
 
 
 class Butter2:
@@ -229,10 +222,6 @@ def motor_command_deg(
     clipped = []
     for i, (_name, can, home, scale, lo, hi, leg) in enumerate(JOINTS):
         a = float(action[i])
-        if i == 3 and a < 0.0:
-            a *= L_CALF_LIFT_GAIN
-        elif i == 2:
-            a *= L_HIP_PITCH_GAIN
         raw = home + scale * leg_gain * a if leg else home
         limited = min(hi, max(lo, raw))
         clipped.append(raw < lo - 1e-6 or raw > hi + 1e-6)
@@ -615,7 +604,7 @@ def red_diff(deg: float) -> str:
 
 
 def torque_of(can: int) -> float:
-    return 0.3 if can in (13, 14) else 1.2
+    return 0.3 if can in (13, 14) else 3.0
 
 
 class Gravity:
@@ -763,11 +752,7 @@ def main() -> int:
     if missing:
         print(f"stand 缺少电机 {missing}", file=sys.stderr)
         return 1
-    # 腿站在训练站姿 SIGN×HOME。yaml 腿角比训练站姿直：髋约 24.7° 对 39.0°，小腿约 41.1° 对 50.4°，
-    # 策略却以为站在 HOME 上。脖子和头仍用 yaml，它们锁住不跟策略。
-    for i, (_name, can, home, _scale, _lo, _hi, leg) in enumerate(JOINTS):
-        if leg:
-            stand[can] = math.degrees(SIGN[i] * home) + ZERO_OFFSET_DEG.get(can, 0.0)
+    # 进策略的初始姿态就是 pose_config.yaml 的 stand。动作为 0 时电机停在这些角度。
     say("正在打开 CAN ...")
     bus, ids = pose.open_bus(cfg)
     say(f"CAN 在线电机 {ids}")
@@ -776,11 +761,11 @@ def main() -> int:
     in_name = session.get_inputs()[0].name
     say(f"策略 {args.onnx}")
     say(f"输入 {in_name} {session.get_inputs()[0].shape}  输出 {[o.name for o in session.get_outputs()]}")
-    say(f"进程序用 {stand_s:.0f} 秒渐变到站立：腿用训练站姿 SIGN×HOME，脖子和头用 pose_config.yaml。")
+    say(f"进程序用 {stand_s:.0f} 秒渐变到 pose_config.yaml 的站立角，策略从这组角度起步。")
     say("操作：A 或空格 启动/停止策略 | B 或 Q 立刻卸力 | 键盘或手柄 X 切换灯效 | Ctrl+C 回到站立并保持出力")
-    say("站稳后再按 A 或空格。力矩保护 1.20 N·m。头 yaw/roll 仍是 0.30 N·m。")
+    say("站稳后再按 A 或空格。力矩保护 3 N·m。头 yaw/roll 仍是 0.30 N·m。")
     say(
-        f"控制频率目标 50 Hz。前进满杆 {VX_MAX:.2f} m/s，后退满杆 {VX_BACK_MAX:.2f} m/s，"
+        f"控制频率目标 50 Hz，步频上限 {args.cmd_fc:.0f} Hz。前进满杆 {VX_MAX:.2f} m/s，后退满杆 {VX_BACK_MAX:.2f} m/s，"
         f"左右平移满杆 ±{VY_MAX:.2f} m/s，左右转满杆 ±{WZ_MAX:.2f} rad/s。未执行时指令为 0。"
     )
 
@@ -943,40 +928,11 @@ def main() -> int:
             )
             t_infer = time.monotonic()
             action = session.run(None, {in_name: obs.reshape(1, 61)})[0][0]
-            if not args.no_mirror and phase == "track":
-                mirrored = session.run(None, {in_name: mirror_obs(obs).reshape(1, 61)})[0][0]
-                skew = 0.5 * (mirror_joints(mirrored) - action)
-                a = dt / (MIRROR_TAU + dt) if dt > 0.0 else 0.0
-                mirror_bias = mirror_bias + a * (skew - mirror_bias)
-                action = action + mirror_bias
-            else:
-                mirror_bias = np.zeros(14, dtype=np.float32)
             action = np.array(action, dtype=np.float32, copy=True)
-            if phase == "track" and not args.no_yaw_trim:
-                if stick.wz == 0.0 and dt > 0.0:
-                    yaw_cm = 0.5 * float(action[0] + action[9])
-                    yaw_trim += dt / (YAW_TRIM_TAU + dt) * (yaw_cm - yaw_trim)
-                    yaw_trim = min(YAW_TRIM_MAX, max(-YAW_TRIM_MAX, yaw_trim))
-                action[0] -= yaw_trim
-                action[9] -= yaw_trim
-            else:
-                yaw_trim = 0.0
+            mirror_bias = np.zeros(14, dtype=np.float32)
+            yaw_trim = 0.0
             yaw_fix = 0.0
-            if (
-                phase == "track"
-                and not args.no_yaw_fix
-                and stick.wz == 0.0
-                and vx > 0.04
-                and dt > 0.0
-            ):
-                yaw_int += float(sample.gyro[2]) * dt
-                yaw_int = min(YAW_I_MAX, max(-YAW_I_MAX, yaw_int))
-                yaw_fix = YAW_FF_PER_MPS * float(vx) + YAW_KI * yaw_int
-                yaw_fix = min(YAW_FIX_MAX, max(-YAW_FIX_MAX, yaw_fix))
-            elif dt > 0.0:
-                yaw_int *= math.exp(-dt / 8.0)
-            action[0] += yaw_fix
-            action[9] += yaw_fix
+            yaw_int = 0.0
             infer_us = (time.monotonic() - t_infer) * 1e6
             loops += 1
             last_action = np.asarray(action, dtype=np.float32).copy()
