@@ -1,0 +1,22 @@
+[Unit]
+Description=cyberDuck wheel drive
+After=local-fs.target
+Wants=local-fs.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/home/radxa/cyberDuck/motor
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/radxa/cyberDuck/motor/wheel_run/wheel-drive-boot.sh
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=8
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wheel-drive
+
+[Install]
+WantedBy=multi-user.target
