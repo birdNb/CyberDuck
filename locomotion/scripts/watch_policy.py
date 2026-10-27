@@ -86,12 +86,14 @@ ZERO_OFFSET_DEG: dict[int, float] = {}
 # 策略想右转反而左转，直行越修越往左偏。
 SIGN = (-1, 1, 1, -1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1)
 # 训练范围 vx ±0.4 m/s。前进满杆用训练范围的一半再取 70%（0.14）：再大容易冲。
-# 后退满杆 0.10。0.084 时步幅很小，0.25 又冲得太猛。
+# 后退满杆 0.20。0.10 时策略动作几乎是 0，腿不迈步。
 # 观测负向按 VX_BACK_MAX 裁，不再裁回 ±VX_MAX。
 VX_MAX = 0.4 * 0.5 * 0.7
-VX_BACK_MAX = 0.10
-# 训练范围 wz ±1.0 rad/s，角速度奖励 std 0.707：0.25 时不转也能拿约 90% 奖励，策略只晃不迈步。
-WZ_MAX = 1.0 * 0.6
+VX_BACK_MAX = 0.20
+# 训练范围 wz ±1.0 rad/s。0.25 时不转也能拿约 90% 奖励，策略只晃不迈步。
+# 摇杆实际推不到底，满幅按 0.55 就算打满，写到 ±1.0。
+WZ_MAX = 1.0
+WZ_STICK_FULL = 0.55
 # 训练范围 vy ±0.3 m/s。±0.15 时左移、右移的髋 roll 动作几乎一样，盖不过往左的漂移，满杆用满训练范围。
 VY_MAX = 0.3
 # 不能大于 1。小腿 SCALE 已是 1，再乘 1.25 时，位置环增益超过 1：
@@ -300,6 +302,8 @@ class Stick:
 
     def __init__(self) -> None:
         self.axis = [0.0] * 8
+        self.axis_rest = [None] * 8
+        self.axis_moved = [False] * 8
         self.vx = 0.0
         self.wz = 0.0
         self.cmd = 0.0
@@ -345,6 +349,8 @@ class Stick:
             os.close(self.fd)
             self.fd = -1
         self.axis = [0.0] * 8
+        self.axis_rest = [None] * 8
+        self.axis_moved = [False] * 8
         self._next_open = time.monotonic() + 0.5
 
     def poll(self, dt: float, enabled: bool) -> float:
@@ -371,6 +377,10 @@ class Stick:
                     kind &= ~0x80
                     if kind == 0x02 and number < 8:
                         self.axis[number] = max(-1.0, min(1.0, value / 32767.0))
+                        if self.axis_rest[number] is None:
+                            self.axis_rest[number] = self.axis[number]
+                        elif abs(self.axis[number] - self.axis_rest[number]) > 0.2:
+                            self.axis_moved[number] = True
                     elif kind == 0x01 and not init and value == 1:
                         if number == self.BTN_B:
                             self.button = "B"
@@ -388,21 +398,40 @@ class Stick:
         self.raw = ly
         self.cmd = ly * (VX_MAX if ly >= 0.0 else VX_BACK_MAX)
         self.vx = self.cmd if enabled else 0.0
-        # 北通 A2P3A：右摇杆横向是 axis 2，十字键左右是 axis 6，向左都为负，取反后左转为正（逆时针）。
-        rx = -self.axis[self.TURN_AXIS]
+        # 右摇杆左右自转。上电停在 ±1 的轴先减去那个静止值，拨动后才有输出。
+        # 横向可能在 axis 2 或 axis 3，取离开静止位置更多的那根。
+        rx = -self._right_stick()
         if abs(rx) < self.DEADZONE:
-            rx = -self.axis[6]
+            rx = -self._stick(6)
         if abs(rx) < self.DEADZONE:
             rx = 0.0
-        self.raw_wz = rx
-        self.wz = rx * WZ_MAX if enabled else 0.0
-        # 左摇杆横向 axis 0，向左为负，取反后向左平移为正（+y）。
+        turn = max(-1.0, min(1.0, rx / WZ_STICK_FULL))
+        self.raw_wz = turn
+        self.wz = turn * WZ_MAX if enabled else 0.0
+        # 左摇杆左右平移。向左为负，取反后向左平移为正。
         lx = -self.axis[self.SIDE_AXIS]
         if abs(lx) < self.DEADZONE:
             lx = 0.0
         self.raw_vy = lx
         self.vy = lx * VY_MAX if enabled else 0.0
         return self.vx
+
+    def _stick(self, number: int) -> float:
+        raw = self.axis[number]
+        rest = self.axis_rest[number]
+        if rest is None:
+            return raw
+        if abs(rest) >= 0.85:
+            return raw - rest
+        return raw
+
+    def _right_stick(self) -> float:
+        best = 0.0
+        for number in (self.TURN_AXIS, 3):
+            moved = self._stick(number)
+            if abs(moved) > abs(best):
+                best = moved
+        return best
 
     def take_button(self) -> str:
         name = self.button
