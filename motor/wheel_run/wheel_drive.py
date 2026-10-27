@@ -18,6 +18,7 @@
   B 键：停车并卸力，退出驾驶。再长按 Y 恢复站立和驾驶
   X 键：切换灯效（和 watch_policy.py 同一套灯环）
   长按 Y：进入或恢复站立和驾驶。短按 Y：关闭 / 打开实时平衡（默认开启，只用两侧髋）
+  右扳机：嘴巴开合，松开 0°，按到底 60°。同时仍会把车身高度压到最低
 
 全程力矩保护 1 N·m：站立保持、升降和轮电机的力矩上限都限制在 1 N·m。
 
@@ -132,6 +133,14 @@ def ramp(cur: float, goal: float, accel: float, dt: float) -> float:
     if cur > goal:
         return max(goal, cur - dv)
     return goal
+
+
+def command_mouth(bus, level: float) -> None:
+    """右扳机 0~1 对应嘴 0~60°。速度上限压住，避免一下打到底。"""
+    if MOUTH_ID not in bus.motors:
+        return
+    deg = MOUTH_OPEN_DEG * max(0.0, min(1.0, level))
+    command_position_seek(bus, [MOUTH_ID], {MOUTH_ID: deg}, MOUTH_TQE_NM, MOUTH_VEL_RAD_S)
 
 
 def command_position_seek(bus, ids, degrees: dict[int, float], torque: float, vel_rad_s: float) -> None:
@@ -468,6 +477,11 @@ NECK_STEP_S = 0.12
 HEAD_SLEW_DEG_S = 20.0
 # 到位后收紧速度上限，只留修正误差的余量。进站立本身按过渡时间平滑走。
 NECK_HOLD_RAD_S = 0.5
+# 15 号是嘴。右扳机 0~1 映射到 0~60°。力矩按小电机额定，速度不要一下打到底。
+MOUTH_ID = 15
+MOUTH_OPEN_DEG = 60.0
+MOUTH_TQE_NM = 0.3
+MOUTH_VEL_RAD_S = 1.5
 JUMP_HALF_S = 0.12
 Y_HOLD_S = 1.0
 
@@ -619,6 +633,23 @@ class Gamepad:
         self.button_y = False
         self.y_long = False
 
+    def rt_level(self) -> float:
+        """右扳机开度 0~1。模拟轴 4 按行程，数字键 5 或 7 视为按到底。"""
+        raw = self.axis[4]
+        rest = self.axis_rest[4]
+        analog = 0.0
+        if rest is not None and abs(rest) >= 0.85 and rest < 0:
+            span = 1.0 - rest
+            analog = (raw - rest) / span if span > 0.2 else 0.0
+        elif rest is not None and abs(rest) < 0.5:
+            analog = raw
+        analog = max(0.0, min(1.0, analog))
+        if analog < 0.08:
+            analog = 0.0
+        if self.buttons[7] or self.buttons[5]:
+            analog = 1.0
+        return analog
+
     def _from_rest(self, number: int) -> float:
         raw = self.axis[number]
         rest = self.axis_rest[number]
@@ -717,6 +748,14 @@ def main() -> int:
         bus.close()
         return 2
     print(f"  关节在线 {sorted(ids)}，左轮 {left_id} 号，右轮 {right_id} 号")
+    mouth_type = str(cfg.get("motor_type", "4538_19"))
+    bus.add_motor(Motor(MOUTH_ID, mouth_type, "mouth"))
+    mouth_on = MOUTH_ID in bus.scan([MOUTH_ID], timeout_each=0.08)
+    if mouth_on:
+        bus.set_timeout_ms(MOUTH_ID, 0)
+        print("15 号嘴部在线。右扳机松开 0°，按到底 60°。")
+    else:
+        print("15 号嘴部无应答，右扳机不控嘴。")
 
     torque_nm = abs(float(args.tqe))
     hz = max(20.0, float(cfg.get("hz", 50.0)))
@@ -788,6 +827,9 @@ def main() -> int:
                 bus.set_torque_limit(mid, torque_nm)
             for wid in WHEELS:
                 bus.disable(wid)
+            if mouth_on:
+                bus.enable(MOUTH_ID)
+                bus.set_torque_limit(MOUTH_ID, MOUTH_TQE_NM)
             print("站立阶段轮电机（1、6 号）保持失能，不发指令。")
             time.sleep(0.05)
             start_deg = pose.read_degrees(bus, hold_ids)
@@ -821,6 +863,13 @@ def main() -> int:
                         if hid in cmd_deg:
                             cmd_deg[hid] += sign * d_hip
                 command_position_seek(bus, move_ids, cmd_deg, torque_nm, move_vel)
+                if mouth_on:
+                    pad.poll()
+                    pad.button_a = False
+                    pad.button_b = False
+                    pad.button_x = False
+                    pad.button_y = False
+                    command_mouth(bus, pad.rt_level())
                 bus.collect(timeout=min(0.004, period * 0.3))
                 if u >= 1.0:
                     break
@@ -848,6 +897,9 @@ def main() -> int:
                 command_position_seek(bus, body_ids, stand_deg, torque_nm, NECK_HOLD_RAD_S)
                 if neck_hold:
                     command_position_seek(bus, neck_hold, neck_cmd, torque_nm, NECK_HOLD_RAD_S)
+                if mouth_on:
+                    pad.poll()
+                    command_mouth(bus, pad.rt_level())
                 for wid in WHEELS:
                     send_speed(bus, bus.motors[wid], 0.0, args.wheel_tqe)
                 bus.read_status(left_id)
@@ -895,7 +947,7 @@ def main() -> int:
             height_u = 0.0
             print(
                 "开始驾驶。左摇杆上下前进后退，左摇杆左右转弯，右摇杆左右自转，右摇杆上下升降。"
-                f"普通档 ±{args.vmax:.0f} rad/s，按住 LT 切高速档 ±{args.vmax_fast:.0f} rad/s。LT 时高度随速度压到 1/3 以内，RT 时压到最低。"
+                f"普通档 ±{args.vmax:.0f} rad/s，按住 LT 切高速档 ±{args.vmax_fast:.0f} rad/s。LT 时高度随速度压到 1/3 以内，RT 时压到最低，同时嘴巴从 0° 开到 60°。"
                 f"平时力矩 {torque_nm:.1f} N·m，自平衡时髋 {args.hip_tqe:.1f} N·m。B 键卸力退出驾驶，再长按 Y 恢复。Ctrl+C 结束程序。"
             )
             drive_t0 = time.monotonic()
@@ -1057,6 +1109,8 @@ def main() -> int:
                             # 升降时头仍慢跟上。进入初始姿态时目标就是实测头角，不再先脖子后头。
                             neck_cmd[11] = ramp(neck_cmd.get(11, head_goal), head_goal, HEAD_SLEW_DEG_S, dt_real)
                         pose.command_position(bus, neck_ids, neck_cmd, torque_nm)
+                    if mouth_on:
+                        command_mouth(bus, pad.rt_level())
                     send_speed(bus, bus.motors[left_id], cmd_left * wheel_sign(left_id), args.wheel_tqe)
                     send_speed(bus, bus.motors[right_id], cmd_right * wheel_sign(right_id), args.wheel_tqe)
 
@@ -1106,6 +1160,7 @@ def main() -> int:
                             f"前倾 {lean_deg:+5.1f}° 补偿 {d_hip:+5.2f}° 髋力矩 {hip_torque:4.2f}/{hip_tqe_now:.1f} "
                             f"{'髋力矩顶住' if hip_frozen else ''} "
                             f"颈 {neck_cmd.get(NECK_PITCH_ID, 0.0):+5.1f}° 头 {neck_cmd.get(11, 0.0):+5.1f}° "
+                            f"嘴 {MOUTH_OPEN_DEG * pad.rt_level():4.0f}° "
                             f"自平衡{'开' if balance_active else '关'}  "
                             f"轮指令 左{cmd_left:+6.2f} 右{cmd_right:+6.2f}  "
                             f"反馈 左{fb_left:+6.2f} 右{fb_right:+6.2f}  "
@@ -1130,6 +1185,9 @@ def main() -> int:
                 pose.command_position(bus, lift_ids, lift_deg, torque_nm)
                 if neck_ids:
                     pose.command_position(bus, neck_ids, neck_cmd, torque_nm)
+                if mouth_on:
+                    pad.poll()
+                    command_mouth(bus, pad.rt_level())
                 send_speed(bus, bus.motors[left_id], 0.0, args.wheel_tqe)
                 send_speed(bus, bus.motors[right_id], 0.0, args.wheel_tqe)
                 time.sleep(period)
@@ -1137,6 +1195,8 @@ def main() -> int:
             print("卸力：失能全部关节 ...")
             for mid in ids:
                 bus.disable(mid)
+            if mouth_on:
+                bus.disable(MOUTH_ID)
             time.sleep(0.05)
             print("已卸力。")
             if not running:
