@@ -33,9 +33,9 @@ from ht_can import MAGIC_POS, Motor, MotorBus, i16_le, tqe_to_int, vel_to_int
 
 MODE_VELOCITY = 0x0B
 LOG_DIR = Path(__file__).resolve().parent / "logs"
-# 与 locomotion/scripts/watch_policy.py 的 battery_text 相同：12.8 V 为 0%，16.8 V 为 100%。
+# 12.8 V 为 0%，16 V 为 100%。
 BATT_EMPTY_V = 12.8
-BATT_FULL_V = 16.8
+BATT_FULL_V = 16.0
 
 
 def iface_down_reason(iface: str) -> str | None:
@@ -69,7 +69,7 @@ def battery_percent(volts: float) -> float:
 
 
 def battery_text(volts: float) -> str:
-    """12.8 V 为 0%，16.8 V 为 100%。颜色从红经黄到绿。"""
+    """12.8 V 为 0%，16 V 为 100%。颜色从红经黄到绿。"""
     pct = battery_percent(volts)
     t = pct / 100.0
     r = 255 if t < 0.5 else int(round(255 * (1.0 - t) * 2))

@@ -130,6 +130,7 @@ def breathe_level(n: int, period: int = 90) -> float:
 class SparkleState:
     def __init__(self) -> None:
         self.sparks: List[List[float]] = []
+        self.soc = -1.0
 
     def reset(self) -> None:
         self.sparks.clear()
@@ -259,6 +260,27 @@ def effect_ironman(n: int, count: int, brightness: int, _tail: int, _st: Sparkle
     return buf
 
 
+def effect_battery(_n: int, count: int, _brightness: int, _tail: int, st: SparkleState) -> bytearray:
+    """电量环。第一颗纯绿，最后一颗纯红。电量下降从绿色那头开始熄。"""
+    buf = bytearray(count * 3)
+    if st.soc < 0.0 or count <= 0:
+        return buf
+    pct = max(0.0, min(100.0, st.soc))
+    if pct <= 0.0:
+        return buf
+    lit = int(round(count * pct / 100.0))
+    if lit < 1:
+        lit = 1
+    lit = min(count, lit)
+    last = max(count - 1, 1)
+    for i in range(count - lit, count):
+        t = i / last
+        red = int(round(255 * t * 0.20))
+        green = int(round(255 * (1.0 - t) * 0.20))
+        put_grb(buf, i, (green, red, 0))
+    return buf
+
+
 def effect_torque(_n: int, count: int, brightness: int, _tail: int, _st: SparkleState) -> bytearray:
     """常亮。亮度由外部按力矩比例写入。"""
     level = max(1, min(255, brightness))
@@ -344,6 +366,7 @@ EFFECTS: Dict[str, Tuple[str, EffectFn]] = {
     "wave": ("波浪", effect_wave),
     "fill": ("堆积", effect_fill),
     "sparkle": ("星闪", effect_sparkle),
+    "battery": ("电量", effect_battery),
     "torque": ("力矩亮度", effect_torque),
     "white": ("100%白光", effect_white_full),
     "white50": ("50%白光", effect_white_half),
@@ -550,6 +573,12 @@ def run_remote(
                     if cmd in ("quit", "exit"):
                         running = False
                         break
+                    if cmd.startswith("soc "):
+                        try:
+                            st.soc = max(0.0, min(100.0, float(cmd.split()[1])))
+                        except (IndexError, ValueError):
+                            print(f"电量需要 0-100：{cmd}", flush=True)
+                        continue
                     if cmd.startswith("b ") or cmd.startswith("bright "):
                         try:
                             bright = max(1, min(255, int(float(cmd.split()[1]))))
