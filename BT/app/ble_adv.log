@@ -11170,3 +11170,15 @@
 18:43:36 hci_le_cmd fail 0x08 0x0036 0x01: < HCI Command: ogf 0x08, ocf 0x0036, plen 25 01 13 00 30 00 00 50 00 00 07 00 00 00 00 00 00 00 00 00 7F 01 00 01 00 00 > HCI Event: 0x0e plen 5 05 36 20 0C 00
 18:43:53 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
 18:43:53 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+19:50:08 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
+19:50:08 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+11:40:02 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
+11:40:02 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+13:26:11 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
+13:26:11 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+15:57:45 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
+15:57:45 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+15:57:45 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
+15:57:45 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+16:19:27 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
+16:19:27 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
