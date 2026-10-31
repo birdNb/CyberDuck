@@ -122,3 +122,86 @@ libcamera 检测到: /base/soc@0/cci@ac4b000/i2c-bus@1/camera@10
 
 收到中断，正在退出（再按一次 Ctrl+C 强制结束）
 退出 → 回 stand
+stand 脖子: 11(pitch)=-19.37°  12=-12.96°  13(yaw)=-3.71°  14=-2.16°
+[face] backend Haar (haarcascade_frontalface_default.xml)
+脖子过渡到 stand:
+  ID 11    -18.79° →   -19.37°
+  ID 12    -13.32° →   -12.96°
+  ID 13     -3.49° →    -3.71°
+  ID 14     -1.91° →    -2.16°
+进入视觉伺服：只动 11(pitch 0.30 Nm) 和 13(yaw 0.10 Nm)，12/14 锁在 stand。Ctrl+C 回零位并泄力后退出
+[0:47:06.512674558] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.522612342] [23227]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10" ! video/x-raw, width=640, height=480, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:47:06.530381180] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.539789657] [23229]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+[ WARN:0@3.111] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc0 reported: Could not find a camera named '/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10'.
+[ WARN:0@3.111] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@3.111] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc ! video/x-raw, width=640, height=480, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:47:06.544222132] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.570127058] [23230]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+[ WARN:0@3.142] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc1 reported: Could not find any supported camera on this system.
+[ WARN:0@3.142] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@3.142] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@0/camera@10" ! video/x-raw, width=640, height=480, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:47:06.575226338] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.607147496] [23231]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+[ WARN:0@3.179] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc2 reported: Could not find a camera named '/base/soc@0/cci@ac4b000/i2c-bus@0/camera@10'.
+[ WARN:0@3.179] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@3.179] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10" ! video/x-raw, width=1280, height=720, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:47:06.612559734] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.641201769] [23232]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+[ WARN:0@3.213] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc3 reported: Could not find a camera named '/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10'.
+[ WARN:0@3.213] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@3.213] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc ! video/x-raw, width=1280, height=720, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:47:06.652655134] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.678988746] [23233]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+[ WARN:0@3.250] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc4 reported: Could not find any supported camera on this system.
+[ WARN:0@3.251] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@3.251] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@0/camera@10" ! video/x-raw, width=1280, height=720, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:47:06.692756107] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.701958601] [23240]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+[ WARN:0@3.273] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc5 reported: Could not find a camera named '/base/soc@0/cci@ac4b000/i2c-bus@0/camera@10'.
+[ WARN:0@3.274] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@3.274] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10" ! video/x-raw, width=1640, height=1232, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:47:06.717852984] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.727826236] [23244]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+[ WARN:0@3.299] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc6 reported: Could not find a camera named '/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10'.
+[ WARN:0@3.300] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@3.300] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc ! video/x-raw, width=1640, height=1232, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:47:06.745372290] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.757430743] [23245]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+[ WARN:0@3.329] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc7 reported: Could not find any supported camera on this system.
+[ WARN:0@3.329] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@3.330] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@0/camera@10" ! video/x-raw, width=1640, height=1232, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:47:06.775052992] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.784234392] [23246]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+[ WARN:0@3.356] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc8 reported: Could not find a camera named '/base/soc@0/cci@ac4b000/i2c-bus@0/camera@10'.
+[ WARN:0@3.356] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@3.357] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10" ! video/x-raw, width=3272, height=2464, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:47:06.802134499] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.811467197] [23247]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+[ WARN:0@3.383] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc9 reported: Could not find a camera named '/base/soc@0/cci@ac4b000/i2c-bus@1/camera@10'.
+[ WARN:0@3.384] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@3.384] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc ! video/x-raw, width=3272, height=2464, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:47:06.830078480] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.842182244] [23248]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+[ WARN:0@3.414] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc10 reported: Could not find any supported camera on this system.
+[ WARN:0@3.415] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@3.415] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+尝试打开: libcamerasrc camera-name="/base/soc@0/cci@ac4b000/i2c-bus@0/camera@10" ! video/x-raw, width=3272, height=2464, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=true max-buffers=1 sync=false
+[0:47:06.860244168] [23176]  INFO Camera camera_manager.cpp:340 libcamera v0.0.0+1-de1e9bc0-dirty (2026-09-02T10:59:06UTC)
+[0:47:06.869992896] [23249]  INFO SimplePipeline simple.cpp:1899 No sensor found for /dev/media0
+[ WARN:0@3.442] global ./modules/videoio/src/cap_gstreamer.cpp (2401) handleMessage OpenCV | GStreamer warning: Embedded video playback halted; module libcamerasrc11 reported: Could not find a camera named '/base/soc@0/cci@ac4b000/i2c-bus@0/camera@10'.
+[ WARN:0@3.442] global ./modules/videoio/src/cap_gstreamer.cpp (1356) open OpenCV | GStreamer warning: unable to start pipeline
+[ WARN:0@3.443] global ./modules/videoio/src/cap_gstreamer.cpp (862) isPipelinePlaying OpenCV | GStreamer warning: GStreamer: pipeline have not been created
+无法打开 CSI 摄像头。若视频流占用了镜头，先: Camera/stop.sh

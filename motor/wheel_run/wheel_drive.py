@@ -19,6 +19,7 @@
   X 键：切换灯效（和 watch_policy.py 同一套灯环）
   长按 Y：进入或恢复站立和驾驶。短按 Y：关闭 / 打开实时平衡（默认开启）
   十字键左右：机身向左或向右倾斜，幅度为屈伸全程的 50%
+  十字键上：启动或关闭 TOF。障碍近于 15 cm 后退，手在前面则保持 15 cm
   右扳机：嘴巴开合，松开 0°，按到底 60°。同时仍会把车身高度压到最低
 
 全程力矩保护 1 N·m：站立保持、升降和轮电机的力矩上限都限制在 1 N·m。
@@ -144,6 +145,14 @@ def command_mouth(bus, level: float, closed_deg: float | None) -> None:
     command_position_seek(bus, [MOUTH_ID], {MOUTH_ID: deg}, MOUTH_TQE_NM, MOUTH_VEL_RAD_S)
 
 
+def keep_can_up(iface: str = "can0") -> None:
+    """can0 掉线时重新拉起。接口是 DOWN 时，长按 Y 也发不出电机指令。"""
+    if pose.iface_down_reason(iface) is None:
+        return
+    print(f"{iface} 掉线了，正在重新打开。在这之前电机不会动。", flush=True)
+    pose.ensure_can(iface)
+
+
 def publish_battery(bus, led, motor_id: int) -> None:
     """读到真实母线电压才刷新电量灯。0 V 是还没读到，不能当成空电。"""
     if led is None or motor_id not in bus.motors:
@@ -186,6 +195,158 @@ def head_goal_for(neck_deg: float, drive_deg: dict[int, float], stand_deg: dict[
     return h0 + (h1 - h0) * t
 
 
+FOLLOW_M = 0.15
+FOLLOW_FAR_M = 0.50
+FOLLOW_DEAD_M = 0.015
+FOLLOW_KP = 16.0
+FOLLOW_REVERSE = 2.5
+FOLLOW_FORWARD = 2.0
+
+
+def follow_speed(mm: int) -> float:
+    """比 15 cm 近就后退，手在 15~50 cm 内就靠近并停在 15 cm。更远或没有目标则停。"""
+    if mm < 20:
+        return 0.0
+    dist = mm / 1000.0
+    if dist > FOLLOW_FAR_M:
+        return 0.0
+    err = dist - FOLLOW_M
+    if abs(err) < FOLLOW_DEAD_M:
+        return 0.0
+    if err < 0.0:
+        return max(-FOLLOW_REVERSE, err * FOLLOW_KP)
+    return min(FOLLOW_FORWARD, err * FOLLOW_KP)
+
+
+class TofFront:
+    """VL53L5CX 最近距离。和 IMU 共用 I2C6，启动前必须先关掉 IMU。"""
+
+    def __init__(self) -> None:
+        self.proc: subprocess.Popen[str] | None = None
+        self.mm = -1
+        self.t = 0.0
+        self._buf = ""
+        self._err = ""
+
+    def _paths(self) -> tuple[Path, Path, Path]:
+        tof = REPO / "TOF"
+        imu = REPO / "IMU"
+        uld = tof / "VL53L5CX_ULD_driver"
+        return tof, imu, uld
+
+    def ensure_built(self) -> bool:
+        tof, imu, uld = self._paths()
+        binary = tof / "test_tof"
+        sources = [
+            tof / "test_tof.c",
+            uld / "Platform" / "platform.c",
+            uld / "VL53L5CX_ULD_API" / "src" / "vl53l5cx_api.c",
+            imu / "i2c_gpio.c",
+        ]
+        if binary.exists() and all(binary.stat().st_mtime >= src.stat().st_mtime for src in sources):
+            return True
+        print("编译 TOF …", flush=True)
+        cmd = [
+            "gcc", "-O2", "-o", str(binary),
+            f"-I{uld / 'VL53L5CX_ULD_API' / 'inc'}",
+            f"-I{uld / 'Platform'}",
+            f"-I{imu}",
+            *[str(src) for src in sources],
+        ]
+        try:
+            subprocess.check_call(cmd)
+        except (OSError, subprocess.CalledProcessError) as exc:
+            print(f"TOF 编译失败：{exc}", flush=True)
+            return False
+        return True
+
+    def start(self) -> bool:
+        self.stop()
+        if not self.ensure_built():
+            return False
+        binary = self._paths()[0] / "test_tof"
+        try:
+            self.proc = subprocess.Popen(
+                [str(binary), "-m"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                bufsize=0,
+            )
+        except OSError as exc:
+            print(f"TOF 没启动：{exc}", flush=True)
+            self.proc = None
+            return False
+        for pipe in (self.proc.stdout, self.proc.stderr):
+            if pipe is not None:
+                os.set_blocking(pipe.fileno(), False)
+        print("TOF 正在下载固件，第一次可能要几十秒。这段时间摇杆仍可驾驶。", flush=True)
+        return True
+
+    def _read_pipe(self, pipe) -> str:
+        if pipe is None:
+            return ""
+        parts: list[str] = []
+        while True:
+            try:
+                chunk = os.read(pipe.fileno(), 4096)
+            except BlockingIOError:
+                break
+            except OSError:
+                break
+            if not chunk:
+                break
+            parts.append(chunk.decode(errors="replace"))
+        return "".join(parts)
+
+    def fresh(self) -> bool:
+        return self.t > 0.0 and time.monotonic() - self.t <= 0.8
+
+    def poll(self) -> int:
+        proc = self.proc
+        if proc is None:
+            return -1
+        err = self._err + self._read_pipe(proc.stderr)
+        self._err = ""
+        while "\n" in err:
+            line, err = err.split("\n", 1)
+            line = line.strip()
+            if line:
+                print(line, flush=True)
+        self._err = err
+        text = self._buf + self._read_pipe(proc.stdout)
+        self._buf = ""
+        while "\n" in text:
+            line, text = text.split("\n", 1)
+            line = line.strip()
+            if not line.startswith("D "):
+                continue
+            try:
+                self.mm = int(line.split()[1])
+                self.t = time.monotonic()
+            except ValueError:
+                pass
+        self._buf = text
+        if proc.poll() is not None or not self.fresh():
+            return -1
+        return self.mm
+
+    def stop(self) -> None:
+        proc = self.proc
+        self.proc = None
+        self.mm = -1
+        self.t = 0.0
+        self._buf = ""
+        self._err = ""
+        if proc is None:
+            return
+        proc.send_signal(signal.SIGTERM)
+        try:
+            proc.wait(timeout=0.2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=0.2)
+
+
 class LedRing:
     """灯环在单独进程里刷新，避免 WS2812 位bang 卡住控制环。手柄 X 轮询切换。
 
@@ -214,6 +375,8 @@ class LedRing:
         self.fifo_fd = -1
         self._bright = -1
         self._soc = -1
+        self._flash_t0: float | None = None
+        self._flash_phase = ""
 
     def _open_fifo(self) -> None:
         if self.fifo.exists():
@@ -312,6 +475,8 @@ class LedRing:
 
     def set_battery(self, pct: float) -> None:
         """默认灯效：电量 0~100 点亮对应比例的灯，颜色从绿到红。"""
+        if self._flash_t0 is not None:
+            return
         if self.fifo_fd < 0 or self.index < 0 or self.ORDER[self.index][0] != "battery":
             return
         soc = int(round(max(0.0, min(100.0, pct))))
@@ -320,6 +485,33 @@ class LedRing:
         self._soc = soc
         try:
             os.write(self.fifo_fd, f"soc {soc}\n".encode())
+        except OSError:
+            self.fifo_fd = -1
+
+    def begin_flash(self) -> None:
+        """白光闪 3 次，周期 0.5 秒，然后回到电量灯。"""
+        self._flash_t0 = time.monotonic()
+        self._flash_phase = ""
+
+    def poll_flash(self) -> None:
+        if self._flash_t0 is None or self.fifo_fd < 0:
+            return
+        elapsed = time.monotonic() - self._flash_t0
+        if elapsed >= 1.5:
+            self._flash_t0 = None
+            self._flash_phase = ""
+            self._soc = -1
+            try:
+                os.write(self.fifo_fd, b"battery\n")
+            except OSError:
+                self.fifo_fd = -1
+            return
+        phase = "white" if (elapsed % 0.5) < 0.25 else "off"
+        if phase == self._flash_phase:
+            return
+        self._flash_phase = phase
+        try:
+            os.write(self.fifo_fd, (phase + "\n").encode())
         except OSError:
             self.fifo_fd = -1
 
@@ -607,8 +799,20 @@ class Gamepad:
         self.y_long = False
         self.y_armed = True
         self.rt_held = False
+        # 北通：X 是 2 和 3，Y 是 4。Xbox 360：X 是 2，Y 是 3。
+        self.x_buttons = (2, 3)
+        self.y_button = 4
+        # 北通：右摇杆是轴 2/3，LT 是轴 5。Xbox 360 的轴序不同，接入后再改。
+        self.spin_axis = 2
+        self.height_axis = 3
+        self.lt_axis = 5
+        self.rt_axis = 4
+        self.rt_buttons = (5, 7)
+        self.axis_fixed = [False] * 8
+        self.axis_mid = [0] * 8
         self.fd = -1
         self.path = ""
+        self.name = ""
         self._next_open = 0.0
         self._next_warn = 0.0
         self.try_open()
@@ -628,8 +832,13 @@ class Gamepad:
                 last_exc = exc
                 continue
             self.path = path
+            self.name = self._device_name()
+            self._apply_button_map()
             self._next_warn = 0.0
-            print(f"手柄已接入 {path}。长按 Y 进入站立，短按 Y 开关自平衡，B 键退出驾驶。")
+            print(
+                f"手柄已接入 {path}（{self.name}）。"
+                f"Y 是 {self.y_button} 号键。长按 Y 进入站立，短按 Y 开关自平衡，B 键退出驾驶。"
+            )
             return
         if now >= self._next_warn:
             print(
@@ -638,12 +847,47 @@ class Gamepad:
             )
             self._next_warn = now + 5.0
 
+    def _device_name(self) -> str:
+        if self.fd < 0:
+            return ""
+        buf = bytearray(128)
+        req = (2 << 30) | (128 << 16) | (ord("j") << 8) | 0x13
+        try:
+            import fcntl
+
+            fcntl.ioctl(self.fd, req, buf, True)
+        except OSError:
+            return ""
+        return bytes(buf).split(b"\x00", 1)[0].decode(errors="replace")
+
+    def _apply_button_map(self) -> None:
+        low = self.name.lower()
+        if "x-box" in low or "xbox" in low or "360" in low:
+            # 轴序按 ABS 编号：2 是 LT，3/4 是右摇杆，5 是 RT。2 号轴松开停在端点。
+            self.x_buttons = (2,)
+            self.y_button = 3
+            self.spin_axis = 3
+            self.height_axis = 4
+            self.lt_axis = 2
+            self.rt_axis = 5
+            self.rt_buttons = ()
+        else:
+            self.x_buttons = (2, 3)
+            self.y_button = 4
+            self.spin_axis = 2
+            self.height_axis = 3
+            self.lt_axis = 5
+            self.rt_axis = 4
+            self.rt_buttons = (5, 7)
+
     def drop(self) -> None:
         if self.fd >= 0:
             os.close(self.fd)
             self.fd = -1
         self.axis = [0.0] * 8
         self.axis_rest = [None] * 8
+        self.axis_fixed = [False] * 8
+        self.axis_mid = [0] * 8
         self.buttons = [False] * 16
         self.y_since = None
         self.y_long = False
@@ -672,21 +916,20 @@ class Gamepad:
                     kind &= ~0x80
                     if kind == 0x02 and number < 8:
                         self.axis[number] = max(-1.0, min(1.0, value / 32767.0))
-                        if self.axis_rest[number] is None:
-                            self.axis_rest[number] = self.axis[number]
+                        self._note_axis(number)
                     elif kind == 0x01 and number < 16:
                         self.buttons[number] = bool(value)
-                        if not init and number in (5, 7):
+                        if not init and number in self.rt_buttons:
                             self.rt_held = bool(value)
                         if not init and value == 1 and number == 0:
                             self.button_a = True
                         if not init and value == 1 and number == 1:
                             self.button_b = True
-                        # 北通丝印 X 在 js 2，内核 BTN_X 在 js 3，两个都算。
-                        if not init and value == 1 and number in (2, 3):
+                        # 北通 X 是 2 和 3；Xbox 360 的 X 只是 2，3 是脸上的 Y。
+                        if not init and value == 1 and number in self.x_buttons:
                             self.button_x = True
-                        # Y（js 4）：按住约 1 秒是长按，松开前不到 1 秒算短按。
-                        if not init and number == 4:
+                        # 按住约 1 秒是长按，松开前不到 1 秒算短按。
+                        if not init and number == self.y_button:
                             if value == 1:
                                 if self.y_armed and self.y_since is None:
                                     self.y_since = time.monotonic()
@@ -700,16 +943,15 @@ class Gamepad:
                                 self.y_since = None
                                 self.y_armed = True
                                 self.y_long = False
-        fwd = -self.axis[1]
-        turn = -self.axis[0]
-        # 北通右摇杆横向是 axis 2、纵向是 axis 3，推上为正（升高）。
-        # 这根横轴上电会停在 -1，不扣掉的话一进驾驶就满速自转。
-        spin = -self._from_rest(2)
-        height = -self.axis[3]
+        fwd = -self._from_rest(1)
+        turn = -self._from_rest(0)
+        # 右摇杆上电若停在端点，先扣掉静止值，否则一进驾驶就满速自转。
+        spin = -self._from_rest(self.spin_axis)
+        height = -self._from_rest(self.height_axis)
         # 档位：0 普通，1 按 LT 高速（实测 20 已到电机上限，不设更高档）。
         # 高度联动：左侧键（LT/LB）随速度把高度压到 1/3 以内，右侧键（RT/RB）压到最低。
-        lt = self.buttons[6] or self.buttons[4] or self.axis[self.LT_AXIS] > 0.3
-        rt = self.buttons[7] or self.buttons[5]
+        lt = self.buttons[6] or self.buttons[4] or self._trigger(self.lt_axis) > 0.3
+        rt = any(self.buttons[n] for n in self.rt_buttons) or self._trigger(self.rt_axis) > 0.3
         gear = 1 if lt else 0
         if (
             self.y_armed
@@ -741,19 +983,49 @@ class Gamepad:
 
     def rt_level(self) -> float:
         """右扳机开度 0~1。静止初值不算按下，必须离开静止位置才张开。"""
-        raw = self.axis[4]
-        rest = self.axis_rest[4]
+        analog = self._trigger(self.rt_axis)
+        if self.rt_held:
+            analog = 1.0
+        return analog
+
+    def _note_axis(self, number: int) -> None:
+        """摇杆若能停在中间，中间就是零位。一直停在端点，端点就是零位，拨开才算有指令。"""
+        raw = self.axis[number]
+        rest = self.axis_rest[number]
+        if rest is None:
+            self.axis_rest[number] = raw
+            return
+        if self.axis_fixed[number]:
+            return
+        if abs(raw) <= 0.25 and abs(rest) < 0.85:
+            self.axis_mid[number] += 1
+            if self.axis_mid[number] >= 5:
+                self.axis_rest[number] = raw
+                self.axis_fixed[number] = True
+            return
+        self.axis_mid[number] = 0
+        if abs(raw) >= 0.85:
+            self.axis_rest[number] = raw
+
+    def _trigger(self, number: int) -> float:
+        """扳机开度 0~1。松开停在 +1 或 -1 都不算按下。"""
+        raw = self.axis[number]
+        rest = self.axis_rest[number]
+        if rest is None:
+            return 0.0
         analog = 0.0
-        if rest is not None and rest < -0.5 and abs(raw - rest) > 0.12:
-            span = 1.0 - rest
-            analog = (raw - rest) / span if span > 0.2 else 0.0
-        elif rest is not None and abs(rest) <= 0.35 and raw - rest > 0.12:
+        if abs(rest) >= 0.5:
+            travel = -2.0 * rest
+            delta = raw - rest
+            if travel < 0.0 and delta < 0.0:
+                analog = delta / travel
+            elif travel > 0.0 and delta > 0.0:
+                analog = delta / travel
+        elif abs(rest) <= 0.35 and raw - rest > 0.0:
             analog = raw - rest
         analog = max(0.0, min(1.0, analog))
         if analog < 0.08:
             analog = 0.0
-        if self.rt_held:
-            analog = 1.0
         return analog
 
     def dpad_x(self) -> float:
@@ -773,12 +1045,27 @@ class Gamepad:
             x = 1.0
         return x
 
+    def dpad_up(self) -> bool:
+        """十字键上。帽键轴 7 向上为负，按键 11 作备用。"""
+        raw = self.axis[7]
+        rest = self.axis_rest[7]
+        if rest is not None and abs(rest) >= 0.85:
+            raw = max(-1.0, min(1.0, raw - rest))
+        if raw <= -0.5 or self.buttons[11]:
+            return True
+        return False
+
     def _from_rest(self, number: int) -> float:
         raw = self.axis[number]
         rest = self.axis_rest[number]
-        if rest is None or abs(rest) < 0.85:
-            return raw
-        return max(-1.0, min(1.0, raw - rest))
+        if rest is None:
+            return 0.0
+        # 还没确认过中间零位、人又没拨开：停在端点不算打杆。
+        if not self.axis_fixed[number] and abs(raw) >= 0.85:
+            return 0.0
+        if abs(rest) >= 0.85:
+            return max(-1.0, min(1.0, raw - rest))
+        return raw
 
     def close(self) -> None:
         if self.fd >= 0:
@@ -858,7 +1145,17 @@ def main() -> int:
     except SystemExit:
         print("没有 extended 姿态，升降锁定在收缩位。先把腿摆到物理伸直再采集 extended。")
 
-    bus, ids = pose.open_bus(cfg)
+    bus = None
+    ids: list[int] = []
+    for attempt in range(1, 16):
+        try:
+            bus, ids = pose.open_bus(cfg)
+            break
+        except SystemExit as exc:
+            print(f"关节还没应答（{attempt}/15）：{exc}。2 秒后重试，请确认电机已上电、CAN 线接好。", flush=True)
+            time.sleep(2.0)
+    if bus is None:
+        return 2
     left_id, right_id = (WHEEL_RIGHT, WHEEL_LEFT) if args.swap_wheels else (WHEEL_LEFT, WHEEL_RIGHT)
     missing_wheels = [w for w in WHEELS if w not in ids]
     if missing_wheels:
@@ -899,6 +1196,7 @@ def main() -> int:
     imu = None
     balance = None
     pad = None
+    tof: TofFront | None = None
     try:
         if boot_led_active():
             print("等待开机灯效结束。灯效没完之前不站立、不驾驶。")
@@ -927,8 +1225,11 @@ def main() -> int:
                     "前后倾动髋，侧倾用左右腿屈伸。默认开启，按 Y 退出。"
                 )
         pad = Gamepad()
+        tof = TofFront()
+        tof_on = False
         mouth_closed: float | None = None
         next_batt = 0.0
+        next_can = 0.0
         while running:
             print("电机保持卸力。长按 Y 约 1 秒进入站立，之后才能驾驶。")
             pad.clear_edges()
@@ -942,7 +1243,11 @@ def main() -> int:
                 if now_wait >= next_batt:
                     publish_battery(bus, led, ids[0])
                     next_batt = now_wait + 0.5
+                if now_wait >= next_can:
+                    keep_can_up(str(cfg.get("interface", "can0")))
+                    next_can = now_wait + 2.0
                 if pad.take_long_y():
+                    keep_can_up(str(cfg.get("interface", "can0")))
                     print("长按 Y：进入站立。")
                     break
                 time.sleep(period)
@@ -1087,7 +1392,9 @@ def main() -> int:
             print(
                 "开始驾驶。左摇杆上下前进后退，左摇杆左右转弯，右摇杆左右自转，右摇杆上下升降。"
                 f"普通档 ±{args.vmax:.0f} rad/s，按住 LT 切高速档 ±{args.vmax_fast:.0f} rad/s。LT 时高度随速度压到 1/3 以内，RT 时压到最低，同时嘴巴从 0° 开到 60°。"
-                f"平时力矩 {torque_nm:.1f} N·m，自平衡时髋 {args.hip_tqe:.1f} N·m。B 键卸力退出驾驶，再长按 Y 恢复。Ctrl+C 结束程序。"
+                f"平时力矩 {torque_nm:.1f} N·m，自平衡时髋 {args.hip_tqe:.1f} N·m。"
+                "测距跟随默认关闭，按十字键上才打开。"
+                "B 键卸力退出驾驶，再长按 Y 恢复。Ctrl+C 结束程序。"
             )
             drive_t0 = time.monotonic()
             next_print = drive_t0
@@ -1101,6 +1408,8 @@ def main() -> int:
             jump_t0 = None
             dance_u = 0.0
             roll_pause_until = 0.0
+            dpad_up_prev = False
+            dpad_up_arm = False
             lift_deg = {mid: stand_deg[mid] for mid in lift_ids}
             gear_names = ("普通", "高速")
             gear_caps = (args.vmax, args.vmax_fast)
@@ -1120,6 +1429,36 @@ def main() -> int:
                         pad.button_x = False
                         print(f"灯效：{led.cycle()}", flush=True)
                     led.drain()
+                    led.poll_flash()
+                    dpad_up = pad.dpad_up()
+                    # 上电时帽键若停在“上”，不当成一次按下。松手之后再按才打开跟随。
+                    if not dpad_up_arm:
+                        if not dpad_up:
+                            dpad_up_arm = True
+                    elif dpad_up and not dpad_up_prev and jump_t0 is None:
+                        if not tof_on:
+                            print("十字键上：打开测距。障碍近于 15 cm 后退，手在前面保持 15 cm。", flush=True)
+                            led.begin_flash()
+                            led.poll_flash()
+                            if imu is not None:
+                                imu.close()
+                            if tof is not None and tof.start():
+                                tof_on = True
+                            else:
+                                print("测距没打开，继续普通驾驶。", flush=True)
+                                imu = BodyImu()
+                                if balance is not None:
+                                    balance.imu = imu
+                        else:
+                            print("十字键上：关闭测距，恢复自平衡。", flush=True)
+                            if tof is not None:
+                                tof.stop()
+                            tof_on = False
+                            imu = BodyImu()
+                            if balance is not None:
+                                balance.imu = imu
+                                balance_on = imu.ok
+                    dpad_up_prev = dpad_up
                     if pad.button_a:
                         pad.button_a = False
                         if jump_t0 is None and lift_ok:
@@ -1158,6 +1497,11 @@ def main() -> int:
                             print("起跳结束，腿回到收缩。", flush=True)
                         cmd_left = 0.0
                         cmd_right = 0.0
+                    if tof_on and tof is not None and jump_u is None:
+                        mm = tof.poll()
+                        if mm >= 20:
+                            cmd_left = follow_speed(mm)
+                            cmd_right = cmd_left
 
                     # 右摇杆上推升高（u 增大、走向伸直点），下拉降低（走向收缩点）。
                     if lift_ok and jump_u is None:
@@ -1347,6 +1691,12 @@ def main() -> int:
                 log_f.close()
                 print(f"驾驶日志 {log_path}")
 
+            if tof_on and tof is not None:
+                tof.stop()
+                tof_on = False
+                imu = BodyImu()
+                if balance is not None:
+                    balance.imu = imu
             print("停车：轮速归零，然后直接卸力。脖子停在当前角度。")
             t_b = time.monotonic()
             while time.monotonic() - t_b < 0.3:
@@ -1373,6 +1723,8 @@ def main() -> int:
             print("长按 Y 约 1 秒恢复站立和驾驶。")
         return 0
     finally:
+        if tof is not None:
+            tof.stop()
         if pad is not None:
             pad.close()
         if imu is not None:
