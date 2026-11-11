@@ -138,7 +138,7 @@ def ramp(cur: float, goal: float, accel: float, dt: float) -> float:
 
 
 def command_mouth(bus, level: float, closed_deg: float | None) -> None:
-    """松开停在进入时的角度，按到底在此基础上张开 60°。"""
+    """松开回到闭合角（进站立时固定为 0°），按到底在此基础上张开 60°。"""
     if closed_deg is None or MOUTH_ID not in bus.motors:
         return
     deg = closed_deg + MOUTH_OPEN_DEG * max(0.0, min(1.0, level))
@@ -807,6 +807,8 @@ class Gamepad:
         self.height_axis = 3
         self.lt_axis = 5
         self.rt_axis = 4
+        # 北通：4 是 Y，不能当 LT；只用轴 5。Xbox：LB=4 可作数字 LT。
+        self.lt_buttons = ()
         self.rt_buttons = (5, 7)
         self.axis_fixed = [False] * 8
         self.axis_mid = [0] * 8
@@ -870,6 +872,7 @@ class Gamepad:
             self.height_axis = 4
             self.lt_axis = 2
             self.rt_axis = 5
+            self.lt_buttons = (4,)  # LB
             self.rt_buttons = ()
         else:
             self.x_buttons = (2, 3)
@@ -878,6 +881,8 @@ class Gamepad:
             self.height_axis = 3
             self.lt_axis = 5
             self.rt_axis = 4
+            # 北通 BFM：4 是 Y，6 才像 LB；LT 以模拟轴为准。
+            self.lt_buttons = (6,)
             self.rt_buttons = (5, 7)
 
     def drop(self) -> None:
@@ -950,7 +955,7 @@ class Gamepad:
         height = -self._from_rest(self.height_axis)
         # 档位：0 普通，1 按 LT 高速（实测 20 已到电机上限，不设更高档）。
         # 高度联动：左侧键（LT/LB）随速度把高度压到 1/3 以内，右侧键（RT/RB）压到最低。
-        lt = self.buttons[6] or self.buttons[4] or self._trigger(self.lt_axis) > 0.3
+        lt = any(self.buttons[n] for n in self.lt_buttons) or self._trigger(self.lt_axis) > 0.3
         rt = any(self.buttons[n] for n in self.rt_buttons) or self._trigger(self.rt_axis) > 0.3
         gear = 1 if lt else 0
         if (
@@ -989,23 +994,38 @@ class Gamepad:
         return analog
 
     def _note_axis(self, number: int) -> None:
-        """摇杆若能停在中间，中间就是零位。一直停在端点，端点就是零位，拨开才算有指令。"""
+        """维护各轴零位。
+
+        - 扳机：松开停在 ±1。只在首次采样锁定松开位，按到底绝不能改写零位。
+        - 十字键：中心就是 0，不跟端点。
+        - 摇杆：只在靠近中心时锁定零位；端点采样不能当零位。
+        """
         raw = self.axis[number]
-        rest = self.axis_rest[number]
-        if rest is None:
-            self.axis_rest[number] = raw
+        # 扳机：零位永远是松开端，按满后仍保持原零位。
+        if number in (self.lt_axis, self.rt_axis):
+            if self.axis_rest[number] is None:
+                self.axis_rest[number] = raw
+            if abs(self.axis_rest[number]) >= 0.5:
+                self.axis_fixed[number] = True
             return
+        # 帽键 / 十字：绝对坐标，中心 0。
+        if number in (6, 7):
+            self.axis_rest[number] = 0.0
+            self.axis_fixed[number] = True
+            return
+        # 普通摇杆：只认中心零位。
         if self.axis_fixed[number]:
             return
-        if abs(raw) <= 0.25 and abs(rest) < 0.85:
+        if self.axis_rest[number] is None:
+            # 首帧若已在端点，先假定中心 0，等回到中间再锁定。
+            self.axis_rest[number] = raw if abs(raw) <= 0.25 else 0.0
+        if abs(raw) <= 0.25:
             self.axis_mid[number] += 1
             if self.axis_mid[number] >= 5:
                 self.axis_rest[number] = raw
                 self.axis_fixed[number] = True
             return
         self.axis_mid[number] = 0
-        if abs(raw) >= 0.85:
-            self.axis_rest[number] = raw
 
     def _trigger(self, number: int) -> float:
         """扳机开度 0~1。松开停在 +1 或 -1 都不算按下。"""
@@ -1030,10 +1050,8 @@ class Gamepad:
 
     def dpad_x(self) -> float:
         """十字键左右。向左为 -1，向右为 +1。轴 6 是帽键，按键 13/14 作备用。"""
+        # 帽键是绝对位置：中心 0、左右 ±1。不要减零位，否则按一下会粘住。
         raw = self.axis[6]
-        rest = self.axis_rest[6]
-        if rest is not None and abs(rest) >= 0.85:
-            raw = max(-1.0, min(1.0, raw - rest))
         x = 0.0
         if raw <= -0.5:
             x = -1.0
@@ -1048,24 +1066,19 @@ class Gamepad:
     def dpad_up(self) -> bool:
         """十字键上。帽键轴 7 向上为负，按键 11 作备用。"""
         raw = self.axis[7]
-        rest = self.axis_rest[7]
-        if rest is not None and abs(rest) >= 0.85:
-            raw = max(-1.0, min(1.0, raw - rest))
         if raw <= -0.5 or self.buttons[11]:
             return True
         return False
 
     def _from_rest(self, number: int) -> float:
+        """摇杆相对零位。松开回中后必须回到 0，不能继续吐满行程。"""
         raw = self.axis[number]
         rest = self.axis_rest[number]
         if rest is None:
             return 0.0
-        # 还没确认过中间零位、人又没拨开：停在端点不算打杆。
-        if not self.axis_fixed[number] and abs(raw) >= 0.85:
-            return 0.0
         if abs(rest) >= 0.85:
             return max(-1.0, min(1.0, raw - rest))
-        return raw
+        return max(-1.0, min(1.0, raw - rest))
 
     def close(self) -> None:
         if self.fd >= 0:
@@ -1263,16 +1276,12 @@ def main() -> int:
                 bus.disable(wid)
             mouth_closed = None
             if mouth_on:
-                bus.read_status(MOUTH_ID)
-                bus.collect(timeout=0.01)
-                if bus.motors[MOUTH_ID].state.t_pos > 0.0:
-                    mouth_closed = bus.motors[MOUTH_ID].state.position / pose.DEG
-                    bus.enable(MOUTH_ID)
-                    bus.set_torque_limit(MOUTH_ID, MOUTH_TQE_NM)
-                    command_mouth(bus, 0.0, mouth_closed)
-                    print(f"嘴部保持当前 {mouth_closed:+.1f}°，右扳机在此基础上张开最多 60°。")
-                else:
-                    print("嘴部没有读到当前位置，本次不控嘴。")
+                bus.enable(MOUTH_ID)
+                bus.set_torque_limit(MOUTH_ID, MOUTH_TQE_NM)
+                # 进站立时嘴巴固定回到 0°；右扳机再在此基础上张开最多 60°。
+                mouth_closed = 0.0
+                command_mouth(bus, 0.0, mouth_closed)
+                print("嘴部回到 0°，右扳机在此基础上张开最多 60°。")
             print("站立阶段轮电机（1、6 号）保持失能，不发指令。")
             time.sleep(0.05)
             start_deg = pose.read_degrees(bus, hold_ids)
@@ -1574,14 +1583,23 @@ def main() -> int:
                         side = 0.0
                     else:
                         dpad = pad.dpad_x()
-                        if dpad != 0.0:
-                            roll_pause_until = loop_t + DANCE_PAUSE_S
                         dance_goal = 0.0 if dpad == 0.0 else (DANCE_U if dpad < 0.0 else -DANCE_U)
                         dance_u = ramp(dance_u, dance_goal, DANCE_RATE_U_S, dt_real)
-                        if loop_t < roll_pause_until:
+                        if dpad != 0.0:
+                            # 按住：左右踢腿；松开后先回到默认姿态，再把侧倾自平衡暂停一小段。
+                            roll_pause_until = loop_t + DANCE_PAUSE_S
                             side = dance_u
                             if balance is not None:
                                 balance.roll_u = dance_u
+                        elif abs(dance_u) > 0.01:
+                            # 松手回正中：腿必须先回到默认，不能停在踢腿姿态。
+                            side = dance_u
+                            if balance is not None:
+                                balance.roll_u = dance_u
+                        elif loop_t < roll_pause_until:
+                            side = 0.0
+                            if balance is not None:
+                                balance.roll_u = 0.0
                         else:
                             side = roll_u
                     left_u = max(0.0, min(1.0, leg_u - side))
