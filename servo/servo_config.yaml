@@ -1,0 +1,17 @@
+# DEBUG_UART: Pin6 GND / Pin8 TX / Pin10 RX -> /dev/ttyMSM0 @ 1 Mbps
+# Half-duplex: short TX+RX onto STS DATA. Stop console: serial-getty@ttyMSM0
+port: /dev/ttyMSM0
+baudrate: 1000000
+timeout_s: 0.12
+model: STS3215
+default_speed: 150
+default_acceleration: 50
+torque_limit: 200
+
+servos:
+  servo13:
+    id: 13
+    center_deg: 180.0
+    min_deg: 0.0
+    max_deg: 360.0
+    direction: 1

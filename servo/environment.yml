@@ -1,0 +1,10 @@
+name: cyberduck-servo
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - pyserial>=3.5
+      - PyYAML>=5.3
