@@ -84,10 +84,10 @@ def _stereo_bytes(buf: np.ndarray) -> bytes:
     return stereo.tobytes()
 
 
-def _aplay(device: Optional[str], pcm: bytes, env: dict) -> bool:
+def _aplay(device: Optional[str], pcm: bytes, env: dict) -> tuple[bool, str]:
     global _current
     if shutil.which("aplay") is None:
-        return False
+        return False, "未找到 aplay"
     cmd = [
         "aplay",
         "-q",
@@ -107,45 +107,67 @@ def _aplay(device: Optional[str], pcm: bytes, env: dict) -> bool:
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
             env=env,
             start_new_session=True,
         )
-    except OSError:
-        return False
+    except OSError as exc:
+        return False, str(exc)
     _current = proc
     try:
-        proc.communicate(input=pcm, timeout=30)
-        return proc.returncode == 0
+        _out, err = proc.communicate(input=pcm, timeout=30)
+        text = (err or b"").decode("utf-8", "replace").strip().replace("\n", " | ")
+        return proc.returncode == 0, text[:240]
     except KeyboardInterrupt:
         stop_playback()
         raise
     except subprocess.TimeoutExpired:
         stop_playback()
-        return False
+        return False, "超时"
     finally:
         if _current is proc:
             _current = None
 
 
 def play_pcm(buf: np.ndarray, device: Optional[str] = None) -> str:
-    """播放 f32 单声道缓冲。成功返回实际使用的设备名，失败抛 RuntimeError。"""
+    """播放 f32 单声道缓冲。成功返回实际使用的设备名，失败抛 RuntimeError。
+
+    先走 PipeWire 的 default。这块板的 plughw:QCM6490IDP 会 write error，
+    先开它会把正在用的喇叭路径打掉，所以只在 default 失败后才试 USB 声卡。
+    """
     pcm = _stereo_bytes(buf)
     env = audio_env()
     tried: List[Optional[str]] = []
     if device:
         tried.append(device)
-    auto = detect_device()
-    if auto and auto not in tried:
-        tried.append(auto)
-    for extra in ("plughw:UACDemoV10", "plughw:0", "hw:0,0", "default", None):
+    for extra in ("default", None, "plughw:UACDemoV10"):
         if extra not in tried:
             tried.append(extra)
 
+    fails: List[str] = []
     for dev in tried:
-        if _aplay(dev, pcm, env):
+        ok, err = _aplay(dev, pcm, env)
+        if ok:
             return dev or "default"
-    raise RuntimeError("aplay 播放失败，检查喇叭 / ALSA / PipeWire")
+        fails.append(f"{dev or 'pipewire'}: {err or '失败'}")
+    raise RuntimeError("aplay 播放失败；" + " | ".join(fails))
+
+
+def sink_status() -> str:
+    """给排查日志用。不播放。"""
+    env = audio_env()
+    try:
+        proc = subprocess.run(
+            ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"],
+            capture_output=True,
+            text=True,
+            timeout=1.0,
+            env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"wpctl 失败 {exc}"
+    text = ((proc.stdout or "") + (proc.stderr or "")).strip().replace("\n", " ")
+    return f"rc={proc.returncode} {text or '无输出'}"
 
 
 def play_wav(path: str, device: Optional[str] = None) -> str:

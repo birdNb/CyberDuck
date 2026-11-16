@@ -42,8 +42,8 @@ servos:
   neck_yaw:
     id: 13
     center_deg: 180.0
-    center_raw: 2048
-    # ±45°。2048 为 0°，±45° 对应 1536~2560。
+    center_raw: 2144
+    # ±45°。2144 为 0°，±45° 对应 1632~2656。
     min_deg: 135.0
     max_deg: 225.0
     direction: 1

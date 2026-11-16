@@ -27,9 +27,11 @@
 #define DRV_BIT 6
 #define EGPIO_BIT 12
 
-#define T1H_NS 700
-#define T1L_NS 600
-#define T0_PERIOD_NS 1250
+/* 对齐 WS2812B / NeoPixel 800 kHz：0 码也要有明确的高电平，不能一拉高就拉低。 */
+#define T0H_NS 400
+#define T0L_NS 850
+#define T1H_NS 800
+#define T1L_NS 450
 #define RESET_NS 300000
 
 static char errbuf[256];
@@ -42,7 +44,7 @@ static void *tlmm;
 static volatile uint32_t *io_reg;
 static volatile uint32_t *ctl_reg;
 static uint64_t cntfrq;
-static uint64_t t1h, t1l, t0period, treset;
+static uint64_t t0h, t0l, t1h, t1l, treset;
 
 const char *ws2812_error(void) { return errbuf; }
 
@@ -161,9 +163,14 @@ int ws2812_open(int chip, int line, int led_count) {
     asm volatile("mrs %0, cntfrq_el0" : "=r"(cntfrq));
     if (cntfrq == 0)
         cntfrq = 19200000;
+    t0h = ns_to_ticks(T0H_NS);
+    t0l = ns_to_ticks(T0L_NS);
     t1h = ns_to_ticks(T1H_NS);
     t1l = ns_to_ticks(T1L_NS);
-    t0period = ns_to_ticks(T0_PERIOD_NS);
+    if (t0h < 2)
+        t0h = 2;
+    if (t1h <= t0h)
+        t1h = t0h + 4;
     treset = ns_to_ticks(RESET_NS);
 
     if (request_gpio_line(chip, line) != 0) {
@@ -188,27 +195,28 @@ void ws2812_show(const uint8_t *grb) {
     if (!io_reg || !grb)
         return;
 
+    /* show() 前先保持低电平，相当于 NeoPixel 的锁存，灯珠才会收下一帧。 */
+    gpio_lo();
+    wait_until(ticks() + treset);
+
     const int nbytes = nleds * 3;
     for (int i = 0; i < nbytes; i++) {
         uint8_t byte = grb[i];
         for (int b = 7; b >= 0; b--) {
             uint64_t t0 = ticks();
+            gpio_hi();
             if ((byte >> b) & 1) {
-                gpio_hi();
                 wait_until(t0 + t1h);
                 gpio_lo();
                 wait_until(t0 + t1h + t1l);
             } else {
-                /* 0 码：立刻拉低，避免 MMIO 延迟把 0 打成 1（全白发烫） */
-                gpio_hi();
+                wait_until(t0 + t0h);
                 gpio_lo();
-                wait_until(t0 + t0period);
+                wait_until(t0 + t0h + t0l);
             }
         }
     }
-    uint64_t t0 = ticks();
     gpio_lo();
-    wait_until(t0 + treset);
 }
 
 void ws2812_hold_low(void) {

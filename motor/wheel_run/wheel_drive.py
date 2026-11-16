@@ -164,6 +164,120 @@ LEAN_LEG_IDS = (2, 3, 7, 8)
 # 侧出和回中同一速率。抬起侧的腿在伸直，太快会把车身弹离地面。
 ROLL_RATE_DEG_S = 12.0
 LOG_DIR = RUN_DIR / "logs"
+diag = None
+
+
+def can_counters(iface: str = "can0") -> dict[str, int]:
+    base = Path(f"/sys/class/net/{iface}/statistics")
+    out: dict[str, int] = {}
+    for key in ("tx_packets", "rx_packets", "tx_errors", "rx_errors", "tx_dropped", "rx_dropped"):
+        try:
+            out[key] = int((base / key).read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            out[key] = -1
+    return out
+
+
+def note(msg: str) -> None:
+    if diag is not None:
+        diag.event(msg)
+
+
+class DriveDiag:
+    """驾驶排查日志。主循环卡住时由旁路线程写下停在哪一步，CSV 写不出来的那一段靠它留下。"""
+
+    def __init__(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.path = path
+        self._f = path.open("a", encoding="utf-8", buffering=1)
+        self.phase = "init"
+        self.beat = time.monotonic()
+        self.snap = (0.0, 0.0, 0.0)
+        self.can_send_fail = 0
+        self._stop = False
+        self._lock = threading.Lock()
+        self._can_prev = can_counters()
+        self._thread = threading.Thread(target=self._watch, name="drive-diag", daemon=True)
+        self._thread.start()
+        self.event(f"排查日志 {path}")
+        self.event("can " + self._fmt(self._can_prev))
+
+    def mark(self, phase: str) -> None:
+        now = time.monotonic()
+        held = now - self.beat
+        prev = self.phase
+        self.phase = phase
+        self.beat = now
+        if held >= 0.04 and prev not in ("sleep", "init"):
+            fwd, left, right = self.snap
+            self.event(
+                f"慢 {prev} {held * 1000:.0f}ms 杆{fwd:+.2f} 轮指令 左{left:+.2f} 右{right:+.2f}"
+            )
+
+    def event(self, msg: str) -> None:
+        line = f"{time.strftime('%H:%M:%S')} {msg}\n"
+        with self._lock:
+            if self._f.closed:
+                return
+            self._f.write(line)
+
+    def close(self) -> None:
+        self._stop = True
+        self._thread.join(timeout=0.4)
+        self.event("排查日志关闭")
+        with self._lock:
+            self._f.close()
+
+    @staticmethod
+    def _fmt(cnt: dict[str, int]) -> str:
+        return " ".join(f"{key}={cnt.get(key, -1)}" for key in (
+            "tx_packets", "rx_packets", "tx_errors", "rx_errors", "tx_dropped", "rx_dropped"
+        ))
+
+    def _watch(self) -> None:
+        stalled = False
+        next_can = time.monotonic() + 1.0
+        while not self._stop:
+            time.sleep(0.05)
+            if self._stop:
+                break
+            age = time.monotonic() - self.beat
+            if age >= 0.25:
+                fwd, left, right = self.snap
+                self.event(
+                    f"主循环卡住 phase={self.phase} 已{age * 1000:.0f}ms "
+                    f"杆{fwd:+.2f} 轮指令 左{left:+.2f} 右{right:+.2f} "
+                    f"发送失败{self.can_send_fail} {self._fmt(can_counters())}"
+                )
+                stalled = True
+                time.sleep(0.45)
+                continue
+            if stalled:
+                self.event(f"主循环恢复 phase={self.phase}")
+                stalled = False
+            now = time.monotonic()
+            if now < next_can:
+                continue
+            next_can = now + 1.0
+            cur = can_counters()
+            prev = self._can_prev
+            dtx = cur["tx_packets"] - prev["tx_packets"]
+            drx = cur["rx_packets"] - prev["rx_packets"]
+            bad = any(
+                cur[key] > prev[key]
+                for key in ("tx_errors", "rx_errors", "tx_dropped", "rx_dropped")
+                if cur[key] >= 0 and prev[key] >= 0
+            )
+            if bad or dtx == 0:
+                self.event(
+                    f"can 1s tx+{dtx} rx+{drx} "
+                    f"tx_err+{cur['tx_errors'] - prev['tx_errors']} "
+                    f"rx_err+{cur['rx_errors'] - prev['rx_errors']} "
+                    f"tx_drop+{cur['tx_dropped'] - prev['tx_dropped']} "
+                    f"rx_drop+{cur['rx_dropped'] - prev['rx_dropped']} "
+                    f"发送失败{self.can_send_fail}"
+                )
+            self._can_prev = cur
 DEADZONE = 0.12
 # 进入驾驶后这么久内不发轮速，给手柄模式确认和扳机归零留时间。
 SPEED_ARM_S = 3.0
@@ -310,6 +424,17 @@ def ramp(cur: float, goal: float, accel: float, dt: float) -> float:
     if cur > goal:
         return max(goal, cur - dv)
     return goal
+
+
+def lowpass(cur: float, goal: float, tau: float, dt: float) -> float:
+    """一阶低通。tau 是时间常数，越小越跟手。"""
+    if tau <= 1e-4:
+        return goal
+    alpha = max(0.0, min(1.0, dt / (tau + dt)))
+    nxt = cur + (goal - cur) * alpha
+    if abs(goal) < 1e-4 and abs(nxt) < 0.02:
+        return 0.0
+    return nxt
 
 
 class LedRing:
@@ -670,8 +795,8 @@ class Mouth:
                 )
             except Exception as exc:
                 print(f"嘴舵机 ID {servo_id} 没有回包（{exc}）。右扳机仍会发位置。")
-            # 启动先闭嘴，避免默认轴值把嘴拉到最大。
-            self.set_level(0.0)
+            # 没给张嘴指令前保持卸力，扳机按下才上力矩。
+            self.ctrl.torque("mouth", False)
         except Exception as exc:
             print(f"嘴舵机串口打不开（{exc}）。右扳机仍会鸭叫，嘴巴先不动。")
             if self.bus is not None:
@@ -697,6 +822,16 @@ class Mouth:
                 self._warned = True
             self.ok = False
 
+    def torque(self, enabled: bool) -> None:
+        if self.ctrl is None:
+            return
+        try:
+            self.ctrl.torque("mouth", enabled)
+        except Exception as exc:
+            if not self._warned:
+                print(f"嘴舵机卸力失败：{exc}", flush=True)
+                self._warned = True
+
     def quack(self, kind: str = "short") -> bool:
         if self.speaker is None:
             return False
@@ -710,7 +845,9 @@ class Mouth:
             try:
                 print("鸭叫：长鸣" if kind == "long" else f"鸭叫：{tag}", flush=True)
                 self.speaker.quack(tag)
+                note(f"鸭叫 {tag} 设备 {self.speaker.device}")
             except Exception as exc:
+                note(f"鸭叫失败 {exc}")
                 if not self._warned:
                     print(f"鸭叫没播出来：{exc}")
                     self._warned = True
@@ -752,8 +889,10 @@ class Mouth:
         def _run() -> None:
             try:
                 used = play_pcm(buf, self.speaker.device)
-                self.speaker.device = self.speaker.device or used
+                self.speaker.device = used
+                note(f"鸭叫 {tag} {duration:.2f}s 设备 {used}")
             except Exception as exc:
+                note(f"鸭叫失败 {exc}")
                 print(f"鸭叫没播出来：{exc}", flush=True)
             finally:
                 with self._lock:
@@ -763,15 +902,16 @@ class Mouth:
         return duration
 
     def release(self) -> None:
-        """回到闭嘴零位，再卸力。退出程序时调用。"""
-        if not self.ok or self.ctrl is None:
+        """回到闭嘴零位，再卸力。总线还在就要卸力，即使刚才写角度失败过。"""
+        if self.ctrl is None:
             return
         try:
-            print("嘴舵机：回零位并卸力 ...", flush=True)
-            self.set_level(0.0)
-            time.sleep(0.35)
+            if self.ok:
+                print("嘴舵机：回零位并卸力 ...", flush=True)
+                self.set_level(0.0)
+                time.sleep(0.35)
             self.ctrl.torque("mouth", False)
-            print("嘴舵机已回零并卸力。", flush=True)
+            print("嘴舵机已卸力。", flush=True)
         except Exception as exc:
             if not self._warned:
                 print(f"嘴舵机回零/卸力失败：{exc}", flush=True)
@@ -820,6 +960,7 @@ class HeadLook:
         self.mouth_rate_now = 40.0
         self.servos: dict = {}
         self.armed = False
+        self.look_i = 0
         self.rate = 40.0
         self.mouth_rate = 200.0
         self.open_deg = MOUTH_OPEN_MAX_DEG
@@ -876,9 +1017,10 @@ class HeadLook:
                 "roll": 0.0,
                 "mouth": 0.0,
             }
+            self.look_i = 0
             self.phase = "home"
             self.mouth_rate_now = self.rate
-            print("RB：头部张望开。脖子到零位后 30°，头俯仰同向 15°。", flush=True)
+            print("RB：头部张望开。脖子到零位后 30°，头俯仰同向 15°。每动 3 次叫一声。", flush=True)
         else:
             self.goals = {
                 "pitch": self.drive["pitch"],
@@ -887,15 +1029,67 @@ class HeadLook:
                 "roll": 0.0,
                 "mouth": 0.0,
             }
-            self.phase = "park"
-            self.mouth_rate_now = self.rate
-            print("RB：头部张望关。脖子回到驾驶姿态。", flush=True)
+            self.freeze()
+            print(
+                f"RB：头部张望关。停在当前姿态，头 {self.pose['pitch']:+.1f}° 脖子 {self.pose['neck']:+.1f}°。",
+                flush=True,
+            )
+
+    def hold_current(self, pitch: float, neck: float) -> None:
+        """不表演时抓住现在的头、脖子和 yaw/roll，嘴保持卸力。"""
+        self.pose["pitch"] = float(pitch)
+        self.pose["neck"] = float(neck)
+        self.goals["pitch"] = self.pose["pitch"]
+        self.goals["neck"] = self.pose["neck"]
+        self._arm()
+        for name in ("yaw", "roll"):
+            self.goals[name] = self.pose.get(name, 0.0)
+        self.servos.pop("mouth", None)
+        self.phase = "off"
+        self._write_servos()
+        self.mouth.torque(False)
+        print(
+            f"头部保持当前姿态：头 {self.pose['pitch']:+.1f}° 脖子 {self.pose['neck']:+.1f}°。",
+            flush=True,
+        )
+
+    def freeze(self) -> None:
+        """表演结束，停在这一帧，不再回到驾驶角，也不卸力。"""
+        for name in ("pitch", "neck", "yaw", "roll"):
+            self.goals[name] = self.pose.get(name, 0.0)
+        self.goals["mouth"] = 0.0
+        self.pose["mouth"] = 0.0
+        self.servos.pop("mouth", None)
+        self.phase = "off"
+        self._write_servos()
+        self.mouth.torque(False)
+
+    def release_look_servos(self) -> None:
+        """关掉 yaw、roll 力矩，不追位置。嘴留给扳机。"""
+        bus = self.mouth.bus
+        if bus is None:
+            return
+        try:
+            from bus_servo import ADDR_TORQUE_ENABLE
+        except Exception as exc:
+            print(f"头部舵机卸力失败：{exc}", flush=True)
+            return
+        for name, fallback in (("yaw", 13), ("roll", 14)):
+            sid = int(self.specs.get(name, {}).get("id", fallback))
+            cfg = self.servos.get(name)
+            if cfg is not None:
+                sid = int(cfg.servo_id)
+            try:
+                bus.write_u8(sid, ADDR_TORQUE_ENABLE, 0)
+            except Exception as exc:
+                print(f"头部舵机 {name} ID {sid} 卸力失败：{exc}", flush=True)
 
     def can_deg(self) -> dict[int, float]:
         return {HEAD_PITCH_ID: self.pose["pitch"], NECK_PITCH_ID: self.pose["neck"]}
 
     def tick(self, dt: float) -> None:
         if self.phase == "off":
+            self._write_servos()
             return
         for name in self.AXES + ("mouth",):
             rate = self.mouth_rate_now if name == "mouth" else self.rate
@@ -911,7 +1105,7 @@ class HeadLook:
                     self._begin_mouth()
                 else:
                     self.phase = "hold"
-                    self.deadline = time.monotonic() + random.uniform(0.6, 1.6)
+                    self.deadline = time.monotonic() + random.uniform(0.15, 0.35)
         elif self.phase == "hold":
             if time.monotonic() >= self.deadline:
                 self._begin_look()
@@ -923,26 +1117,29 @@ class HeadLook:
             print("头部已回到驾驶姿态。", flush=True)
 
     def release(self) -> None:
-        """退出时把 yaw、roll 回中并卸力。嘴由 Mouth.close 负责。"""
-        if not self.servos or self.mouth.bus is None:
+        """卸力 yaw、roll、嘴。没按过 RB 时 self.servos 是空的，也要按 ID 关力矩。"""
+        bus = self.mouth.bus
+        if bus is None:
+            print("舵机总线没打开，头部舵机无法卸力。", flush=True)
             return
-        for name in ("yaw", "roll", "mouth"):
-            self.pose[name] = 0.0
-            self.goals[name] = 0.0
-        self._write_servos()
-        time.sleep(0.25)
         try:
             from bus_servo import ADDR_TORQUE_ENABLE
-        except Exception:
+        except Exception as exc:
+            print(f"头部舵机卸力失败：{exc}", flush=True)
             return
-        for name in ("yaw", "roll"):
-            cfg = self.servos.get(name)
-            if cfg is None:
-                continue
+        ids = {
+            "yaw": int(self.specs.get("yaw", {}).get("id", 13)),
+            "roll": int(self.specs.get("roll", {}).get("id", 14)),
+            "mouth": int(self.specs.get("mouth", {}).get("id", 15)),
+        }
+        for name, cfg in self.servos.items():
+            ids[name] = int(cfg.servo_id)
+        for name, sid in ids.items():
             try:
-                self.mouth.bus.write_u8(cfg.servo_id, ADDR_TORQUE_ENABLE, 0)
-            except OSError:
-                pass
+                bus.write_u8(sid, ADDR_TORQUE_ENABLE, 0)
+                print(f"头部舵机 {name} ID {sid} 已卸力。", flush=True)
+            except Exception as exc:
+                print(f"头部舵机 {name} ID {sid} 卸力失败：{exc}", flush=True)
 
     def _sample(self, lo: float, hi: float) -> float:
         if random.random() < 0.75:
@@ -966,19 +1163,25 @@ class HeadLook:
         self.goals["pitch"] = self.head_level
         self.goals["neck"] = self._sample_neck()
         self.goals["mouth"] = 0.0
-        self.want_mouth = random.random() < 0.55 and "mouth" in self.servos
+        self.look_i += 1
+        self.want_mouth = self.look_i % 3 == 0
         self.mouth_rate_now = self.rate
         self.phase = "look"
         print(
-            "张望  "
+            f"张望 {self.look_i}  "
             f"头 {self.goals['pitch']:+.0f}°  脖子 {self.goals['neck']:+.0f}°  "
             f"yaw {self.goals['yaw']:+.0f}°  roll {self.goals['roll']:+.0f}°"
-            + ("  张嘴" if self.want_mouth else ""),
+            + ("  叫一声" if self.want_mouth else ""),
             flush=True,
         )
 
     def _begin_mouth(self) -> None:
         opened = random.uniform(0.75, 1.0) * self.open_deg
+        if self.mouth.ctrl is not None:
+            cfg = self.mouth.ctrl.configs.get("mouth")
+            if cfg is not None:
+                self.servos["mouth"] = cfg
+            self.mouth.torque(True)
         sound_s = self.mouth.start_timed(self.SHORT_TAGS)
         if sound_s < 0.08:
             sound_s = 0.28
@@ -1104,16 +1307,27 @@ class DuckVolume:
     def percent(self) -> float:
         return self.level * 100.0
 
+    def _audio_env(self) -> dict:
+        try:
+            from play import audio_env
+            return audio_env()
+        except Exception:
+            return os.environ.copy()
+
     def _read_hw(self) -> float:
         try:
             out = subprocess.check_output(
                 ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"],
                 text=True,
-                stderr=subprocess.DEVNULL,
+                stderr=subprocess.STDOUT,
                 timeout=1.0,
+                env=self._audio_env(),
             )
-        except (OSError, subprocess.SubprocessError):
+        except (OSError, subprocess.SubprocessError) as exc:
+            note(f"读喇叭音量失败 {exc}")
             return 0.75
+        if "MUTED" in out:
+            note(f"喇叭已静音 {out.strip()}")
         for tok in out.replace("[MUTED]", " ").split():
             try:
                 return max(0.0, min(1.0, float(tok)))
@@ -1130,15 +1344,19 @@ class DuckVolume:
 
         def _run() -> None:
             try:
-                subprocess.run(
+                proc = subprocess.run(
                     ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", level],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
+                    capture_output=True,
+                    text=True,
                     timeout=1.0,
                     check=False,
+                    env=self._audio_env(),
                 )
-            except (OSError, subprocess.SubprocessError):
-                pass
+                if proc.returncode != 0:
+                    err = ((proc.stderr or "") + (proc.stdout or "")).strip()
+                    note(f"写喇叭音量失败 rc={proc.returncode} {err[:160]}")
+            except (OSError, subprocess.SubprocessError) as exc:
+                note(f"写喇叭音量失败 {exc}")
 
         threading.Thread(target=_run, daemon=True).start()
 
@@ -1325,6 +1543,12 @@ def main() -> int:
     parser.add_argument("--turn", type=float, default=6.0, help="左摇杆左右转弯的差速上限 rad/s")
     parser.add_argument("--spin", type=float, default=4.0, help="右摇杆原地自转的差速上限 rad/s")
     parser.add_argument("--accel", type=float, default=18.0, help="轮速变化率 rad/s^2，跟手又平滑")
+    parser.add_argument(
+        "--speed-smooth",
+        type=float,
+        default=0.15,
+        help="轮速指令低通时间常数秒。0 表示只保留加速度斜坡",
+    )
     parser.add_argument("--tqe", type=float, default=1.0, help="关节力矩保护上限 Nm，全程生效")
     parser.add_argument("--wheel-tqe", type=float, default=1.0, help="轮电机力矩保护上限 Nm")
     parser.add_argument("--hip-tqe", type=float, default=1.0, help="自平衡开启时髋 pitch 力矩上限 Nm")
@@ -1415,6 +1639,8 @@ def main() -> int:
     hold_ids = [mid for mid in ids if mid not in WHEELS]
     cmd_left = 0.0
     cmd_right = 0.0
+    spd_left = 0.0
+    spd_right = 0.0
     led = None
     imu = None
     balance = None
@@ -1481,16 +1707,21 @@ def main() -> int:
                 used = [mid for mid in hold_ids if mid not in fresh]
                 print(f"关节 {used} 用开机时的角度作为过渡起点。")
 
-            # 进入姿态：只给非轮关节发位置指令。轮电机保持失能，禁止状态下不转。
-            for mid in hold_ids:
+            # 腿走到驾驶姿态。头和脖子抓住当前角度，不表演时不动。轮子失能。
+            leg_hold = [mid for mid in hold_ids if mid not in (HEAD_PITCH_ID, NECK_PITCH_ID)]
+            head_hold = [
+                mid for mid in (HEAD_PITCH_ID, NECK_PITCH_ID) if mid in start_deg and mid in bus.motors
+            ]
+            for mid in leg_hold + head_hold:
                 bus.set_torque_limit(mid, torque_nm)
             for wid in WHEELS:
                 bus.disable(wid)
             print("姿态阶段轮电机（1、6 号）保持失能，不发指令。")
+            print("头和脖子保持当前姿态，按 RB 才表演。")
             time.sleep(0.02)
             duration = max(0.5, float(cfg.get("transition_s", 3.0)))
             print(f"进入轮行姿态 {args.pose}，过渡 {duration:.1f}s，力矩上限 {torque_nm:.1f} N·m ...")
-            print("脖子停在驾驶姿态，右摇杆只升降腿。")
+            print("右摇杆只升降腿。")
 
             t0 = time.monotonic()
             while running:
@@ -1498,15 +1729,17 @@ def main() -> int:
                 u = (now - t0) / duration
                 s = pose.smootherstep(u)
                 cmd_deg = {
-                    mid: start_deg[mid] + (stand_deg[mid] - start_deg[mid]) * s for mid in hold_ids
+                    mid: start_deg[mid] + (stand_deg[mid] - start_deg[mid]) * s for mid in leg_hold
                 }
+                for mid in head_hold:
+                    cmd_deg[mid] = start_deg[mid]
                 if balance is not None:
                     # 站立过渡阶段静止，不输出平衡补偿，避免原地来回抢。
                     _lean, d_hip, _d_neck = balance.update(period, False)
                     for hid, sign in HIP_SIGN.items():
                         if hid in cmd_deg:
                             cmd_deg[hid] += sign * d_hip
-                pose.command_position(bus, hold_ids, cmd_deg, torque_nm)
+                pose.command_position(bus, leg_hold + head_hold, cmd_deg, torque_nm)
                 bus.collect(timeout=min(0.004, period * 0.3))
                 if u >= 1.0:
                     break
@@ -1556,6 +1789,7 @@ def main() -> int:
             volume = DuckVolume(mouth.speaker)
             mouth_level = 0.0
             mouth_was_down = False
+            mouth_off_at = 0.0
             rt_down_at = 0.0
             long_quack_sent = False
             roll_u = 0.0
@@ -1563,14 +1797,17 @@ def main() -> int:
             roll_scale_prev = 0.5
             LOG_DIR.mkdir(parents=True, exist_ok=True)
             log_path = LOG_DIR / f"drive_{time.strftime('%Y%m%d_%H%M%S')}.csv"
-            log_f = log_path.open("w", newline="", encoding="utf-8")
+            log_f = log_path.open("w", newline="", encoding="utf-8", buffering=1)
             writer = csv.writer(log_f)
             writer.writerow(
                 [
-                    "t_s", "fwd", "turn", "spin", "gear", "height_stick", "height_u", "height_cap",
+                    "t_s", "dt_s", "loop_ms", "fwd", "turn", "spin", "gear",
+                    "height_stick", "height_u", "height_cap",
                     "cmd_left_rad_s", "cmd_right_rad_s",
                     "fb_left_rad_s", "fb_right_rad_s", "torque_left_nm", "torque_right_nm",
                     "voltage_v", "battery_pct", "lean_deg", "balance_hip_deg", "balance_on",
+                    "can_tx", "can_rx", "can_tx_err", "can_rx_err", "can_tx_drop", "can_rx_drop",
+                    "can_send_fail",
                 ]
             )
             pose_ids = [
@@ -1581,6 +1818,10 @@ def main() -> int:
             if head is not None:
                 head.release()
             head = HeadLook(mouth, stand_deg)
+            head.hold_current(
+                start_deg.get(HEAD_PITCH_ID, stand_deg.get(HEAD_PITCH_ID, 0.0)),
+                start_deg.get(NECK_PITCH_ID, stand_deg.get(NECK_PITCH_ID, 0.0)),
+            )
             # 升降进度 u：0 是 drive 收缩位（最低），1 是 extended 伸直位（最高）。
             # 升降关节在两组实测角度之间逐关节插值，不拟合数学 0 位。
             lift_ok = all(mid in extended_deg for mid in lift_ids)
@@ -1608,8 +1849,18 @@ def main() -> int:
             lift_deg = {mid: stand_deg[mid] for mid in lift_ids}
             gear_names = ("普通", "高速")
             gear_caps = (args.vmax, args.vmax_fast)
+            global diag
+            diag = DriveDiag(LOG_DIR / f"diag_{time.strftime('%Y%m%d_%H%M%S')}.log")
+            try:
+                from play import sink_status
+                diag.event("喇叭 " + sink_status())
+            except Exception as exc:
+                diag.event(f"喇叭状态读不到 {exc}")
+            diag.event("轮电机 timeout 只是周期回包，主循环停住时最后一帧轮速会一直转。")
+            print(f"排查日志 {diag.path}", flush=True)
             try:
                 while running and takeover_ok:
+                    diag.mark("poll")
                     loop_t = time.monotonic()
                     # 用真实循环间隔算斜坡，循环被拖慢时指令也不会滞后。
                     dt_real = max(0.001, min(0.1, loop_t - prev_t))
@@ -1675,6 +1926,7 @@ def main() -> int:
                         mouth_was_down = False
                     elif rt >= 0.35:
                         if not mouth_was_down:
+                            mouth_off_at = 0.0
                             mouth.set_level(1.0)
                             mouth.quack("short")
                             mouth_level = 1.0
@@ -1690,6 +1942,15 @@ def main() -> int:
                         mouth.set_level(0.0)
                         mouth_level = 0.0
                         mouth_was_down = False
+                        mouth_off_at = loop_t + 0.35
+                    if (
+                        mouth_off_at > 0.0
+                        and loop_t >= mouth_off_at
+                        and not mouth_was_down
+                        and not (head is not None and head.active())
+                    ):
+                        mouth.torque(False)
+                        mouth_off_at = 0.0
                     gear_now = int(boost)
                     if pad.button_b:
                         print("B 键：卸力停下。到位后长按 Y 再进入。", flush=True)
@@ -1729,6 +1990,8 @@ def main() -> int:
                     )
                     cmd_left = ramp(cmd_left, tgt_left, args.accel, dt_real)
                     cmd_right = ramp(cmd_right, tgt_right, args.accel, dt_real)
+                    spd_left = lowpass(spd_left, cmd_left, args.speed_smooth, dt_real)
+                    spd_right = lowpass(spd_right, cmd_right, args.speed_smooth, dt_real)
                     jump_u = None
                     if jump_t0 is not None:
                         jumped = loop_t - jump_t0
@@ -1740,8 +2003,8 @@ def main() -> int:
                             jump_t0 = None
                             height_u = 0.0
                             print("起跳结束，腿回到收缩。", flush=True)
-                        cmd_left = 0.0
-                        cmd_right = 0.0
+                        cmd_left = spd_left = 0.0
+                        cmd_right = spd_right = 0.0
 
                     # 右摇杆上推升高（u 增大、走向伸直点），下拉降低（走向收缩点）。
                     if lift_ok and jump_u is None:
@@ -1798,49 +2061,67 @@ def main() -> int:
                                 continue
                             base = stand_deg.get(mid, 0.0)
                             pose_cmd[mid] = base + (lean_tgt.get(mid, base) - base) * lean_a
-                    pose.command_position(bus, pose_ids, pose_cmd, torque_nm, vel_limit=6.0)
-                    leg_u = jump_u if jump_u is not None else height_u
-                    lift_deg = {
-                        mid: stand_deg[mid] + (extended_deg[mid] - stand_deg[mid]) * leg_u
-                        for mid in lift_ids
-                    }
-                    # 侧倾时抬起侧的膝和髋 pitch 走向 yaml 里的伸直角，不再只动 roll。
-                    if lean_tgt and jump_u is None:
-                        for mid in lift_ids:
-                            if mid not in lean_tgt:
-                                continue
-                            lift_deg[mid] = lift_deg[mid] + (lean_tgt[mid] - lift_deg[mid]) * lean_a
-                    for hid, sign in HIP_SIGN.items():
-                        if hid in lift_deg:
-                            lift_deg[hid] += sign * d_hip
-                    knee_ids = [mid for mid in lift_ids if mid not in HIP_SIGN]
-                    hip_ids = [mid for mid in lift_ids if mid in HIP_SIGN]
-                    knee_tqe = args.hip_tqe if jump_u is not None else torque_nm
-                    pose.command_position(bus, knee_ids, lift_deg, knee_tqe, vel_limit=6.0)
-                    pose.command_position(
-                        bus,
-                        hip_ids,
-                        lift_deg,
-                        hip_tqe_now if balance_active or jump_u is not None else torque_nm,
-                        vel_limit=6.0,
-                    )
-                    if head is not None:
-                        head.tick(dt_real)
-                        neck_cmd = head.can_deg()
-                    else:
-                        neck_cmd = {mid: float(stand_deg.get(mid, 0.0)) for mid in neck_ids}
-                    if neck_ids:
+                    diag.snap = (fwd_s, spd_left, spd_right)
+                    diag.mark("pose")
+                    try:
+                        pose.command_position(bus, pose_ids, pose_cmd, torque_nm, vel_limit=6.0)
+                        leg_u = jump_u if jump_u is not None else height_u
+                        lift_deg = {
+                            mid: stand_deg[mid] + (extended_deg[mid] - stand_deg[mid]) * leg_u
+                            for mid in lift_ids
+                        }
+                        # 侧倾时抬起侧的膝和髋 pitch 走向 yaml 里的伸直角，不再只动 roll。
+                        if lean_tgt and jump_u is None:
+                            for mid in lift_ids:
+                                if mid not in lean_tgt:
+                                    continue
+                                lift_deg[mid] = lift_deg[mid] + (lean_tgt[mid] - lift_deg[mid]) * lean_a
+                        for hid, sign in HIP_SIGN.items():
+                            if hid in lift_deg:
+                                lift_deg[hid] += sign * d_hip
+                        diag.mark("lift")
+                        knee_ids = [mid for mid in lift_ids if mid not in HIP_SIGN]
+                        hip_ids = [mid for mid in lift_ids if mid in HIP_SIGN]
+                        knee_tqe = args.hip_tqe if jump_u is not None else torque_nm
+                        pose.command_position(bus, knee_ids, lift_deg, knee_tqe, vel_limit=6.0)
                         pose.command_position(
                             bus,
-                            neck_ids,
-                            neck_cmd,
-                            torque_nm,
-                            vel_limit=max(1.2, math.radians(head.rate) * 1.4) if head is not None else 2.0,
+                            hip_ids,
+                            lift_deg,
+                            hip_tqe_now if balance_active or jump_u is not None else torque_nm,
+                            vel_limit=6.0,
                         )
-                    send_speed(bus, bus.motors[left_id], cmd_left * wheel_sign(left_id), args.wheel_tqe)
-                    send_speed(bus, bus.motors[right_id], cmd_right * wheel_sign(right_id), args.wheel_tqe)
+                        diag.mark("head")
+                        if head is not None:
+                            head.tick(dt_real)
+                            neck_cmd = head.can_deg()
+                        else:
+                            neck_cmd = {
+                                mid: float(start_deg.get(mid, stand_deg.get(mid, 0.0)))
+                                for mid in neck_ids
+                            }
+                        diag.mark("neck")
+                        if neck_ids:
+                            pose.command_position(
+                                bus,
+                                neck_ids,
+                                neck_cmd,
+                                torque_nm,
+                                vel_limit=max(1.2, math.radians(head.rate) * 1.4) if head is not None else 2.0,
+                            )
+                        diag.mark("wheels")
+                        send_speed(bus, bus.motors[left_id], spd_left * wheel_sign(left_id), args.wheel_tqe)
+                        send_speed(bus, bus.motors[right_id], spd_right * wheel_sign(right_id), args.wheel_tqe)
+                    except OSError as exc:
+                        diag.can_send_fail += 1
+                        note(
+                            f"CAN发送失败 phase={diag.phase} errno={getattr(exc, 'errno', '')} {exc} "
+                            f"杆{fwd_s:+.2f} 轮指令 左{spd_left:+.2f} 右{spd_right:+.2f}"
+                        )
+                        raise
 
                     # 状态 5 Hz。只在这一拍收两台轮子的回包，其余拍不 flush，避免把回包清掉。
+                    diag.mark("status")
                     if loop_t >= next_status:
                         bus.read_status(left_id)
                         bus.read_status(right_id)
@@ -1863,18 +2144,28 @@ def main() -> int:
                         led.set_torque_level(torque_ratio)
                     volts = bus.motors[WHEEL_LEFT].state.voltage
                     elapsed = loop_t - drive_t0
+                    loop_ms = (time.monotonic() - loop_t) * 1000.0
+                    can_now = can_counters()
+                    diag.mark("log")
                     writer.writerow(
                         [
-                            f"{elapsed:.3f}", f"{fwd_s:.3f}", f"{turn_s:.3f}", f"{spin_s:.3f}",
+                            f"{elapsed:.3f}", f"{dt_real:.4f}", f"{loop_ms:.1f}",
+                            f"{fwd_s:.3f}", f"{turn_s:.3f}", f"{spin_s:.3f}",
                             str(gear_now),
                             f"{height_s:.3f}", f"{height_u:.4f}", f"{height_cap:.4f}",
-                            f"{cmd_left:.3f}", f"{cmd_right:.3f}",
+                            f"{spd_left:.3f}", f"{spd_right:.3f}",
                             f"{fb_left:.3f}", f"{fb_right:.3f}",
                             f"{tor_left:.4f}", f"{tor_right:.4f}",
                             f"{volts:.2f}", f"{battery_percent(volts):.1f}",
                             f"{lean_deg:.3f}", f"{d_hip:.3f}", "1" if balance_active else "0",
+                            can_now["tx_packets"], can_now["rx_packets"],
+                            can_now["tx_errors"], can_now["rx_errors"],
+                            can_now["tx_dropped"], can_now["rx_dropped"],
+                            diag.can_send_fail,
                         ]
                     )
+                    if dt_real >= 0.04:
+                        log_f.flush()
 
                     if loop_t >= next_print:
                         left_st = bus.motors[WHEEL_LEFT].state
@@ -1895,7 +2186,7 @@ def main() -> int:
                             f"颈 {neck_cmd.get(NECK_PITCH_ID, 0.0):+5.1f}° 头 {neck_cmd.get(HEAD_PITCH_ID, 0.0):+5.1f}° "
                             f"张望{'开' if head is not None and head.active() else '关'} "
                             f"自平衡{'开' if balance_active else '关'}  "
-                            f"轮指令 左{cmd_left:+6.2f} 右{cmd_right:+6.2f}  "
+                            f"轮指令 左{spd_left:+6.2f} 右{spd_right:+6.2f}  "
                             f"反馈 左{fb_left:+6.2f} 右{fb_right:+6.2f}  "
                             f"{volt_txt}  {temp_txt}  灯 {led.label}  "
                             f"力矩 左{yellow_nm(tor_left)} 右{yellow_nm(tor_right)}",
@@ -1903,6 +2194,7 @@ def main() -> int:
                         )
                         next_print = loop_t + 0.5
 
+                    diag.mark("sleep")
                     spent = time.monotonic() - loop_t
                     if spent < period:
                         time.sleep(period - spent)
@@ -1910,6 +2202,10 @@ def main() -> int:
                 log_f.flush()
                 log_f.close()
                 print(f"驾驶日志 {log_path}")
+                if diag is not None:
+                    diag.event("驾驶循环结束")
+                    diag.close()
+                    diag = None
 
             # 轮子只停转、卸力，绝不切回位置模式。
             # 速度模式下编码器会累到上千度，再按卸力姿态去追位置就会空转好多圈。
@@ -1988,6 +2284,7 @@ def main() -> int:
                     vel_limit=max(1.5, abs(float(cfg.get("vel_limit", 1.0)))),
                     tol_deg=2.0,
                     tol_by_id={7: 5.0},
+                    stall_s=2.0,
                     label="卸力姿态",
                 )
             else:

@@ -349,9 +349,13 @@ def hold_until_reached(
     vel_limit: float = 1.5,
     tol_deg: float = 2.0,
     tol_by_id: dict[int, float] | None = None,
+    stall_s: float | None = None,
     label: str = "卸力姿态",
 ) -> bool:
-    """持续发目标角，直到每台反馈都进入容差。running() 为假时返回 False，不卸力。"""
+    """持续发目标角，直到每台反馈都进入容差。running() 为假时返回 False，不卸力。
+
+    stall_s 内误差不再减小，就按当前位置结束等待，调用方接着卸力。
+    """
     extra = {int(joint_id): float(limit) for joint_id, limit in (tol_by_id or {}).items()}
 
     def tol_for(joint_id: int) -> float:
@@ -367,6 +371,8 @@ def hold_until_reached(
     fresh: dict[int, tuple[float, float]] = {}
     cursor = 0
     settled = 0
+    stall_from: float | None = None
+    stall_err: float | None = None
     while running():
         now = time.monotonic()
         command_position(bus, ids, target, torque, vel_limit=vel_limit)
@@ -390,13 +396,42 @@ def hold_until_reached(
         if _position_fresh(motor, max_age_s=0.3):
             fresh[mid] = (time.monotonic(), motor.state.position / DEG)
         far: list[int] = []
+        measured: list[tuple[int, float]] = []
+        missing = False
         for joint_id in ids:
             item = fresh.get(joint_id)
             if item is None or time.monotonic() - item[0] > 1.5:
                 far.append(joint_id)
+                missing = True
                 continue
-            if abs(item[1] - target[joint_id]) > tol_for(joint_id):
+            err = abs(item[1] - target[joint_id])
+            if err > tol_for(joint_id):
                 far.append(joint_id)
+                measured.append((joint_id, err))
+        if (
+            stall_s is not None
+            and measured
+            and not missing
+            and len(fresh) >= len(ids)
+        ):
+            worst = max(err for _joint_id, err in measured)
+            if stall_err is None or worst < stall_err - 0.4:
+                stall_err = worst
+                stall_from = time.monotonic()
+            elif stall_from is not None and time.monotonic() - stall_from >= stall_s:
+                bits = [
+                    f"{joint_id}:{fresh[joint_id][1]:+.1f}°/{target[joint_id]:+.1f}°"
+                    for joint_id, _err in measured
+                ]
+                print(
+                    f"{label}已不再靠近目标（{' '.join(bits)}），按当前位置卸力。",
+                    flush=True,
+                )
+                print_degrees({joint_id: fresh[joint_id][1] for joint_id in ids})
+                return True
+        else:
+            stall_from = None
+            stall_err = None
         if not far and len(fresh) >= len(ids):
             settled += 1
             if settled >= 2:
