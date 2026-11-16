@@ -34,7 +34,6 @@ from ht_can import (
     MODE_VELOCITY,
     Motor,
     MotorBus,
-    QUERY_STATUS,
     TWO_PI,
     _clip_i16,
     i16_le,
@@ -61,16 +60,21 @@ def iface_down_reason(iface: str) -> str | None:
     return None
 
 
-def send_speed(bus: MotorBus, motor: Motor, vel_rad_s: float, tqe_nm: float = 0.0) -> None:
+def send_speed(
+    bus: MotorBus, motor: Motor, vel_rad_s: float, tqe_nm: float = 0.0, reply: bool = False
+) -> None:
     """1、6 号轮驱：速度+加速度（0x1E），不写力矩上限。
 
     位置帧 0x1F 会把轮子力矩卡在 1 N·m，车重压着走不动。
     tqe_nm 保留参数，轮驱忽略它。
+    reply 为真时带 0x0E，停车回读速度才用；驾驶循环保持不回包。
     """
     _ = tqe_nm
     acc_raw = _clip_i16(int(80.0 / TWO_PI * ACC_SCALE))
+    # 查询码 0x00：不让轮子每拍回状态。0x0E 回包会堵住发送，摇杆和侧倾就丢、就慢。
+    query = 0x0E if reply else 0x00
     data = (
-        bytes([MODE_VEL_ACC, QUERY_STATUS])
+        bytes([MODE_VEL_ACC, query])
         + i16_le(vel_to_int(vel_rad_s))
         + i16_le(acc_raw)
     )

@@ -158,12 +158,15 @@ def motor_can_id(motor_id: int, reply: bool = True, mit: bool = False) -> int:
 
 
 def motor_id_from_can_id(can_id: int) -> int:
-    """返回帧电机 ID 在 bits[14:8]；兼容旧 0xID00 布局。"""
+    """只认回复帧 0x10000|(id<<8)。
+
+    发送帧是 0x18000|id。适配器有时把发送帧折回接收，
+    低 7 位正好是电机号，不能把它当成这台电机的回包。
+    """
     cid = can_id & CAN_EFF_MASK
-    src = (cid >> 8) & 0x7F
-    if 1 <= src <= 127:
-        return src
-    return cid & 0x7F
+    if (cid & ~0x7F00) != CAN_TITLE_REPLY:
+        return 0
+    return (cid >> 8) & 0x7F
 
 
 def i16_le(value: int) -> bytes:

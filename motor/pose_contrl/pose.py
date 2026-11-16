@@ -28,7 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from ht_can import Motor, MotorBus, QUERY_STATUS
+from ht_can import Motor, MotorBus, QUERY_STATUS, QUERY_TEMP
 
 try:
     import yaml
@@ -37,7 +37,7 @@ except ImportError:
 
 DEG = math.pi / 180.0
 CONFIG_PATH = Path(__file__).with_name("pose_config.yaml")
-POSE_ORDER = ("stand", "squat", "fold", "unload", "damp", "release")
+POSE_ORDER = ("stand", "squat", "fold", "unload", "lean_left", "lean_right", "damp", "release")
 UNLOAD_POSE = "unload"
 MOTOR_DIR = Path(__file__).resolve().parents[1]
 
@@ -147,20 +147,55 @@ def open_bus(cfg: dict) -> tuple[MotorBus, list[int]]:
     return bus, found
 
 
-def read_degrees(bus: MotorBus, ids: list[int]) -> dict[int, float]:
-    bus.poll_status(ids, timeout=0.08)
+def _position_fresh(motor, *, max_age_s: float = 1.0) -> bool:
+    """0x0E 状态或 0x0C 温度帧都可能带位置；看 t_pos 是否刚更新。"""
+    payload = motor.state.payload
+    if len(payload) < 5:
+        return False
+    if payload[0] not in (QUERY_STATUS, QUERY_TEMP):
+        return False
+    if motor.state.t_pos <= 0:
+        return False
+    return (time.monotonic() - motor.state.t_pos) <= max_age_s
+
+
+def read_degrees(
+    bus: MotorBus,
+    ids: list[int],
+    *,
+    retries: int = 4,
+    strict: bool = True,
+) -> dict[int, float]:
+    """逐台读角度。一次群发时停止帧的回包会把后面的状态应答冲掉。"""
+    pending = list(ids)
     out: dict[int, float] = {}
-    stale: list[int] = []
-    for mid in ids:
-        motor = bus.motors[mid]
-        payload = motor.state.payload
-        if len(payload) < 8 or payload[0] != QUERY_STATUS:
-            stale.append(mid)
-            continue
-        out[mid] = motor.state.position / DEG
-    if stale:
-        raise RuntimeError(f"这些关节没有读到位置: {stale}")
-    return out
+    for attempt in range(max(1, retries)):
+        if not pending:
+            break
+        still: list[int] = []
+        for mid in pending:
+            try:
+                bus.can.flush_rx(32)
+            except OSError:
+                pass
+            motor = bus.motors[mid]
+            motor.state.t_pos = 0.0
+            bus.read_status(mid)
+            bus.collect(timeout=0.03)
+            if not _position_fresh(motor, max_age_s=0.4):
+                # 停止模式下有的固件只在 0x0C 里带位置。
+                bus.read_voltage(mid)
+                bus.collect(timeout=0.03)
+            if _position_fresh(motor, max_age_s=0.4):
+                out[mid] = motor.state.position / DEG
+            else:
+                still.append(mid)
+        pending = still
+        if pending and attempt + 1 < retries:
+            time.sleep(0.02)
+    if pending and strict:
+        raise RuntimeError(f"这些关节没有读到位置: {pending}")
+    return {mid: out[mid] for mid in ids if mid in out}
 
 
 def print_degrees(degrees: dict[int, float]) -> None:
@@ -252,6 +287,8 @@ def move_to_pose(
     running,
     *,
     label: str = "目标姿态",
+    vel_limit: float | None = None,
+    duration_s: float | None = None,
 ) -> dict[int, float]:
     """柔性走到目标角度后返回最终指令角，不进入持续位置保持。"""
     start = read_degrees(bus, ids)
@@ -259,10 +296,10 @@ def move_to_pose(
     if missing:
         raise RuntimeError(f"姿态里缺少关节角度: {missing}。先 capture。")
 
-    duration = max(0.5, float(cfg.get("transition_s", 3.0)))
+    duration = max(0.3, float(cfg.get("transition_s", 3.0) if duration_s is None else duration_s))
     hz = max(20.0, float(cfg.get("hz", 50.0)))
     period = 1.0 / hz
-    vel_cap = abs(float(cfg.get("vel_limit", 1.0)))
+    vel_cap = abs(float(cfg.get("vel_limit", 1.0))) if vel_limit is None else abs(vel_limit)
     torque = abs(float(cfg.get("torque_nm", 1.2)))
 
     deltas = [abs(target[mid] - start[mid]) for mid in ids]
@@ -290,7 +327,7 @@ def move_to_pose(
         u = (now - t0) / duration
         s = smootherstep(u)
         cmd = {mid: start[mid] + (target[mid] - start[mid]) * s for mid in ids}
-        command_position(bus, ids, cmd, torque)
+        command_position(bus, ids, cmd, torque, vel_limit=vel_cap)
         last_cmd = cmd
         bus.collect(timeout=min(0.004, period * 0.3))
         if u >= 1.0:
@@ -300,6 +337,79 @@ def move_to_pose(
             time.sleep(period - spent)
 
     return target if running() else last_cmd
+
+
+def hold_until_reached(
+    bus: MotorBus,
+    ids: list[int],
+    target: dict[int, float],
+    running,
+    *,
+    torque: float,
+    vel_limit: float = 1.5,
+    tol_deg: float = 2.0,
+    label: str = "卸力姿态",
+) -> bool:
+    """持续发目标角，直到每台反馈都进入容差。running() 为假时返回 False，不卸力。"""
+    print(f"保持{label}，各关节反馈进入 ±{tol_deg:.0f}° 后才卸力。", flush=True)
+    period = 0.02
+    last_print = 0.0
+    fresh: dict[int, tuple[float, float]] = {}
+    cursor = 0
+    settled = 0
+    while running():
+        now = time.monotonic()
+        command_position(bus, ids, target, torque, vel_limit=vel_limit)
+        if not ids:
+            print(f"已到{label}。", flush=True)
+            return True
+        mid = ids[cursor % len(ids)]
+        cursor += 1
+        motor = bus.motors[mid]
+        try:
+            bus.can.flush_rx(8)
+            motor.state.t_pos = 0.0
+            bus.read_status(mid)
+            bus.collect(timeout=0.02)
+            if not _position_fresh(motor, max_age_s=0.3):
+                bus.read_voltage(mid)
+                bus.collect(timeout=0.02)
+        except OSError:
+            time.sleep(period)
+            continue
+        if _position_fresh(motor, max_age_s=0.3):
+            fresh[mid] = (time.monotonic(), motor.state.position / DEG)
+        far: list[int] = []
+        for joint_id in ids:
+            item = fresh.get(joint_id)
+            if item is None or time.monotonic() - item[0] > 1.5:
+                far.append(joint_id)
+                continue
+            if abs(item[1] - target[joint_id]) > tol_deg:
+                far.append(joint_id)
+        if not far and len(fresh) >= len(ids):
+            settled += 1
+            if settled >= 2:
+                print(f"已到{label}。", flush=True)
+                print_degrees({joint_id: fresh[joint_id][1] for joint_id in ids})
+                return True
+        else:
+            settled = 0
+        if time.monotonic() - last_print >= 0.8:
+            bits = []
+            for joint_id in far:
+                item = fresh.get(joint_id)
+                if item is None:
+                    bits.append(f"{joint_id}:无反馈")
+                else:
+                    bits.append(f"{joint_id}:{item[1]:+.1f}°/{target[joint_id]:+.1f}°")
+            print(f"未到{label}: " + " ".join(bits), flush=True)
+            last_print = time.monotonic()
+        spent = time.monotonic() - now
+        if spent < period:
+            time.sleep(period - spent)
+    print(f"未确认到{label}。", flush=True)
+    return False
 
 
 def transition(bus: MotorBus, cfg: dict, ids: list[int], target: dict[int, float], running) -> None:
@@ -382,11 +492,18 @@ def enter_release(bus: MotorBus, cfg: dict, ids: list[int], running) -> None:
     """先到卸力姿态，再失能。"""
     target = unload_target(cfg, ids)
     if target is not None and running():
-        print("卸力：先柔性进入卸力姿态 unload，再到停止模式。")
+        print("卸力：先柔性进入卸力姿态 unload，确认到位后再到停止模式。")
+        torque = abs(float(cfg.get("torque_nm", 1.2)))
+        vel = max(1.5, abs(float(cfg.get("vel_limit", 1.0))))
         try:
             move_to_pose(bus, cfg, ids, target, running, label="卸力姿态")
         except RuntimeError as exc:
-            print(f"无法走到卸力姿态（{exc}），改为直接卸力。", file=sys.stderr)
+            print(f"过渡读数失败（{exc}），改为直接保持卸力目标角。", file=sys.stderr)
+        if not hold_until_reached(
+            bus, ids, target, running, torque=torque, vel_limit=vel, label="卸力姿态"
+        ):
+            print("卸力姿态未到位，关节保持当前力矩。", file=sys.stderr)
+            return
     elif target is None:
         print(
             f"还没有卸力姿态角度。可先摆好再: python3 pose.py capture {UNLOAD_POSE}",
