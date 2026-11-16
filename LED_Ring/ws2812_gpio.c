@@ -1,8 +1,7 @@
 /*
- * WS2812 单总线：Radxa Dragon Q6A GPIO_22（40 针 PIN_8）。
- *
- * 该脚默认是 UART5_TX。占用期间必须保持 GPIO 模式，关灯后不要把串口绑回去，
- * 否则 TX 空闲高电平 / 控制台输出会再次点亮灯珠。
+ * WS2812 单总线：直接位bang TLMM。
+ * 40 针 PIN_22 = GPIO_57。
+ * 本机没有 /dev/mem 时，改映射 /dev/ws2812_tlmm（同一块 TLMM）。
  */
 
 #define _GNU_SOURCE
@@ -110,13 +109,19 @@ static int request_gpio_line(int chip, int line) {
 }
 
 static int map_tlmm(int line) {
+    off_t map_off = (off_t)TLMM_PHYS;
+
     mem_fd = open("/dev/mem", O_RDWR | O_SYNC);
     if (mem_fd < 0) {
-        set_err("open /dev/mem (需要 root)");
+        mem_fd = open("/dev/ws2812_tlmm", O_RDWR | O_SYNC);
+        map_off = 0;
+    }
+    if (mem_fd < 0) {
+        set_err("open TLMM map (需要 root，并加载 ws2812_tlmm)");
         return -1;
     }
     tlmm = mmap(NULL, TLMM_MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd,
-                (off_t)TLMM_PHYS);
+                map_off);
     if (tlmm == MAP_FAILED) {
         set_err("mmap TLMM");
         tlmm = NULL;

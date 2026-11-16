@@ -21,7 +21,6 @@ import argparse
 import csv
 import os
 import signal
-import struct
 import sys
 import time
 from pathlib import Path
@@ -29,9 +28,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from ht_can import MAGIC_POS, Motor, MotorBus, i16_le, tqe_to_int, vel_to_int
+from ht_can import (
+    ACC_SCALE,
+    MODE_VEL_ACC,
+    MODE_VELOCITY,
+    Motor,
+    MotorBus,
+    QUERY_STATUS,
+    TWO_PI,
+    _clip_i16,
+    i16_le,
+    vel_to_int,
+)
 
-MODE_VELOCITY = 0x0B
 LOG_DIR = Path(__file__).resolve().parent / "logs"
 # 与 locomotion/scripts/watch_policy.py 的 battery_text 相同：12.8 V 为 0%，16.8 V 为 100%。
 BATT_EMPTY_V = 12.8
@@ -52,13 +61,18 @@ def iface_down_reason(iface: str) -> str | None:
     return None
 
 
-def send_speed(bus: MotorBus, motor: Motor, vel_rad_s: float, tqe_nm: float) -> None:
-    """单电机速度帧 0x07 0x07。位置字必须是原始 0x8000，不能过 _clip_i16。"""
+def send_speed(bus: MotorBus, motor: Motor, vel_rad_s: float, tqe_nm: float = 0.0) -> None:
+    """1、6 号轮驱：速度+加速度（0x1E），不写力矩上限。
+
+    位置帧 0x1F 会把轮子力矩卡在 1 N·m，车重压着走不动。
+    tqe_nm 保留参数，轮驱忽略它。
+    """
+    _ = tqe_nm
+    acc_raw = _clip_i16(int(80.0 / TWO_PI * ACC_SCALE))
     data = (
-        bytes([0x07, 0x07])
-        + struct.pack("<h", MAGIC_POS)
+        bytes([MODE_VEL_ACC, QUERY_STATUS])
         + i16_le(vel_to_int(vel_rad_s))
-        + i16_le(tqe_to_int(tqe_nm, motor.type))
+        + i16_le(acc_raw)
     )
     bus.send_cmd(motor.id, data, reply=False)
 
@@ -114,7 +128,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="轮行皮带打滑速度测试")
     parser.add_argument("--id", type=int, default=1, help="电机号，默认 1。测 6 号时加 --id 6")
     parser.add_argument("--iface", default="can0")
-    parser.add_argument("--type", default="4538_19")
+    parser.add_argument("--type", default="3532_0")
     parser.add_argument("--vmax", type=float, default=20.0, help="峰值速度 rad/s，扫到 +vmax 再扫到 -vmax")
     parser.add_argument("--accel", type=float, default=1.0, help="速度变化率 rad/s^2，越小越慢")
     parser.add_argument("--hold", type=float, default=2.0, help="在 ±vmax 停留秒数")

@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Radxa Dragon Q6A：GPIO_22（排针 PIN_8）上的 12 灯 WS2812 灯效。
+"""40 针 PIN_22（GPIO_57）上的 12 灯 WS2812 灯效。
 
-接线（与 mixly.ino 同一类灯环）：
+接线：
   红 5V  -> 排针 5V（灯珠多时请外接 5V，共地）
   黑 GND -> 排针 GND
-  黄 DIN -> GPIO_22，即 40 针排针第 8 脚
+  黄 DIN -> 40 针排针第 22 脚（GPIO_57）
 
-GPIO_22 默认是调试串口 TX，程序会临时占用该脚。需要 root：
+需要 root：
   sudo python3 white_flow.py
-  sudo python3 white_flow.py --effect ironman
-  sudo python3 white_flow.py --boot
-  sudo python3 white_flow.py --boot-demo
+  sudo python3 white_flow.py --effect comet
 关灯：
   sudo python3 white_flow.py --off
-Ctrl+C 退出并关灯。开机灯效结束时会熄灭。
+Ctrl+C 退出并关灯。默认灯效是彗星流水灯。
 """
 from __future__ import annotations
 
@@ -36,7 +34,7 @@ SO = os.path.join(DIR, "ws2812_gpio.so")
 
 LED_COUNT = 12
 GPIO_CHIP = 4
-GPIO_LINE = 22
+GPIO_LINE = 57  # 40 针 PIN_22
 BRIGHTNESS = 64
 STEP_S = 0.04
 TAIL = 5
@@ -76,7 +74,7 @@ def load_lib() -> ctypes.CDLL:
 def maybe_rerun_as_root() -> None:
     if os.geteuid() == 0 or os.environ.get("INVOCATION_ID"):
         return
-    print("WS2812 需要直接操作 GPIO_22 / TLMM，正在用 sudo 重新启动…")
+    print("WS2812 需要直接操作 PIN_22，正在用 sudo 重新启动…")
     os.execvp("sudo", ["sudo", "-E", sys.executable, os.path.abspath(__file__), *sys.argv[1:]])
 
 
@@ -610,7 +608,7 @@ def run_loop(
     signal.signal(signal.SIGTERM, _stop)
 
     labels = ", ".join(f"{n}({EFFECTS[n][0]})" for n in names)
-    print(f"GPIO_{GPIO_LINE}  {count} 灯  亮度 {brightness}  灯效: {labels}")
+    print(f"PIN_22 / GPIO_{GPIO_LINE}  {count} 灯  亮度 {brightness}  灯效: {labels}")
     if hold_s and len(names) > 1:
         print(f"每种约 {hold_s:.0f}s 轮换。Ctrl+C 退出。")
     else:
@@ -646,18 +644,18 @@ def run_loop(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="GPIO_22 WS2812 灯环灯效")
+    parser = argparse.ArgumentParser(description="PIN_22 WS2812 灯环灯效")
     parser.add_argument("--count", type=int, default=LED_COUNT, help="灯珠数量，默认 12")
     parser.add_argument("--chip", type=int, default=GPIO_CHIP, help="gpiochip 编号，默认 4")
-    parser.add_argument("--line", type=int, default=GPIO_LINE, help="GPIO 编号，默认 22")
+    parser.add_argument("--line", type=int, default=GPIO_LINE, help="GPIO 编号，默认 57（PIN_22）")
     parser.add_argument("--brightness", type=int, default=BRIGHTNESS, help="亮度 1-255，默认 64")
     parser.add_argument("--delay", type=float, default=STEP_S, help="每帧间隔秒，默认 0.04")
     parser.add_argument("--tail", type=int, default=TAIL, help="流水拖尾长度，默认 5")
     parser.add_argument(
         "--effect",
-        default="flow",
+        default="comet",
         metavar="NAME",
-        help="灯效名，见 --list，默认 flow",
+        help="灯效名，见 --list，默认 comet（彗星流水灯）",
     )
     parser.add_argument("--cycle", action="store_true", help="轮播全部灯效")
     parser.add_argument("--hold", type=float, default=HOLD_S, help="轮播时每种持续秒，默认 8")
@@ -706,7 +704,7 @@ def main() -> int:
         for _ in range(3):
             lib.ws2812_show(off)
         lib.ws2812_hold_low()
-        print("已熄灭。保持 GPIO_22 低电平中（退出进程可能导致串口再次点亮）。")
+        print("已熄灭。保持 PIN_22 低电平中。")
         print("Ctrl+C 结束进程。")
         try:
             while running:
@@ -729,7 +727,7 @@ def main() -> int:
             args.tail,
             args.delay,
             args.fifo,
-            args.effect if args.effect in EFFECTS else "flow",
+            args.effect if args.effect in EFFECTS else "comet",
         )
         return 0
 
@@ -737,7 +735,7 @@ def main() -> int:
         if lib.ws2812_open(args.chip, args.line, args.count) != 0:
             err = lib.ws2812_error() or b"unknown"
             print(f"打开 GPIO_{args.line} 失败: {err.decode('utf-8', 'replace')}", file=sys.stderr)
-            print("请用 sudo 运行，并确认 DIN 接到 40 针排针第 8 脚（GPIO_22）。", file=sys.stderr)
+            print("请用 sudo 运行，并确认 DIN 接到 40 针排针第 22 脚（GPIO_57）。", file=sys.stderr)
             return 1
         run_boot(
             lib,
@@ -764,7 +762,7 @@ def main() -> int:
     if lib.ws2812_open(args.chip, args.line, args.count) != 0:
         err = lib.ws2812_error() or b"unknown"
         print(f"打开 GPIO_{args.line} 失败: {err.decode('utf-8', 'replace')}", file=sys.stderr)
-        print("请用 sudo 运行，并确认 DIN 接到 40 针排针第 8 脚（GPIO_22）。", file=sys.stderr)
+        print("请用 sudo 运行，并确认 DIN 接到 40 针排针第 22 脚（GPIO_57）。", file=sys.stderr)
         return 1
 
     run_loop(lib, names, args.count, args.brightness, args.tail, args.delay, hold)

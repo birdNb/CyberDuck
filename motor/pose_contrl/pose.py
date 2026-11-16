@@ -27,7 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from ht_can import Motor, MotorBus, i16_le, pos_to_int, tqe_to_int
+from ht_can import Motor, MotorBus, QUERY_STATUS
 
 try:
     import yaml
@@ -120,20 +120,28 @@ def open_bus(cfg: dict) -> tuple[MotorBus, list[int]]:
     if down:
         raise SystemExit(f"{down}\n请先: sudo ../setup_can0.sh")
     ids = joint_ids(cfg)
-    motor_type = str(cfg.get("motor_type", "4538_19"))
+    motor_type = str(cfg.get("motor_type", "3532_0"))
     bus = MotorBus(iface)
     for mid in ids:
         bus.add_motor(Motor(mid, motor_type, f"J{mid}"))
     found = bus.scan(ids, timeout_each=0.06)
     missing = [i for i in ids if i not in found]
     if missing:
+        time.sleep(0.2)
+        found = sorted(set(found) | set(bus.scan(missing, timeout_each=0.1)))
+        missing = [i for i in ids if i not in found]
+    if missing:
         print(f"未应答，本次跳过: {missing}")
     if not found:
         bus.close()
         raise SystemExit("没有在线关节，取消动作。")
+    # 关闭周期主动上报，状态靠控制/查询帧回传。
     for mid in found:
         bus.set_timeout_ms(mid, 0)
-    time.sleep(0.05)
+    # 进入总线默认卸力，避免扫完就在零位顶着力矩。
+    bus.disable_all(found)
+    # 扫完后再读一次 0x0E 状态，保证 position 有效。
+    bus.poll_status(found, timeout=0.10)
     return bus, found
 
 
@@ -144,7 +152,7 @@ def read_degrees(bus: MotorBus, ids: list[int]) -> dict[int, float]:
     for mid in ids:
         motor = bus.motors[mid]
         payload = motor.state.payload
-        if len(payload) < 8 or payload[0] not in (0x17, 0x27):
+        if len(payload) < 8 or payload[0] != QUERY_STATUS:
             stale.append(mid)
             continue
         out[mid] = motor.state.position / DEG
@@ -213,17 +221,18 @@ def command_position(
     ids: list[int],
     degrees: dict[int, float],
     torque: float,
+    vel_limit: float = 2.0,
 ) -> None:
-    """纯位置指令：速度字固定为 0，不带速度前馈。"""
+    """位置+最大速度+力矩上限（经典 CAN 模式 0x1F）。"""
     for mid in ids:
         motor = bus.motors[mid]
-        data = (
-            bytes([0x07, 0x07])
-            + i16_le(pos_to_int(degrees[mid] * DEG))
-            + bytes([0x00, 0x00])
-            + i16_le(tqe_to_int(torque, motor.type))
+        bus.command_pos_vel_tqe(
+            motor,
+            degrees[mid] * DEG,
+            abs(vel_limit),
+            torque,
+            reply=False,
         )
-        bus.send_cmd(motor.id, data, reply=False)
 
 
 def transition(bus: MotorBus, cfg: dict, ids: list[int], target: dict[int, float], running) -> None:

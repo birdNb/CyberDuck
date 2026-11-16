@@ -3,10 +3,10 @@
 interface: can0
 bitrate: 1000000
 sample_point: 0.875
-scan_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+scan_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 motors:
   - name: L_low_foot
-    type: "4538_19"
+    type: "3532_0"
     id: 1
     pos_limit_enable: false
     pos_upper: 5

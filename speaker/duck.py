@@ -84,11 +84,15 @@ class Speaker:
         self.seed = hardware_seed() if seed is None else seed & 0xFFFFFFFF
         self.personality = Personality.from_seed(self.seed)
         self.device = device
+        self.volume = 1.0
 
     def quack(self, tag: str = "greet", variant: Optional[int] = None) -> np.ndarray:
         if variant is None:
             variant = int.from_bytes(os.urandom(2), "little") % variant_count(tag)
         buf = render(tag, self.personality, variant)
+        vol = max(0.0, min(1.0, float(self.volume)))
+        if vol < 0.999:
+            buf = np.clip(buf * vol, -1.0, 1.0)
         used = play_pcm(buf, self.device)
         self.device = self.device or used
         return buf

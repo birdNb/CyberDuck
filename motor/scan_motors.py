@@ -31,7 +31,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="扫描 HighTorque 电机")
     parser.add_argument("-i", "--iface", default="can0")
     parser.add_argument("--start", type=int, default=1)
-    parser.add_argument("--end", type=int, default=15)
+    parser.add_argument("--end", type=int, default=12)
     parser.add_argument("--timeout", type=float, default=0.05)
     parser.add_argument("--status", action="store_true", help="扫描后读一次状态")
     args = parser.parse_args()
