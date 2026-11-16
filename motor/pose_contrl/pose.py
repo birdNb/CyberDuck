@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """在预设姿态之间柔性切换。15 号电机不参与。
 
-位置姿态 stand / squat / fold 从当前角度平滑过渡，默认 3 秒。
+位置姿态 stand / squat / fold / drive / unload 从当前角度平滑过渡，默认 3 秒。
 damp：保持当前姿态、低力矩跟随，方便用手掰。
-release：失能 1..14，不再出力。
+release / 卸力：先柔性到 unload（卸力姿态），再失能，不再出力。
 
 用法：
   python3 pose.py
   python3 pose.py go stand
-  python3 pose.py capture stand
+  python3 pose.py capture unload
+  python3 pose.py go release
   python3 pose.py read
   python3 pose.py list
   python3 teach.py
@@ -36,7 +37,8 @@ except ImportError:
 
 DEG = math.pi / 180.0
 CONFIG_PATH = Path(__file__).with_name("pose_config.yaml")
-POSE_ORDER = ("stand", "squat", "fold", "damp", "release")
+POSE_ORDER = ("stand", "squat", "fold", "unload", "damp", "release")
+UNLOAD_POSE = "unload"
 MOTOR_DIR = Path(__file__).resolve().parents[1]
 
 
@@ -198,6 +200,10 @@ class LiveTable:
 
 
 def capture_pose(cfg: dict, path: Path, name: str) -> int:
+    poses = cfg.setdefault("poses", {})
+    if name not in poses:
+        poses[name] = {"mode": "position", "joints": {}}
+        print(f"新建姿态 {name}（position）。")
     spec = pose_spec(cfg, name)
     if spec.get("mode") not in ("position", "damping", "release"):
         raise SystemExit(f"姿态 {name} 的 mode 无法识别: {spec.get('mode')}")
@@ -208,10 +214,13 @@ def capture_pose(cfg: dict, path: Path, name: str) -> int:
         bus.close()
     joints = {str(mid): round(degrees[mid], 2) for mid in sorted(degrees)}
     cfg["poses"][name]["joints"] = joints
-    if "mode" not in cfg["poses"][name]:
+    if name == UNLOAD_POSE:
+        cfg["poses"][name]["mode"] = "position"
+    elif "mode" not in cfg["poses"][name]:
         cfg["poses"][name]["mode"] = spec.get("mode", "position")
     save_config(path, cfg)
-    print(f"已把当前角度写入 {path.name} → {name}")
+    label = "（卸力姿态）" if name == UNLOAD_POSE else ""
+    print(f"已把当前角度写入 {path.name} → {name}{label}")
     print_degrees(degrees)
     return 0
 
@@ -235,7 +244,16 @@ def command_position(
         )
 
 
-def transition(bus: MotorBus, cfg: dict, ids: list[int], target: dict[int, float], running) -> None:
+def move_to_pose(
+    bus: MotorBus,
+    cfg: dict,
+    ids: list[int],
+    target: dict[int, float],
+    running,
+    *,
+    label: str = "目标姿态",
+) -> dict[int, float]:
+    """柔性走到目标角度后返回最终指令角，不进入持续位置保持。"""
     start = read_degrees(bus, ids)
     missing = [mid for mid in ids if mid not in target]
     if missing:
@@ -251,10 +269,10 @@ def transition(bus: MotorBus, cfg: dict, ids: list[int], target: dict[int, float
     peak = max(deltas) if deltas else 0.0
     need = (1.875 * peak * DEG) / vel_cap if vel_cap > 1e-6 else duration
     if need > duration:
-        print(f"最大关节行程 {peak:.1f}°，3s 会过快，过渡延长到 {need:.1f}s")
+        print(f"最大关节行程 {peak:.1f}°，默认过渡会过快，延长到 {need:.1f}s")
         duration = need
 
-    print(f"柔性过渡 {duration:.1f}s，力矩上限 {torque:.2f} Nm")
+    print(f"柔性过渡到{label} {duration:.1f}s，力矩上限 {torque:.2f} Nm")
     print("起点:")
     print_degrees(start)
     print("目标:")
@@ -281,7 +299,14 @@ def transition(bus: MotorBus, cfg: dict, ids: list[int], target: dict[int, float
         if spent < period:
             time.sleep(period - spent)
 
-    hold = target if running() else last_cmd
+    return target if running() else last_cmd
+
+
+def transition(bus: MotorBus, cfg: dict, ids: list[int], target: dict[int, float], running) -> None:
+    hold = move_to_pose(bus, cfg, ids, target, running)
+    torque = abs(float(cfg.get("torque_nm", 1.2)))
+    hz = max(20.0, float(cfg.get("hz", 50.0)))
+    period = 1.0 / hz
     if running():
         print("已到达目标姿态，位置锁定。下面实时刷新，Ctrl+C 退出后仍停在该角度。")
     else:
@@ -338,12 +363,44 @@ def enter_damping(bus: MotorBus, cfg: dict, ids: list[int], running) -> None:
     print("damp 结束，电机停在当前位置。")
 
 
-def enter_release(bus: MotorBus, ids: list[int]) -> None:
-    print("release：失能关节 1..14（15 号不动）。")
-    for mid in ids:
-        bus.disable(mid)
-    time.sleep(0.05)
-    print("已卸力。")
+def unload_target(cfg: dict, ids: list[int]) -> dict[int, float] | None:
+    """读 unload（卸力姿态）角度；未采集或缺关节时返回 None。"""
+    try:
+        spec = pose_spec(cfg, UNLOAD_POSE)
+    except SystemExit:
+        return None
+    joints = spec.get("joints") or {}
+    if not joints:
+        return None
+    target = {int(k): float(v) for k, v in joints.items()}
+    if any(mid not in target for mid in ids):
+        return None
+    return target
+
+
+def enter_release(bus: MotorBus, cfg: dict, ids: list[int], running) -> None:
+    """先到卸力姿态，再失能。"""
+    target = unload_target(cfg, ids)
+    if target is not None and running():
+        print("卸力：先柔性进入卸力姿态 unload，再到停止模式。")
+        try:
+            move_to_pose(bus, cfg, ids, target, running, label="卸力姿态")
+        except RuntimeError as exc:
+            print(f"无法走到卸力姿态（{exc}），改为直接卸力。", file=sys.stderr)
+    elif target is None:
+        print(
+            f"还没有卸力姿态角度。可先摆好再: python3 pose.py capture {UNLOAD_POSE}",
+            file=sys.stderr,
+        )
+        print("本次直接卸力。")
+    print("release：失能关节（15 号不动）。")
+    still = bus.disable_all(ids, rounds=8)
+    if still:
+        still = bus.disable_all(still, rounds=8)
+    if still:
+        print(f"警告：仍未卸力: {still}", flush=True)
+    else:
+        print("已卸力。")
 
 
 def go_pose(cfg: dict, name: str) -> int:
@@ -359,8 +416,8 @@ def go_pose(cfg: dict, name: str) -> int:
     signal.signal(signal.SIGINT, _stop)
     signal.signal(signal.SIGTERM, _stop)
     try:
-        if mode == "release":
-            enter_release(bus, ids)
+        if mode == "release" or name == "release":
+            enter_release(bus, cfg, ids, lambda: running)
             return 0
         if mode == "damping":
             enter_damping(bus, cfg, ids, lambda: running)
@@ -371,6 +428,8 @@ def go_pose(cfg: dict, name: str) -> int:
         if not joints:
             raise SystemExit(f"姿态 {name} 还没有角度。先摆好再执行: python3 pose.py capture {name}")
         target = {int(k): float(v) for k, v in joints.items()}
+        if name == UNLOAD_POSE:
+            print("进入卸力姿态 unload（位置保持）。卸力请再执行: python3 pose.py go release")
         transition(bus, cfg, ids, target, lambda: running)
         return 0
     finally:
@@ -383,7 +442,10 @@ def print_menu(cfg: dict) -> None:
         spec = (cfg.get("poses") or {}).get(name) or {}
         mode = spec.get("mode", "position")
         n = len(spec.get("joints") or {})
-        extra = f"{n} 个关节" if mode == "position" else mode
+        if name == UNLOAD_POSE:
+            extra = f"卸力姿态, {n} 个关节" if n else "卸力姿态, 未采集"
+        else:
+            extra = f"{n} 个关节" if mode == "position" else mode
         print(f"  {i}. {name}  ({extra})")
     print("  c. 采集当前角度到某个姿态")
     print("  r. 只读当前角度")
@@ -405,7 +467,7 @@ def interactive(cfg: dict, path: Path) -> int:
                 bus.close()
             continue
         if choice in ("c", "C"):
-            name = input("写入哪个姿态（stand/squat/fold/damp/release）: ").strip()
+            name = input("写入哪个姿态（stand/squat/fold/unload/damp/release）: ").strip()
             capture_pose(cfg, path, name)
             cfg = load_config(path)
             continue
@@ -420,7 +482,7 @@ def interactive(cfg: dict, path: Path) -> int:
         if choice in (cfg.get("poses") or {}):
             go_pose(cfg, choice)
             continue
-        print("无法识别，输入 1-5、c、r 或 q。")
+        print(f"无法识别，输入 1-{len(POSE_ORDER)}、c、r 或 q。")
 
 
 def main() -> int:

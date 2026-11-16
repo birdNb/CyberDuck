@@ -9308,3 +9308,5 @@
 14:49:42 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
 19:56:56 hci_le_cmd fail 0x08 0x0006 0x30: < HCI Command: ogf 0x08, ocf 0x0006, plen 15 30 00 50 00 00 00 00 00 00 00 00 00 00 07 00 > HCI Event: 0x0e plen 4 05 06 20 0C
 19:56:56 [adv] AIC Extended HCI(legacy PDU) 广播已开启: HT_11451423
+20:51:10 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423
+19:37:39 [adv] AIC/板载 Legacy HCI 广播已开启 (板载 AIC8800D80 WiFi+蓝牙（Legacy HCI 广播，禁用 btmgmt）): HT_11451423

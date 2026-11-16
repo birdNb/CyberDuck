@@ -1,0 +1,2 @@
+/usr/bin/ar qc libimu_lsm6.a CMakeFiles/imu_lsm6.dir/src/lsm6.cpp.o CMakeFiles/imu_lsm6.dir/__/i2c_gpio.c.o
+/usr/bin/ranlib libimu_lsm6.a

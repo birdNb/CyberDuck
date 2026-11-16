@@ -24,10 +24,10 @@
 
 全程力矩保护默认 1 N·m：站立保持、升降和轮电机共用该上限。
 
-启动后先扫描（默认卸力）、等空格，再柔性进入轮行姿态 drive。
+启动后先扫描（默认卸力）、等空格或长按 Y，再柔性进入轮行姿态 drive。
 1 / 6 号为轮电机，姿态到位后切速度控制。
 
-结束流程：轮速归零后反复发停止卸力，不再继续位置保持。
+结束流程：轮速归零 → 柔性到卸力姿态 unload → 再发停止卸力。
 退出前请扶稳机器人。
 
 用法（在 motor 目录）：
@@ -62,7 +62,7 @@ sys.path.insert(0, str(RUN_DIR))
 sys.path.insert(0, str(ROOT / "pose_contrl"))
 
 import pose
-from ht_can import Motor, MotorBus
+from ht_can import MODE_POS_VEL_TQE, Motor, MotorBus
 from wheel_speed import (
     MODE_VELOCITY,
     battery_percent,
@@ -101,33 +101,66 @@ def deadzone(v: float) -> float:
     return (abs(v) - DEADZONE) / (1.0 - DEADZONE) * (1.0 if v > 0 else -1.0)
 
 
+# 启动确认：手柄 Y 需按住这么久才算长按，避免误触。
+START_Y_HOLD_S = 1.0
+
+
 def wait_for_space(running) -> bool:
-    """阻塞等空格。返回 False 表示被 Ctrl+C / 取消。"""
+    """阻塞等空格或手柄长按 Y。返回 False 表示被 Ctrl+C / 取消。"""
     import termios
     import tty
 
-    fd = sys.stdin.fileno()
-    if not sys.stdin.isatty():
-        print("标准输入不是终端，无法等空格；改用 --no-wait-space 或接上 TTY。", file=sys.stderr)
-        return False
-    old = termios.tcgetattr(fd)
+    tty_ok = sys.stdin.isatty()
+    stdin_fd = sys.stdin.fileno() if tty_ok else -1
+    old = None
+    pad = Gamepad()
+    y_down_at: float | None = None
     try:
-        tty.setcbreak(fd)
+        if tty_ok:
+            old = termios.tcgetattr(stdin_fd)
+            tty.setcbreak(stdin_fd)
+        else:
+            print(
+                "标准输入不是终端，键盘空格不可用；可长按手柄 Y 启动，"
+                "或改用 --no-wait-space。",
+                file=sys.stderr,
+            )
         while running():
-            ready, _, _ = select.select([sys.stdin], [], [], 0.2)
-            if not ready:
-                continue
-            ch = sys.stdin.read(1)
-            if ch == " ":
-                print("收到空格，开始进入轮行姿态。")
-                return True
-            if ch in ("\x03", "q", "Q"):
-                return False
+            pad.poll()
+            y_held = pad.fd >= 0 and bool(pad.buttons[4])
+            # 边沿标志清掉，避免进入驾驶后立刻切一次自平衡。
+            pad.button_y = False
+            now = time.monotonic()
+            if y_held:
+                if y_down_at is None:
+                    y_down_at = now
+                elif now - y_down_at >= START_Y_HOLD_S:
+                    print(f"收到长按 Y（{START_Y_HOLD_S:.0f}s），开始进入轮行姿态。")
+                    return True
+            else:
+                y_down_at = None
+
+            if tty_ok:
+                ready, _, _ = select.select([sys.stdin], [], [], 0.05)
+                if ready:
+                    ch = sys.stdin.read(1)
+                    if ch == " ":
+                        print("收到空格，开始进入轮行姿态。")
+                        return True
+                    if ch in ("\x03", "q", "Q"):
+                        return False
+            else:
+                time.sleep(0.05)
     except (termios.error, OSError) as exc:
         print(f"读键盘失败: {exc}", file=sys.stderr)
         return False
     finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+        if old is not None and stdin_fd >= 0:
+            try:
+                termios.tcsetattr(stdin_fd, termios.TCSADRAIN, old)
+            except (termios.error, OSError):
+                pass
+        pad.close()
     return False
 
 
@@ -803,7 +836,7 @@ def main() -> int:
     parser.add_argument(
         "--no-wait-space",
         action="store_true",
-        help="不等空格，扫描后立刻进入姿态过渡",
+        help="不等空格/长按Y，扫描后立刻进入姿态过渡",
     )
     parser.add_argument("--height-rate", type=float, default=0.15, help="升降全行程速率 1/s，右摇杆全推约 7 秒走完")
     parser.add_argument("--swap-wheels", action="store_true", help="交换左右轮（改回 1 号当左轮、6 号当右轮）")
@@ -887,7 +920,7 @@ def main() -> int:
     balance = None
     mouth = None
     try:
-        # 默认卸力：等空格前不给任何关节发位置/速度力矩。
+        # 默认卸力：等空格或长按 Y 前不给任何关节发位置/速度力矩。
         bus.disable_all(ids)
         print("当前为卸力状态（停止模式），可手动摆姿。")
 
@@ -916,7 +949,8 @@ def main() -> int:
         if not args.no_wait_space:
             print(
                 f"已扫到 {len(ids)} 个关节。力矩保护 {torque_nm:.1f} N·m。"
-                "扶稳后按空格才上力矩进入轮行姿态；Ctrl+C 取消。"
+                f"扶稳后按空格，或长按手柄 Y {START_Y_HOLD_S:.0f} 秒，才上力矩进入轮行姿态；"
+                "Ctrl+C 取消。"
             )
             if not wait_for_space(lambda: running):
                 print("已取消，保持卸力退出。")
@@ -1295,6 +1329,37 @@ def main() -> int:
             log_f.close()
             print(f"驾驶日志 {log_path}")
 
+        # 先停轮，再（若有）走到卸力姿态，最后切停止模式。
+        for wid in WHEELS:
+            if wid in bus.motors:
+                send_speed(bus, bus.motors[wid], 0.0, args.wheel_tqe)
+        bus.collect(timeout=0.01)
+        time.sleep(0.05)
+
+        unload_deg = pose.unload_target(cfg, ids)
+        if unload_deg is not None and running:
+            print("卸力：先柔性进入卸力姿态 unload ...", flush=True)
+            try:
+                # 轮电机若仍在速度模式，先切回位置控制再一起过渡。
+                for mid in ids:
+                    bus.set_mode(mid, MODE_POS_VEL_TQE)
+                time.sleep(0.05)
+                pose.move_to_pose(
+                    bus,
+                    cfg,
+                    ids,
+                    unload_deg,
+                    lambda: running,
+                    label="卸力姿态",
+                )
+            except (RuntimeError, OSError) as exc:
+                print(f"无法走到卸力姿态（{exc}），改为直接卸力。", flush=True)
+        elif unload_deg is None:
+            print(
+                "还没有卸力姿态。可先摆好再: python3 pose_contrl/pose.py capture unload",
+                flush=True,
+            )
+
         print("卸力：全部关节切停止模式，并回读确认 ...")
         still = bus.disable_all(ids, rounds=8)
         if still:
@@ -1304,7 +1369,8 @@ def main() -> int:
             print(f"警告：仍未卸力: {still}", flush=True)
         else:
             print("已卸力（模式 0x01）。")
-        pad.close()
+        if pad is not None:
+            pad.close()
         return 0
     finally:
         try:

@@ -1,0 +1,11 @@
+/home/aidlux/cyberDuck/build-remote/CMakeFiles/edit_cache.dir
+/home/aidlux/cyberDuck/build-remote/CMakeFiles/rebuild_cache.dir
+/home/aidlux/cyberDuck/build-remote/motor/cpp/CMakeFiles/motor_can.dir
+/home/aidlux/cyberDuck/build-remote/motor/cpp/CMakeFiles/edit_cache.dir
+/home/aidlux/cyberDuck/build-remote/motor/cpp/CMakeFiles/rebuild_cache.dir
+/home/aidlux/cyberDuck/build-remote/IMU/cpp/CMakeFiles/imu_lsm6.dir
+/home/aidlux/cyberDuck/build-remote/IMU/cpp/CMakeFiles/edit_cache.dir
+/home/aidlux/cyberDuck/build-remote/IMU/cpp/CMakeFiles/rebuild_cache.dir
+/home/aidlux/cyberDuck/build-remote/locomotion/CMakeFiles/duck_locomotion.dir
+/home/aidlux/cyberDuck/build-remote/locomotion/CMakeFiles/edit_cache.dir
+/home/aidlux/cyberDuck/build-remote/locomotion/CMakeFiles/rebuild_cache.dir
