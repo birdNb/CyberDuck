@@ -348,10 +348,20 @@ def hold_until_reached(
     torque: float,
     vel_limit: float = 1.5,
     tol_deg: float = 2.0,
+    tol_by_id: dict[int, float] | None = None,
     label: str = "卸力姿态",
 ) -> bool:
     """持续发目标角，直到每台反馈都进入容差。running() 为假时返回 False，不卸力。"""
-    print(f"保持{label}，各关节反馈进入 ±{tol_deg:.0f}° 后才卸力。", flush=True)
+    extra = {int(joint_id): float(limit) for joint_id, limit in (tol_by_id or {}).items()}
+
+    def tol_for(joint_id: int) -> float:
+        return extra.get(joint_id, tol_deg)
+
+    note = f"±{tol_deg:.0f}°"
+    if extra:
+        special = "，".join(f"{joint_id} 号 ±{tol_for(joint_id):.0f}°" for joint_id in sorted(extra))
+        note = f"±{tol_deg:.0f}°（{special}）"
+    print(f"保持{label}，各关节反馈进入 {note} 后才卸力。", flush=True)
     period = 0.02
     last_print = 0.0
     fresh: dict[int, tuple[float, float]] = {}
@@ -385,7 +395,7 @@ def hold_until_reached(
             if item is None or time.monotonic() - item[0] > 1.5:
                 far.append(joint_id)
                 continue
-            if abs(item[1] - target[joint_id]) > tol_deg:
+            if abs(item[1] - target[joint_id]) > tol_for(joint_id):
                 far.append(joint_id)
         if not far and len(fresh) >= len(ids):
             settled += 1

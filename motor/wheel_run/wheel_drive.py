@@ -14,7 +14,7 @@
     逐关节一一对应插值：推上升高，拉下降低。零位不准，所以不拟合到 0。
     脖子不跟右摇杆。自平衡只改两侧髋 pitch。
   A 键：原地起跳。髋和膝从收缩快速伸直，再立刻收回收缩。
-  B 键：停车并退出
+  B 键：卸力停下，程序不退出。再长按 Y 进入驾驶
   X 键：切换灯效（和 watch_policy.py 同一套灯环）
   Y 键：关闭 / 打开实时平衡（默认关闭，只用两侧髋）
   RB：开关头部随机张望（默认关闭）。打开后头、脖子、yaw、roll 按 head_play 张望，嘴和短叫声一起张合
@@ -30,8 +30,8 @@
 启动后先扫描（默认卸力）、等空格或长按 Y，再柔性进入轮行姿态 drive。
 1 / 6 号为轮电机，姿态到位后切速度控制。
 
-结束流程：轮速归零（轮子不追位置）→ 腿和脖子走到卸力姿态并确认到位 →
-再逐台回读到停止模式后才关总线退出。退出前请扶稳机器人。
+按 B：轮速归零（轮子不追位置）→ 腿和脖子走到卸力姿态并确认到位 →
+逐台回读到停止模式后停住，长按 Y 再进入。Ctrl+C 才关总线退出。
 
 用法（在 motor 目录）：
   python3 wheel_run/wheel_drive.py
@@ -1216,7 +1216,7 @@ class Gamepad:
             self.axis_seen = [False] * 8
             print(
                 f"手柄已接入 {path}。请确认是 PC/XInput 模式（摇杆回中应为 0）。"
-                "左摇杆前进后退和转弯，右摇杆左右自转，B 键退出。"
+                "左摇杆前进后退和转弯，右摇杆左右自转，B 键卸力，长按 Y 再进入。"
             )
             return
         if now >= self._next_warn:
@@ -1447,553 +1447,574 @@ def main() -> int:
         # 默认关闭自平衡。按 Y 才打开，再按 Y 关掉。
         balance_on = False
 
-        if not args.no_wait_space:
-            print(
-                f"已扫到 {len(ids)} 个关节。力矩保护 {torque_nm:.1f} N·m。"
-                f"扶稳后按空格，或长按手柄 Y {START_Y_HOLD_S:.0f} 秒，才上力矩进入轮行姿态；"
-                "Ctrl+C 取消。"
-            )
-            if not wait_for_space(lambda: running):
-                print("已取消，保持卸力退出。")
-                bus.disable_all(ids)
-                return 0
-            if not running:
-                print("已取消，保持卸力退出。")
-                bus.disable_all(ids)
-                return 0
-
-        # 先逐台读位置，再停轮。先停轮会连发停止帧，把腿的状态回包冲掉。
-        fresh = pose.read_degrees(bus, hold_ids, retries=3, strict=False)
-        start_deg = {mid: boot_deg[mid] for mid in hold_ids if mid in boot_deg}
-        start_deg.update(fresh)
-        missing_pos = [mid for mid in hold_ids if mid not in start_deg]
-        if missing_pos:
-            print(f"读当前位置失败: {missing_pos}", file=sys.stderr)
-            print("保持卸力退出。请检查电源/CAN 后重试。", file=sys.stderr)
-            bus.disable_all(ids)
-            return 1
-        if len(fresh) < len(hold_ids):
-            used = [mid for mid in hold_ids if mid not in fresh]
-            print(f"关节 {used} 用开机时的角度作为过渡起点。")
-
-        # 进入姿态：只给非轮关节发位置指令。轮电机保持失能，禁止状态下不转。
-        for mid in hold_ids:
-            bus.set_torque_limit(mid, torque_nm)
-        for wid in WHEELS:
-            bus.disable(wid)
-        print("姿态阶段轮电机（1、6 号）保持失能，不发指令。")
-        time.sleep(0.02)
-        duration = max(0.5, float(cfg.get("transition_s", 3.0)))
-        print(f"进入轮行姿态 {args.pose}，过渡 {duration:.1f}s，力矩上限 {torque_nm:.1f} N·m ...")
-        print("脖子停在驾驶姿态，右摇杆只升降腿。")
-
-        t0 = time.monotonic()
+        entered = False
         while running:
-            now = time.monotonic()
-            u = (now - t0) / duration
-            s = pose.smootherstep(u)
-            cmd_deg = {
-                mid: start_deg[mid] + (stand_deg[mid] - start_deg[mid]) * s for mid in hold_ids
-            }
-            if balance is not None:
-                # 站立过渡阶段静止，不输出平衡补偿，避免原地来回抢。
-                _lean, d_hip, _d_neck = balance.update(period, False)
-                for hid, sign in HIP_SIGN.items():
-                    if hid in cmd_deg:
-                        cmd_deg[hid] += sign * d_hip
-            pose.command_position(bus, hold_ids, cmd_deg, torque_nm)
-            bus.collect(timeout=min(0.004, period * 0.3))
-            if u >= 1.0:
-                break
-            spent = time.monotonic() - now
-            if spent < period:
-                time.sleep(period - spent)
-        if not running:
-            print("站立过渡被打断，保持当前位置退出。")
-            return 0
-        print("已站稳。下面 1 号和 6 号切速度控制，其余关节保持站立角。")
+            if (not args.no_wait_space) or entered:
+                print(
+                    f"已卸力。力矩保护 {torque_nm:.1f} N·m。"
+                    f"扶稳后按空格，或长按手柄 Y {START_Y_HOLD_S:.0f} 秒，才上力矩进入轮行姿态；"
+                    "Ctrl+C 退出程序。"
+                )
+                if not wait_for_space(lambda: running):
+                    print("已取消，保持卸力退出。")
+                    bus.disable_all(ids)
+                    return 0
+                if not running:
+                    print("已取消，保持卸力退出。")
+                    bus.disable_all(ids)
+                    return 0
+            entered = True
+            released = False
+            balance_on = False
 
-        # 必须先切到速度模式（0x0B）。在位置模式下发速度帧，
-        # 位置字 0x8000 会被当成 -20.6 rad 的位置目标，轮子会自己全速跑。
-        # 轮电机通讯超时 300 ms：程序退出或断连后轮子自己停。
-        for wid in WHEELS:
-            bus.set_mode(wid, MODE_VELOCITY)
-            bus.set_timeout_ms(wid, 300)
-        time.sleep(0.05)
+            # 先逐台读位置，再停轮。先停轮会连发停止帧，把腿的状态回包冲掉。
+            fresh = pose.read_degrees(bus, hold_ids, retries=3, strict=False)
+            start_deg = {mid: boot_deg[mid] for mid in hold_ids if mid in boot_deg}
+            start_deg.update(fresh)
+            missing_pos = [mid for mid in hold_ids if mid not in start_deg]
+            if missing_pos:
+                print(f"读当前位置失败: {missing_pos}", file=sys.stderr)
+                print("保持卸力退出。请检查电源/CAN 后重试。", file=sys.stderr)
+                bus.disable_all(ids)
+                return 1
+            if len(fresh) < len(hold_ids):
+                used = [mid for mid in hold_ids if mid not in fresh]
+                print(f"关节 {used} 用开机时的角度作为过渡起点。")
 
-        # 接管检查：连续发 0 速 0.6 秒，轮子必须停住，否则不进驾驶。
-        pad = None
-        takeover_ok = False
-        check_t0 = time.monotonic()
-        while running and time.monotonic() - check_t0 < 0.6:
-            pose.command_position(bus, hold_ids, stand_deg, torque_nm)
+            # 进入姿态：只给非轮关节发位置指令。轮电机保持失能，禁止状态下不转。
+            for mid in hold_ids:
+                bus.set_torque_limit(mid, torque_nm)
             for wid in WHEELS:
-                send_speed(bus, bus.motors[wid], 0.0, args.wheel_tqe)
-            bus.read_status(left_id)
-            bus.read_status(right_id)
-            bus.collect(timeout=0.002)
-            time.sleep(period)
-        fb_l = bus.motors[left_id].state.velocity * wheel_sign(left_id)
-        fb_r = bus.motors[right_id].state.velocity * wheel_sign(right_id)
-        if abs(fb_l) <= 1.0 and abs(fb_r) <= 1.0:
-            takeover_ok = True
-            print(f"轮子已停住（反馈 左{fb_l:+.2f} 右{fb_r:+.2f} rad/s），进入驾驶。")
-        else:
-            print(
-                f"轮子没有停住：反馈 左{fb_l:+.2f} 右{fb_r:+.2f} rad/s。"
-                "取消驾驶，走结束流程。",
-                file=sys.stderr,
-            )
+                bus.disable(wid)
+            print("姿态阶段轮电机（1、6 号）保持失能，不发指令。")
+            time.sleep(0.02)
+            duration = max(0.5, float(cfg.get("transition_s", 3.0)))
+            print(f"进入轮行姿态 {args.pose}，过渡 {duration:.1f}s，力矩上限 {torque_nm:.1f} N·m ...")
+            print("脖子停在驾驶姿态，右摇杆只升降腿。")
 
-        pad = Gamepad()
-        mouth = Mouth()
-        volume = DuckVolume(mouth.speaker)
-        mouth_level = 0.0
-        mouth_was_down = False
-        rt_down_at = 0.0
-        long_quack_sent = False
-        roll_u = 0.0
-        roll_held = 0
-        roll_scale_prev = 0.5
-        LOG_DIR.mkdir(parents=True, exist_ok=True)
-        log_path = LOG_DIR / f"drive_{time.strftime('%Y%m%d_%H%M%S')}.csv"
-        log_f = log_path.open("w", newline="", encoding="utf-8")
-        writer = csv.writer(log_f)
-        writer.writerow(
-            [
-                "t_s", "fwd", "turn", "spin", "gear", "height_stick", "height_u", "height_cap",
-                "cmd_left_rad_s", "cmd_right_rad_s",
-                "fb_left_rad_s", "fb_right_rad_s", "torque_left_nm", "torque_right_nm",
-                "voltage_v", "battery_pct", "lean_deg", "balance_hip_deg", "balance_on",
-            ]
-        )
-        pose_ids = [
-            mid for mid in hold_ids if mid not in LIFT_IDS and mid not in NECK_IDS
-        ]
-        lift_ids = [mid for mid in LIFT_IDS if mid in ids]
-        neck_ids = [mid for mid in (HEAD_PITCH_ID, NECK_PITCH_ID) if mid in ids and mid in stand_deg]
-        head = HeadLook(mouth, stand_deg)
-        # 升降进度 u：0 是 drive 收缩位（最低），1 是 extended 伸直位（最高）。
-        # 升降关节在两组实测角度之间逐关节插值，不拟合数学 0 位。
-        lift_ok = all(mid in extended_deg for mid in lift_ids)
-        height_u = 0.0
-        print(
-            "开始驾驶。左摇杆上下前进后退，左摇杆左右转弯，右摇杆左右自转，右摇杆上下只升降腿。"
-            f"前 {SPEED_ARM_S:.0f}s 不发轮速。"
-            f"普通档 ±{args.vmax:.0f} rad/s，按住 LT 切高速档 ±{args.vmax_fast:.0f} rad/s。"
-            f"扳机张嘴（上限 {MOUTH_OPEN_MAX_DEG:.0f}°）并鸭叫。RB 开关头部张望（默认关）。"
-            "方向键上下调音量，左右侧倾（默认半幅，LT 满幅）。"
-            f"平时力矩 {torque_nm:.1f} N·m，自平衡时髋 {args.hip_tqe:.1f} N·m。B 键或 Ctrl+C 停车退出。"
-        )
-        drive_t0 = time.monotonic()
-        speed_armed = False
-        next_print = drive_t0
-        next_status = drive_t0
-        prev_t = drive_t0
-        boost_prev = 0
-        hip_tqe_sent = torque_nm
-        hip_hold = 0.0
-        prev_lean = 0.0
-        hip_frozen = False
-        jump_t0 = None
-        lift_deg = {mid: stand_deg[mid] for mid in lift_ids}
-        gear_names = ("普通", "高速")
-        gear_caps = (args.vmax, args.vmax_fast)
-        try:
-            while running and takeover_ok:
-                loop_t = time.monotonic()
-                # 用真实循环间隔算斜坡，循环被拖慢时指令也不会滞后。
-                dt_real = max(0.001, min(0.1, loop_t - prev_t))
-                prev_t = loop_t
-                fwd_s, turn_s, spin_s, boost, height_s, lt_on, rt_on = pad.poll()
-                # 错误手柄模式：多轴同时卡在 ±0.5，整帧指令作废。
-                pad_bogus = Gamepad.sticks_look_bogus(fwd_s, turn_s, spin_s)
-                if pad_bogus:
-                    if not pad._bogus_warned:
-                        print(
-                            "手柄模式异常（摇杆同时卡在 ±0.5），本帧指令不执行。"
-                            "请切到 PC/XInput 模式并回中摇杆。",
-                            flush=True,
-                        )
-                        pad._bogus_warned = True
-                    fwd_s = turn_s = spin_s = height_s = 0.0
-                    boost = 0
-                    lt_on = False
-                    rt_on = False
-                elif pad._bogus_warned:
-                    print("手柄摇杆已恢复正常。", flush=True)
-                    pad._bogus_warned = False
-
-                speed_ready = (loop_t - drive_t0) >= SPEED_ARM_S
-                if speed_ready and not speed_armed:
-                    speed_armed = True
-                    print(f"轮速已解锁（启动已满 {SPEED_ARM_S:.0f}s）。", flush=True)
-                if not speed_ready or pad_bogus:
-                    fwd_s = turn_s = spin_s = 0.0
-
-                hat_x = pad.axis[6] if len(pad.axis) > 6 else 0.0
-                hat_y = pad.axis[7] if len(pad.axis) > 7 else 0.0
-                if not pad_bogus and volume.apply_hat(hat_y, loop_t):
-                    print(f"音量 {volume.percent():.0f}%", flush=True)
-                roll_dir = 0 if pad_bogus else (1 if hat_x >= 0.5 else -1 if hat_x <= -0.5 else 0)
-                # 默认半幅侧倾；按住 LT 才到 yaml 满幅。
-                roll_scale = 1.0 if lt_on else 0.5
-                roll_target = float(roll_dir) * roll_scale
-                lean_level = "满幅" if lt_on else "半幅"
-                if roll_dir != roll_held:
-                    roll_held = roll_dir
-                    if roll_dir == 0:
-                        print("侧倾回中。", flush=True)
-                    else:
-                        side = "向右" if roll_dir > 0 else "向左"
-                        print(f"侧倾：{side}（{lean_level}）。", flush=True)
-                elif roll_dir != 0 and roll_scale != roll_scale_prev:
-                    print(f"侧倾改为{lean_level}。", flush=True)
-                roll_scale_prev = roll_scale
-                # roll_u∈[-1,1]：-1 左倾、+1 右倾；速率按侧倾目标角峰值换算成 °/s。
-                lean_span = max(
-                    abs(lean_right_deg.get(mid, 20.0) - stand_deg.get(mid, 0.0))
-                    for mid in ROLL_IDS
-                )
-                lean_span = max(lean_span, 1.0)
-                roll_u = ramp(roll_u, roll_target, ROLL_RATE_DEG_S / lean_span, dt_real)
-                if pad.button_rb and head is not None and not pad_bogus:
-                    pad.button_rb = False
-                    head.toggle()
-                rt = 0.0 if pad_bogus else max(pad.rt_level(), 1.0 if rt_on else 0.0)
-                # 张望自己管嘴。这段时间右扳机不再改嘴，避免两路抢舵机。
-                if head is not None and head.active():
-                    mouth_was_down = False
-                elif rt >= 0.35:
-                    if not mouth_was_down:
-                        mouth.set_level(1.0)
-                        mouth.quack("short")
-                        mouth_level = 1.0
-                        mouth_was_down = True
-                        rt_down_at = loop_t
-                        long_quack_sent = False
-                        print("右扳机：张嘴，短叫。", flush=True)
-                    elif not long_quack_sent and loop_t - rt_down_at >= 3.0:
-                        if mouth.quack("long"):
-                            long_quack_sent = True
-                            print("右扳机按住 3 秒：长鸣。", flush=True)
-                elif rt < 0.2 and mouth_was_down:
-                    mouth.set_level(0.0)
-                    mouth_level = 0.0
-                    mouth_was_down = False
-                gear_now = int(boost)
-                if pad.button_b:
-                    print("B 键停车，退出驾驶。")
-                    break
-                if pad_bogus:
-                    # 错误模式边沿一律丢掉，只保留 B 紧急停车。
-                    pad.button_a = False
-                    pad.button_x = False
-                    pad.button_y = False
-                    pad.button_rb = False
-                if pad.button_x:
-                    pad.button_x = False
-                    print(f"灯效：{led.cycle()}", flush=True)
-                led.drain()
-                if pad.button_a:
-                    pad.button_a = False
-                    if jump_t0 is None and lift_ok:
-                        jump_t0 = loop_t
-                        print("A：原地起跳，髋和膝伸直后立刻收回。", flush=True)
-                if pad.button_y:
-                    pad.button_y = False
-                    if balance is not None:
-                        balance_on = not balance_on
-                        print(
-                            "Y：进入自平衡。" if balance_on else "Y：退出自平衡，补偿平滑回零。",
-                            flush=True,
-                        )
-                if gear_now != boost_prev:
-                    print(
-                        f"{gear_names[gear_now]}档：速度上限 ±{gear_caps[gear_now]:.0f} rad/s",
-                        flush=True,
-                    )
-                    boost_prev = gear_now
-                vmax_now = gear_caps[gear_now]
-                tgt_left, tgt_right = wheel_targets(
-                    fwd_s, turn_s, spin_s, vmax_now, args.turn, args.spin
-                )
-                cmd_left = ramp(cmd_left, tgt_left, args.accel, dt_real)
-                cmd_right = ramp(cmd_right, tgt_right, args.accel, dt_real)
-                jump_u = None
-                if jump_t0 is not None:
-                    jumped = loop_t - jump_t0
-                    if jumped < JUMP_HALF_S:
-                        jump_u = jumped / JUMP_HALF_S
-                    elif jumped < 2.0 * JUMP_HALF_S:
-                        jump_u = 1.0 - (jumped - JUMP_HALF_S) / JUMP_HALF_S
-                    else:
-                        jump_t0 = None
-                        height_u = 0.0
-                        print("起跳结束，腿回到收缩。", flush=True)
-                    cmd_left = 0.0
-                    cmd_right = 0.0
-
-                # 右摇杆上推升高（u 增大、走向伸直点），下拉降低（走向收缩点）。
-                if lift_ok and jump_u is None:
-                    height_u = max(
-                        0.0,
-                        min(1.0, height_u + deadzone(height_s) * args.height_rate * dt_real),
-                    )
-                # 高度只跟右摇杆。扳机留给嘴舵机，不再把身子压下去。
-                height_cap = 1.0
-
-                # 按 Y 后立即实时平衡，静止、坡上、行驶都出力。再按 Y 才平滑回零。
-                balance_active = balance_on
-                hip_tqe_now = args.hip_tqe if balance_active else torque_nm
-                if hip_tqe_now != hip_tqe_sent:
-                    for hid in HIP_SIGN:
-                        if hid in bus.motors:
-                            bus.set_torque_limit(hid, hip_tqe_now)
-                    hip_tqe_sent = hip_tqe_now
-                    print(f"髋力矩上限 {hip_tqe_now:.1f} N·m", flush=True)
-                if balance is not None:
-                    lean_deg, d_hip, d_neck = balance.update(dt_real, balance_active)
-                else:
-                    lean_deg, d_hip, d_neck = 0.0, 0.0, 0.0
-                hip_torque = 0.0
-                for hid in HIP_SIGN:
-                    if hid in bus.motors:
-                        hip_torque = max(hip_torque, abs(bus.motors[hid].state.torque))
-                # 力矩已经顶住、倾角却没减小：停住补偿角，避免继续加角度造成晃动。
-                hip_sat = balance_active and hip_torque >= 0.85 * hip_tqe_now
-                lean_growing = abs(lean_deg) >= abs(prev_lean) - 0.3
-                if hip_sat and lean_growing and abs(d_hip) > hip_hold:
-                    d_hip = math.copysign(hip_hold, d_hip)
-                    if balance is not None:
-                        balance.delta = d_hip
-                    if not hip_frozen:
-                        print(
-                            f"髋力矩 {hip_torque:.2f} N·m 已顶住，倾角 {lean_deg:+.1f}° 未减小，补偿停在 {d_hip:+.1f}°",
-                            flush=True,
-                        )
-                        hip_frozen = True
-                else:
-                    hip_hold = abs(d_hip)
-                    hip_frozen = False
-                prev_lean = lean_deg
-
-                pose_cmd = stand_deg
-                lean_tgt: dict[int, float] = {}
-                lean_a = abs(roll_u)
-                if lean_a > 0.02:
-                    pose_cmd = dict(stand_deg)
-                    lean_tgt = lean_right_deg if roll_u >= 0.0 else lean_left_deg
-                    for mid in ROLL_IDS:
-                        if mid not in pose_cmd:
-                            continue
-                        base = stand_deg.get(mid, 0.0)
-                        pose_cmd[mid] = base + (lean_tgt.get(mid, base) - base) * lean_a
-                pose.command_position(bus, pose_ids, pose_cmd, torque_nm, vel_limit=6.0)
-                leg_u = jump_u if jump_u is not None else height_u
-                lift_deg = {
-                    mid: stand_deg[mid] + (extended_deg[mid] - stand_deg[mid]) * leg_u
-                    for mid in lift_ids
+            t0 = time.monotonic()
+            while running:
+                now = time.monotonic()
+                u = (now - t0) / duration
+                s = pose.smootherstep(u)
+                cmd_deg = {
+                    mid: start_deg[mid] + (stand_deg[mid] - start_deg[mid]) * s for mid in hold_ids
                 }
-                # 侧倾时抬起侧的膝和髋 pitch 走向 yaml 里的伸直角，不再只动 roll。
-                if lean_tgt and jump_u is None:
-                    for mid in lift_ids:
-                        if mid not in lean_tgt:
-                            continue
-                        lift_deg[mid] = lift_deg[mid] + (lean_tgt[mid] - lift_deg[mid]) * lean_a
-                for hid, sign in HIP_SIGN.items():
-                    if hid in lift_deg:
-                        lift_deg[hid] += sign * d_hip
-                knee_ids = [mid for mid in lift_ids if mid not in HIP_SIGN]
-                hip_ids = [mid for mid in lift_ids if mid in HIP_SIGN]
-                knee_tqe = args.hip_tqe if jump_u is not None else torque_nm
-                pose.command_position(bus, knee_ids, lift_deg, knee_tqe, vel_limit=6.0)
-                pose.command_position(
-                    bus,
-                    hip_ids,
-                    lift_deg,
-                    hip_tqe_now if balance_active or jump_u is not None else torque_nm,
-                    vel_limit=6.0,
-                )
-                if head is not None:
-                    head.tick(dt_real)
-                    neck_cmd = head.can_deg()
-                else:
-                    neck_cmd = {mid: float(stand_deg.get(mid, 0.0)) for mid in neck_ids}
-                if neck_ids:
-                    pose.command_position(
-                        bus,
-                        neck_ids,
-                        neck_cmd,
-                        torque_nm,
-                        vel_limit=max(1.2, math.radians(head.rate) * 1.4) if head is not None else 2.0,
-                    )
-                send_speed(bus, bus.motors[left_id], cmd_left * wheel_sign(left_id), args.wheel_tqe)
-                send_speed(bus, bus.motors[right_id], cmd_right * wheel_sign(right_id), args.wheel_tqe)
-
-                # 状态 5 Hz。只在这一拍收两台轮子的回包，其余拍不 flush，避免把回包清掉。
-                if loop_t >= next_status:
-                    bus.read_status(left_id)
-                    bus.read_status(right_id)
-                    bus.collect(timeout=0.012)
-                    next_status = loop_t + 0.2
-
-                lm = bus.motors[left_id]
-                rm = bus.motors[right_id]
-                fb_left = lm.state.velocity * wheel_sign(left_id)
-                fb_right = rm.state.velocity * wheel_sign(right_id)
-                tor_left = lm.state.torque * wheel_sign(left_id)
-                tor_right = rm.state.torque * wheel_sign(right_id)
-                hip_now = 0.0
-                for hid in HIP_SIGN:
-                    if hid in bus.motors:
-                        hip_now = max(hip_now, abs(bus.motors[hid].state.torque))
-                torque_space = max(args.hip_tqe, args.wheel_tqe, 0.2)
-                torque_ratio = max(abs(tor_left), abs(tor_right), hip_now) / torque_space
-                if led is not None:
-                    led.set_torque_level(torque_ratio)
-                volts = bus.motors[WHEEL_LEFT].state.voltage
-                elapsed = loop_t - drive_t0
-                writer.writerow(
-                    [
-                        f"{elapsed:.3f}", f"{fwd_s:.3f}", f"{turn_s:.3f}", f"{spin_s:.3f}",
-                        str(gear_now),
-                        f"{height_s:.3f}", f"{height_u:.4f}", f"{height_cap:.4f}",
-                        f"{cmd_left:.3f}", f"{cmd_right:.3f}",
-                        f"{fb_left:.3f}", f"{fb_right:.3f}",
-                        f"{tor_left:.4f}", f"{tor_right:.4f}",
-                        f"{volts:.2f}", f"{battery_percent(volts):.1f}",
-                        f"{lean_deg:.3f}", f"{d_hip:.3f}", "1" if balance_active else "0",
-                    ]
-                )
-
-                if loop_t >= next_print:
-                    left_st = bus.motors[WHEEL_LEFT].state
-                    volts = left_st.voltage
-                    temp_c = left_st.temperature
-                    volt_txt = (
-                        f"电压 {volts:.1f} V 电量 {battery_text(volts)}"
-                        if volts >= 5.0
-                        else "电压 --"
-                    )
-                    temp_txt = f"温度 {temp_c:.1f}°C" if temp_c > 1.0 else "温度 --"
-                    print(
-                        f"t={elapsed:5.1f}s  杆 前{fwd_s:+.2f} 转{turn_s:+.2f} 自{spin_s:+.2f}  "
-                        f"档{gear_names[gear_now]}  升降 {height_u:4.2f}/≤{height_cap:4.2f}  "
-                        f"前倾 {lean_deg:+5.1f}° 补偿 {d_hip:+5.2f}° 侧倾 {roll_u:+4.2f} "
-                        f"音量 {volume.percent():.0f}% 髋力矩 {hip_torque:4.2f}/{hip_tqe_now:.1f} "
-                        f"{'髋力矩顶住' if hip_frozen else ''} "
-                        f"颈 {neck_cmd.get(NECK_PITCH_ID, 0.0):+5.1f}° 头 {neck_cmd.get(HEAD_PITCH_ID, 0.0):+5.1f}° "
-                        f"张望{'开' if head is not None and head.active() else '关'} "
-                        f"自平衡{'开' if balance_active else '关'}  "
-                        f"轮指令 左{cmd_left:+6.2f} 右{cmd_right:+6.2f}  "
-                        f"反馈 左{fb_left:+6.2f} 右{fb_right:+6.2f}  "
-                        f"{volt_txt}  {temp_txt}  灯 {led.label}  "
-                        f"力矩 左{yellow_nm(tor_left)} 右{yellow_nm(tor_right)}",
-                        flush=True,
-                    )
-                    next_print = loop_t + 0.5
-
-                spent = time.monotonic() - loop_t
+                if balance is not None:
+                    # 站立过渡阶段静止，不输出平衡补偿，避免原地来回抢。
+                    _lean, d_hip, _d_neck = balance.update(period, False)
+                    for hid, sign in HIP_SIGN.items():
+                        if hid in cmd_deg:
+                            cmd_deg[hid] += sign * d_hip
+                pose.command_position(bus, hold_ids, cmd_deg, torque_nm)
+                bus.collect(timeout=min(0.004, period * 0.3))
+                if u >= 1.0:
+                    break
+                spent = time.monotonic() - now
                 if spent < period:
                     time.sleep(period - spent)
-        finally:
-            log_f.flush()
-            log_f.close()
-            print(f"驾驶日志 {log_path}")
+            if not running:
+                print("站立过渡被打断，保持当前位置退出。")
+                return 0
+            print("已站稳。下面 1 号和 6 号切速度控制，其余关节保持站立角。")
 
-        # 轮子只停转、卸力，绝不切回位置模式。
-        # 速度模式下编码器会累到上千度，再按卸力姿态去追位置就会空转好多圈。
-        print("停车：轮电机速度归零并卸力，不发位置指令。", flush=True)
-        for _ in range(6):
+            # 必须先切到速度模式（0x0B）。在位置模式下发速度帧，
+            # 位置字 0x8000 会被当成 -20.6 rad 的位置目标，轮子会自己全速跑。
+            # 轮电机通讯超时 300 ms：程序退出或断连后轮子自己停。
+            for wid in WHEELS:
+                bus.set_mode(wid, MODE_VELOCITY)
+                bus.set_timeout_ms(wid, 300)
+            time.sleep(0.05)
+
+            # 接管检查：连续发 0 速 0.6 秒，轮子必须停住，否则不进驾驶。
+            pad = None
+            takeover_ok = False
+            check_t0 = time.monotonic()
+            while running and time.monotonic() - check_t0 < 0.6:
+                pose.command_position(bus, hold_ids, stand_deg, torque_nm)
+                for wid in WHEELS:
+                    send_speed(bus, bus.motors[wid], 0.0, args.wheel_tqe)
+                bus.read_status(left_id)
+                bus.read_status(right_id)
+                bus.collect(timeout=0.002)
+                time.sleep(period)
+            fb_l = bus.motors[left_id].state.velocity * wheel_sign(left_id)
+            fb_r = bus.motors[right_id].state.velocity * wheel_sign(right_id)
+            if abs(fb_l) <= 1.0 and abs(fb_r) <= 1.0:
+                takeover_ok = True
+                print(f"轮子已停住（反馈 左{fb_l:+.2f} 右{fb_r:+.2f} rad/s），进入驾驶。")
+            else:
+                print(
+                    f"轮子没有停住：反馈 左{fb_l:+.2f} 右{fb_r:+.2f} rad/s。"
+                    "取消驾驶，走结束流程。",
+                    file=sys.stderr,
+                )
+
+            pad = Gamepad()
+            if mouth is None:
+                mouth = Mouth()
+            volume = DuckVolume(mouth.speaker)
+            mouth_level = 0.0
+            mouth_was_down = False
+            rt_down_at = 0.0
+            long_quack_sent = False
+            roll_u = 0.0
+            roll_held = 0
+            roll_scale_prev = 0.5
+            LOG_DIR.mkdir(parents=True, exist_ok=True)
+            log_path = LOG_DIR / f"drive_{time.strftime('%Y%m%d_%H%M%S')}.csv"
+            log_f = log_path.open("w", newline="", encoding="utf-8")
+            writer = csv.writer(log_f)
+            writer.writerow(
+                [
+                    "t_s", "fwd", "turn", "spin", "gear", "height_stick", "height_u", "height_cap",
+                    "cmd_left_rad_s", "cmd_right_rad_s",
+                    "fb_left_rad_s", "fb_right_rad_s", "torque_left_nm", "torque_right_nm",
+                    "voltage_v", "battery_pct", "lean_deg", "balance_hip_deg", "balance_on",
+                ]
+            )
+            pose_ids = [
+                mid for mid in hold_ids if mid not in LIFT_IDS and mid not in NECK_IDS
+            ]
+            lift_ids = [mid for mid in LIFT_IDS if mid in ids]
+            neck_ids = [mid for mid in (HEAD_PITCH_ID, NECK_PITCH_ID) if mid in ids and mid in stand_deg]
+            if head is not None:
+                head.release()
+            head = HeadLook(mouth, stand_deg)
+            # 升降进度 u：0 是 drive 收缩位（最低），1 是 extended 伸直位（最高）。
+            # 升降关节在两组实测角度之间逐关节插值，不拟合数学 0 位。
+            lift_ok = all(mid in extended_deg for mid in lift_ids)
+            height_u = 0.0
+            print(
+                "开始驾驶。左摇杆上下前进后退，左摇杆左右转弯，右摇杆左右自转，右摇杆上下只升降腿。"
+                f"前 {SPEED_ARM_S:.0f}s 不发轮速。"
+                f"普通档 ±{args.vmax:.0f} rad/s，按住 LT 切高速档 ±{args.vmax_fast:.0f} rad/s。"
+                f"扳机张嘴（上限 {MOUTH_OPEN_MAX_DEG:.0f}°）并鸭叫。RB 开关头部张望（默认关）。"
+                "方向键上下调音量，左右侧倾（默认半幅，LT 满幅）。"
+                f"平时力矩 {torque_nm:.1f} N·m，自平衡时髋 {args.hip_tqe:.1f} N·m。"
+                "B 键卸力停下，长按 Y 再进入。Ctrl+C 退出程序。"
+            )
+            drive_t0 = time.monotonic()
+            speed_armed = False
+            next_print = drive_t0
+            next_status = drive_t0
+            prev_t = drive_t0
+            boost_prev = 0
+            hip_tqe_sent = torque_nm
+            hip_hold = 0.0
+            prev_lean = 0.0
+            hip_frozen = False
+            jump_t0 = None
+            lift_deg = {mid: stand_deg[mid] for mid in lift_ids}
+            gear_names = ("普通", "高速")
+            gear_caps = (args.vmax, args.vmax_fast)
+            try:
+                while running and takeover_ok:
+                    loop_t = time.monotonic()
+                    # 用真实循环间隔算斜坡，循环被拖慢时指令也不会滞后。
+                    dt_real = max(0.001, min(0.1, loop_t - prev_t))
+                    prev_t = loop_t
+                    fwd_s, turn_s, spin_s, boost, height_s, lt_on, rt_on = pad.poll()
+                    # 错误手柄模式：多轴同时卡在 ±0.5，整帧指令作废。
+                    pad_bogus = Gamepad.sticks_look_bogus(fwd_s, turn_s, spin_s)
+                    if pad_bogus:
+                        if not pad._bogus_warned:
+                            print(
+                                "手柄模式异常（摇杆同时卡在 ±0.5），本帧指令不执行。"
+                                "请切到 PC/XInput 模式并回中摇杆。",
+                                flush=True,
+                            )
+                            pad._bogus_warned = True
+                        fwd_s = turn_s = spin_s = height_s = 0.0
+                        boost = 0
+                        lt_on = False
+                        rt_on = False
+                    elif pad._bogus_warned:
+                        print("手柄摇杆已恢复正常。", flush=True)
+                        pad._bogus_warned = False
+
+                    speed_ready = (loop_t - drive_t0) >= SPEED_ARM_S
+                    if speed_ready and not speed_armed:
+                        speed_armed = True
+                        print(f"轮速已解锁（启动已满 {SPEED_ARM_S:.0f}s）。", flush=True)
+                    if not speed_ready or pad_bogus:
+                        fwd_s = turn_s = spin_s = 0.0
+
+                    hat_x = pad.axis[6] if len(pad.axis) > 6 else 0.0
+                    hat_y = pad.axis[7] if len(pad.axis) > 7 else 0.0
+                    if not pad_bogus and volume.apply_hat(hat_y, loop_t):
+                        print(f"音量 {volume.percent():.0f}%", flush=True)
+                    roll_dir = 0 if pad_bogus else (1 if hat_x >= 0.5 else -1 if hat_x <= -0.5 else 0)
+                    # 默认半幅侧倾；按住 LT 才到 yaml 满幅。
+                    roll_scale = 1.0 if lt_on else 0.5
+                    roll_target = float(roll_dir) * roll_scale
+                    lean_level = "满幅" if lt_on else "半幅"
+                    if roll_dir != roll_held:
+                        roll_held = roll_dir
+                        if roll_dir == 0:
+                            print("侧倾回中。", flush=True)
+                        else:
+                            side = "向右" if roll_dir > 0 else "向左"
+                            print(f"侧倾：{side}（{lean_level}）。", flush=True)
+                    elif roll_dir != 0 and roll_scale != roll_scale_prev:
+                        print(f"侧倾改为{lean_level}。", flush=True)
+                    roll_scale_prev = roll_scale
+                    # roll_u∈[-1,1]：-1 左倾、+1 右倾；速率按侧倾目标角峰值换算成 °/s。
+                    lean_span = max(
+                        abs(lean_right_deg.get(mid, 20.0) - stand_deg.get(mid, 0.0))
+                        for mid in ROLL_IDS
+                    )
+                    lean_span = max(lean_span, 1.0)
+                    roll_u = ramp(roll_u, roll_target, ROLL_RATE_DEG_S / lean_span, dt_real)
+                    if pad.button_rb and head is not None and not pad_bogus:
+                        pad.button_rb = False
+                        head.toggle()
+                    rt = 0.0 if pad_bogus else max(pad.rt_level(), 1.0 if rt_on else 0.0)
+                    # 张望自己管嘴。这段时间右扳机不再改嘴，避免两路抢舵机。
+                    if head is not None and head.active():
+                        mouth_was_down = False
+                    elif rt >= 0.35:
+                        if not mouth_was_down:
+                            mouth.set_level(1.0)
+                            mouth.quack("short")
+                            mouth_level = 1.0
+                            mouth_was_down = True
+                            rt_down_at = loop_t
+                            long_quack_sent = False
+                            print("右扳机：张嘴，短叫。", flush=True)
+                        elif not long_quack_sent and loop_t - rt_down_at >= 3.0:
+                            if mouth.quack("long"):
+                                long_quack_sent = True
+                                print("右扳机按住 3 秒：长鸣。", flush=True)
+                    elif rt < 0.2 and mouth_was_down:
+                        mouth.set_level(0.0)
+                        mouth_level = 0.0
+                        mouth_was_down = False
+                    gear_now = int(boost)
+                    if pad.button_b:
+                        print("B 键：卸力停下。到位后长按 Y 再进入。", flush=True)
+                        break
+                    if pad_bogus:
+                        # 错误模式边沿一律丢掉，只保留 B 紧急停车。
+                        pad.button_a = False
+                        pad.button_x = False
+                        pad.button_y = False
+                        pad.button_rb = False
+                    if pad.button_x:
+                        pad.button_x = False
+                        print(f"灯效：{led.cycle()}", flush=True)
+                    led.drain()
+                    if pad.button_a:
+                        pad.button_a = False
+                        if jump_t0 is None and lift_ok:
+                            jump_t0 = loop_t
+                            print("A：原地起跳，髋和膝伸直后立刻收回。", flush=True)
+                    if pad.button_y:
+                        pad.button_y = False
+                        if balance is not None:
+                            balance_on = not balance_on
+                            print(
+                                "Y：进入自平衡。" if balance_on else "Y：退出自平衡，补偿平滑回零。",
+                                flush=True,
+                            )
+                    if gear_now != boost_prev:
+                        print(
+                            f"{gear_names[gear_now]}档：速度上限 ±{gear_caps[gear_now]:.0f} rad/s",
+                            flush=True,
+                        )
+                        boost_prev = gear_now
+                    vmax_now = gear_caps[gear_now]
+                    tgt_left, tgt_right = wheel_targets(
+                        fwd_s, turn_s, spin_s, vmax_now, args.turn, args.spin
+                    )
+                    cmd_left = ramp(cmd_left, tgt_left, args.accel, dt_real)
+                    cmd_right = ramp(cmd_right, tgt_right, args.accel, dt_real)
+                    jump_u = None
+                    if jump_t0 is not None:
+                        jumped = loop_t - jump_t0
+                        if jumped < JUMP_HALF_S:
+                            jump_u = jumped / JUMP_HALF_S
+                        elif jumped < 2.0 * JUMP_HALF_S:
+                            jump_u = 1.0 - (jumped - JUMP_HALF_S) / JUMP_HALF_S
+                        else:
+                            jump_t0 = None
+                            height_u = 0.0
+                            print("起跳结束，腿回到收缩。", flush=True)
+                        cmd_left = 0.0
+                        cmd_right = 0.0
+
+                    # 右摇杆上推升高（u 增大、走向伸直点），下拉降低（走向收缩点）。
+                    if lift_ok and jump_u is None:
+                        height_u = max(
+                            0.0,
+                            min(1.0, height_u + deadzone(height_s) * args.height_rate * dt_real),
+                        )
+                    # 高度只跟右摇杆。扳机留给嘴舵机，不再把身子压下去。
+                    height_cap = 1.0
+
+                    # 按 Y 后立即实时平衡，静止、坡上、行驶都出力。再按 Y 才平滑回零。
+                    balance_active = balance_on
+                    hip_tqe_now = args.hip_tqe if balance_active else torque_nm
+                    if hip_tqe_now != hip_tqe_sent:
+                        for hid in HIP_SIGN:
+                            if hid in bus.motors:
+                                bus.set_torque_limit(hid, hip_tqe_now)
+                        hip_tqe_sent = hip_tqe_now
+                        print(f"髋力矩上限 {hip_tqe_now:.1f} N·m", flush=True)
+                    if balance is not None:
+                        lean_deg, d_hip, d_neck = balance.update(dt_real, balance_active)
+                    else:
+                        lean_deg, d_hip, d_neck = 0.0, 0.0, 0.0
+                    hip_torque = 0.0
+                    for hid in HIP_SIGN:
+                        if hid in bus.motors:
+                            hip_torque = max(hip_torque, abs(bus.motors[hid].state.torque))
+                    # 力矩已经顶住、倾角却没减小：停住补偿角，避免继续加角度造成晃动。
+                    hip_sat = balance_active and hip_torque >= 0.85 * hip_tqe_now
+                    lean_growing = abs(lean_deg) >= abs(prev_lean) - 0.3
+                    if hip_sat and lean_growing and abs(d_hip) > hip_hold:
+                        d_hip = math.copysign(hip_hold, d_hip)
+                        if balance is not None:
+                            balance.delta = d_hip
+                        if not hip_frozen:
+                            print(
+                                f"髋力矩 {hip_torque:.2f} N·m 已顶住，倾角 {lean_deg:+.1f}° 未减小，补偿停在 {d_hip:+.1f}°",
+                                flush=True,
+                            )
+                            hip_frozen = True
+                    else:
+                        hip_hold = abs(d_hip)
+                        hip_frozen = False
+                    prev_lean = lean_deg
+
+                    pose_cmd = stand_deg
+                    lean_tgt: dict[int, float] = {}
+                    lean_a = abs(roll_u)
+                    if lean_a > 0.02:
+                        pose_cmd = dict(stand_deg)
+                        lean_tgt = lean_right_deg if roll_u >= 0.0 else lean_left_deg
+                        for mid in ROLL_IDS:
+                            if mid not in pose_cmd:
+                                continue
+                            base = stand_deg.get(mid, 0.0)
+                            pose_cmd[mid] = base + (lean_tgt.get(mid, base) - base) * lean_a
+                    pose.command_position(bus, pose_ids, pose_cmd, torque_nm, vel_limit=6.0)
+                    leg_u = jump_u if jump_u is not None else height_u
+                    lift_deg = {
+                        mid: stand_deg[mid] + (extended_deg[mid] - stand_deg[mid]) * leg_u
+                        for mid in lift_ids
+                    }
+                    # 侧倾时抬起侧的膝和髋 pitch 走向 yaml 里的伸直角，不再只动 roll。
+                    if lean_tgt and jump_u is None:
+                        for mid in lift_ids:
+                            if mid not in lean_tgt:
+                                continue
+                            lift_deg[mid] = lift_deg[mid] + (lean_tgt[mid] - lift_deg[mid]) * lean_a
+                    for hid, sign in HIP_SIGN.items():
+                        if hid in lift_deg:
+                            lift_deg[hid] += sign * d_hip
+                    knee_ids = [mid for mid in lift_ids if mid not in HIP_SIGN]
+                    hip_ids = [mid for mid in lift_ids if mid in HIP_SIGN]
+                    knee_tqe = args.hip_tqe if jump_u is not None else torque_nm
+                    pose.command_position(bus, knee_ids, lift_deg, knee_tqe, vel_limit=6.0)
+                    pose.command_position(
+                        bus,
+                        hip_ids,
+                        lift_deg,
+                        hip_tqe_now if balance_active or jump_u is not None else torque_nm,
+                        vel_limit=6.0,
+                    )
+                    if head is not None:
+                        head.tick(dt_real)
+                        neck_cmd = head.can_deg()
+                    else:
+                        neck_cmd = {mid: float(stand_deg.get(mid, 0.0)) for mid in neck_ids}
+                    if neck_ids:
+                        pose.command_position(
+                            bus,
+                            neck_ids,
+                            neck_cmd,
+                            torque_nm,
+                            vel_limit=max(1.2, math.radians(head.rate) * 1.4) if head is not None else 2.0,
+                        )
+                    send_speed(bus, bus.motors[left_id], cmd_left * wheel_sign(left_id), args.wheel_tqe)
+                    send_speed(bus, bus.motors[right_id], cmd_right * wheel_sign(right_id), args.wheel_tqe)
+
+                    # 状态 5 Hz。只在这一拍收两台轮子的回包，其余拍不 flush，避免把回包清掉。
+                    if loop_t >= next_status:
+                        bus.read_status(left_id)
+                        bus.read_status(right_id)
+                        bus.collect(timeout=0.012)
+                        next_status = loop_t + 0.2
+
+                    lm = bus.motors[left_id]
+                    rm = bus.motors[right_id]
+                    fb_left = lm.state.velocity * wheel_sign(left_id)
+                    fb_right = rm.state.velocity * wheel_sign(right_id)
+                    tor_left = lm.state.torque * wheel_sign(left_id)
+                    tor_right = rm.state.torque * wheel_sign(right_id)
+                    hip_now = 0.0
+                    for hid in HIP_SIGN:
+                        if hid in bus.motors:
+                            hip_now = max(hip_now, abs(bus.motors[hid].state.torque))
+                    torque_space = max(args.hip_tqe, args.wheel_tqe, 0.2)
+                    torque_ratio = max(abs(tor_left), abs(tor_right), hip_now) / torque_space
+                    if led is not None:
+                        led.set_torque_level(torque_ratio)
+                    volts = bus.motors[WHEEL_LEFT].state.voltage
+                    elapsed = loop_t - drive_t0
+                    writer.writerow(
+                        [
+                            f"{elapsed:.3f}", f"{fwd_s:.3f}", f"{turn_s:.3f}", f"{spin_s:.3f}",
+                            str(gear_now),
+                            f"{height_s:.3f}", f"{height_u:.4f}", f"{height_cap:.4f}",
+                            f"{cmd_left:.3f}", f"{cmd_right:.3f}",
+                            f"{fb_left:.3f}", f"{fb_right:.3f}",
+                            f"{tor_left:.4f}", f"{tor_right:.4f}",
+                            f"{volts:.2f}", f"{battery_percent(volts):.1f}",
+                            f"{lean_deg:.3f}", f"{d_hip:.3f}", "1" if balance_active else "0",
+                        ]
+                    )
+
+                    if loop_t >= next_print:
+                        left_st = bus.motors[WHEEL_LEFT].state
+                        volts = left_st.voltage
+                        temp_c = left_st.temperature
+                        volt_txt = (
+                            f"电压 {volts:.1f} V 电量 {battery_text(volts)}"
+                            if volts >= 5.0
+                            else "电压 --"
+                        )
+                        temp_txt = f"温度 {temp_c:.1f}°C" if temp_c > 1.0 else "温度 --"
+                        print(
+                            f"t={elapsed:5.1f}s  杆 前{fwd_s:+.2f} 转{turn_s:+.2f} 自{spin_s:+.2f}  "
+                            f"档{gear_names[gear_now]}  升降 {height_u:4.2f}/≤{height_cap:4.2f}  "
+                            f"前倾 {lean_deg:+5.1f}° 补偿 {d_hip:+5.2f}° 侧倾 {roll_u:+4.2f} "
+                            f"音量 {volume.percent():.0f}% 髋力矩 {hip_torque:4.2f}/{hip_tqe_now:.1f} "
+                            f"{'髋力矩顶住' if hip_frozen else ''} "
+                            f"颈 {neck_cmd.get(NECK_PITCH_ID, 0.0):+5.1f}° 头 {neck_cmd.get(HEAD_PITCH_ID, 0.0):+5.1f}° "
+                            f"张望{'开' if head is not None and head.active() else '关'} "
+                            f"自平衡{'开' if balance_active else '关'}  "
+                            f"轮指令 左{cmd_left:+6.2f} 右{cmd_right:+6.2f}  "
+                            f"反馈 左{fb_left:+6.2f} 右{fb_right:+6.2f}  "
+                            f"{volt_txt}  {temp_txt}  灯 {led.label}  "
+                            f"力矩 左{yellow_nm(tor_left)} 右{yellow_nm(tor_right)}",
+                            flush=True,
+                        )
+                        next_print = loop_t + 0.5
+
+                    spent = time.monotonic() - loop_t
+                    if spent < period:
+                        time.sleep(period - spent)
+            finally:
+                log_f.flush()
+                log_f.close()
+                print(f"驾驶日志 {log_path}")
+
+            # 轮子只停转、卸力，绝不切回位置模式。
+            # 速度模式下编码器会累到上千度，再按卸力姿态去追位置就会空转好多圈。
+            print("停车：轮电机速度归零并卸力，不发位置指令。", flush=True)
+            for _ in range(6):
+                for wid in WHEELS:
+                    if wid in bus.motors:
+                        send_speed(bus, bus.motors[wid], 0.0, 0.0)
+                bus.collect(timeout=0.002)
+                time.sleep(0.02)
             for wid in WHEELS:
                 if wid in bus.motors:
-                    send_speed(bus, bus.motors[wid], 0.0, 0.0)
-            bus.collect(timeout=0.002)
-            time.sleep(0.02)
-        for wid in WHEELS:
-            if wid in bus.motors:
-                bus.disable(wid)
-        body_ids = [mid for mid in ids if mid not in WHEELS]
+                    bus.disable(wid)
+            body_ids = [mid for mid in ids if mid not in WHEELS]
 
-        unload_deg = pose.unload_target(cfg, body_ids)
-        arrived = False
-        keep_going = lambda: stop_hits < 2
-        if unload_deg is not None:
-            print("卸力：腿和脖子先到卸力姿态，确认到位后才卸力。轮子保持停止。", flush=True)
-            try:
-                for mid in body_ids:
-                    bus.set_mode(mid, MODE_POS_VEL_TQE)
-                time.sleep(0.05)
-                roll_ids = [mid for mid in ROLL_IDS if mid in body_ids and mid in unload_deg]
-                roll_now = pose.read_degrees(bus, roll_ids, retries=2, strict=False) if roll_ids else {}
-                roll_far = [
-                    mid
-                    for mid in roll_ids
-                    if mid not in roll_now or abs(roll_now[mid] - unload_deg[mid]) > 2.0
-                ]
-                if roll_far:
-                    peak = max(abs(roll_now.get(mid, unload_deg[mid]) - unload_deg[mid]) for mid in roll_ids)
-                    print(
-                        f"先收髋 roll {roll_far} 到卸力角（最大还差 {peak:.1f}°），再收腿。"
-                        "一起收时 roll 会被腿压住，到不了位。",
-                        flush=True,
-                    )
+            unload_deg = pose.unload_target(cfg, body_ids)
+            arrived = False
+            keep_going = lambda: stop_hits < 2
+            if unload_deg is not None:
+                print("卸力：腿和脖子先到卸力姿态，确认到位后才卸力。轮子保持停止。", flush=True)
+                try:
+                    for mid in body_ids:
+                        bus.set_mode(mid, MODE_POS_VEL_TQE)
+                    time.sleep(0.05)
+                    roll_ids = [mid for mid in ROLL_IDS if mid in body_ids and mid in unload_deg]
+                    roll_now = pose.read_degrees(bus, roll_ids, retries=2, strict=False) if roll_ids else {}
+                    roll_far = [
+                        mid
+                        for mid in roll_ids
+                        if mid not in roll_now or abs(roll_now[mid] - unload_deg[mid]) > 2.0
+                    ]
+                    if roll_far:
+                        peak = max(abs(roll_now.get(mid, unload_deg[mid]) - unload_deg[mid]) for mid in roll_ids)
+                        print(
+                            f"先收髋 roll {roll_far} 到卸力角（最大还差 {peak:.1f}°），再收腿。"
+                            "一起收时 roll 会被腿压住，到不了位。",
+                            flush=True,
+                        )
+                        pose.move_to_pose(
+                            bus,
+                            cfg,
+                            roll_ids,
+                            {mid: unload_deg[mid] for mid in roll_ids},
+                            keep_going,
+                            label="卸力髋 roll",
+                            vel_limit=2.5,
+                            duration_s=max(0.6, peak / 40.0),
+                        )
+                        pose.hold_until_reached(
+                            bus,
+                            roll_ids,
+                            {mid: unload_deg[mid] for mid in roll_ids},
+                            keep_going,
+                            torque=abs(float(cfg.get("torque_nm", torque_nm))),
+                            vel_limit=2.5,
+                            tol_deg=2.0,
+                            label="卸力髋 roll",
+                        )
                     pose.move_to_pose(
                         bus,
                         cfg,
-                        roll_ids,
-                        {mid: unload_deg[mid] for mid in roll_ids},
+                        body_ids,
+                        unload_deg,
                         keep_going,
-                        label="卸力髋 roll",
-                        vel_limit=2.5,
-                        duration_s=max(0.6, peak / 40.0),
+                        label="卸力姿态",
+                        vel_limit=2.0,
                     )
-                    pose.hold_until_reached(
-                        bus,
-                        roll_ids,
-                        {mid: unload_deg[mid] for mid in roll_ids},
-                        keep_going,
-                        torque=abs(float(cfg.get("torque_nm", torque_nm))),
-                        vel_limit=2.5,
-                        tol_deg=2.0,
-                        label="卸力髋 roll",
-                    )
-                pose.move_to_pose(
+                except (RuntimeError, OSError) as exc:
+                    print(f"过渡读数失败（{exc}），改为直接保持卸力目标角。", flush=True)
+                arrived = pose.hold_until_reached(
                     bus,
-                    cfg,
                     body_ids,
                     unload_deg,
                     keep_going,
+                    torque=abs(float(cfg.get("torque_nm", torque_nm))),
+                    vel_limit=max(1.5, abs(float(cfg.get("vel_limit", 1.0)))),
+                    tol_deg=2.0,
+                    tol_by_id={7: 5.0},
                     label="卸力姿态",
-                    vel_limit=2.0,
                 )
-            except (RuntimeError, OSError) as exc:
-                print(f"过渡读数失败（{exc}），改为直接保持卸力目标角。", flush=True)
-            arrived = pose.hold_until_reached(
-                bus,
-                body_ids,
-                unload_deg,
-                keep_going,
-                torque=abs(float(cfg.get("torque_nm", torque_nm))),
-                vel_limit=max(1.5, abs(float(cfg.get("vel_limit", 1.0)))),
-                tol_deg=2.0,
-                label="卸力姿态",
-            )
-        else:
+            else:
+                print(
+                    "还没有卸力姿态。可先摆好再: python3 pose_contrl/pose.py capture unload",
+                    flush=True,
+                )
+
+            if unload_deg is not None and not arrived:
+                print("已放弃等待卸力姿态，改为直接卸力。", flush=True)
+            print("卸力：全部关节切停止模式，逐台回读。", flush=True)
+            left = confirm_all_released(bus, ids, WHEELS, lambda: stop_hits >= 2)
+            released = not left
+            if pad is not None:
+                pad.close()
+                pad = None
+            if not running:
+                return 0
+            if head is not None:
+                head.release()
+                head = None
+            if mouth is not None:
+                mouth.release()
             print(
-                "还没有卸力姿态。可先摆好再: python3 pose_contrl/pose.py capture unload",
+                f"已卸力。长按手柄 Y {START_Y_HOLD_S:.0f} 秒再进入驾驶。Ctrl+C 退出程序。",
                 flush=True,
             )
-
-        if unload_deg is not None and not arrived:
-            print("已放弃等待卸力姿态，改为直接卸力。", flush=True)
-        print("卸力：全部关节切停止模式，逐台回读，确认后才退出。", flush=True)
-        left = confirm_all_released(bus, ids, WHEELS, lambda: stop_hits >= 2)
-        released = not left
-        if pad is not None:
-            pad.close()
-        return 0
     finally:
         if not released:
             try:
