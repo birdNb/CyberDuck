@@ -266,17 +266,29 @@ def command_position(
     degrees: dict[int, float],
     torque: float,
     vel_limit: float = 2.0,
-) -> None:
-    """位置+最大速度+力矩上限（经典 CAN 模式 0x1F）。"""
+    *,
+    strict: bool = True,
+) -> list[int]:
+    """位置+最大速度+力矩上限（经典 CAN 模式 0x1F）。
+
+    strict 为假时，某一台发送缓冲满就记下并继续，不让后面的关节整拍丢掉。
+    """
+    missed: list[int] = []
     for mid in ids:
         motor = bus.motors[mid]
-        bus.command_pos_vel_tqe(
-            motor,
-            degrees[mid] * DEG,
-            abs(vel_limit),
-            torque,
-            reply=False,
-        )
+        try:
+            bus.command_pos_vel_tqe(
+                motor,
+                degrees[mid] * DEG,
+                abs(vel_limit),
+                torque,
+                reply=False,
+            )
+        except OSError:
+            if strict:
+                raise
+            missed.append(mid)
+    return missed
 
 
 def move_to_pose(

@@ -270,17 +270,13 @@ class SocketCan:
         frame = struct.pack(CAN_FRAME_FMT, cid, min(len(data), 8), payload)
         n = self._send_frame(frame)
         if n is None:
-            for _ in range(2):
-                self._drop_pending()
-                time.sleep(0.001)
-                n = self._send_frame(frame)
-                if n is not None:
-                    break
-            else:
-                raise OSError(
-                    105,
-                    "CAN 发送缓冲满。位置保持时刷新太密，或总线暂时发不出去。",
-                )
+            self._drop_pending()
+            n = self._send_frame(frame)
+        if n is None:
+            raise OSError(
+                105,
+                "CAN 发送缓冲满。位置保持时刷新太密，或总线暂时发不出去。",
+            )
         if n != CAN_FRAME_SIZE:
             raise OSError(f"CAN 发送不完整: {n}/{CAN_FRAME_SIZE}")
 

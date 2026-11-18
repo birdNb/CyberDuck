@@ -329,6 +329,34 @@ def deadzone(v: float) -> float:
 START_Y_HOLD_S = 1.0
 
 
+def note_pad_edges(pad: "Gamepad") -> None:
+    """把这一拍新按下的键打出来。摇杆和长按判定仍由调用方看 buttons。"""
+    if pad.button_y:
+        pad.button_y = False
+        print("收到手柄 Y。", flush=True)
+    if pad.button_a:
+        pad.button_a = False
+        print("收到手柄 A。", flush=True)
+    if pad.button_b:
+        pad.button_b = False
+        print("收到手柄 B。", flush=True)
+    if pad.button_x:
+        pad.button_x = False
+        print("收到手柄 X。", flush=True)
+    if pad.button_rb:
+        pad.button_rb = False
+        print("收到手柄 RB。", flush=True)
+
+
+def watch_pad(pad: "Gamepad", seconds: float) -> None:
+    """关节还没齐时也读手柄，避免按键被扫描循环吃掉。"""
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        pad.poll()
+        note_pad_edges(pad)
+        time.sleep(0.05)
+
+
 def wait_for_space(running) -> bool:
     """阻塞等空格或手柄长按 Y。返回 False 表示被 Ctrl+C / 取消。"""
     import termios
@@ -754,6 +782,7 @@ class Mouth:
         self.open_deg = 210.0
         self._playing = False
         self._lock = threading.Lock()
+        self.io_lock = threading.Lock()
         self._warned = False
         try:
             sys.path.insert(0, str(REPO / "servo"))
@@ -775,6 +804,7 @@ class Mouth:
                 str(raw.get("port", "/dev/ttyMSM0")),
                 baudrate=int(raw.get("baudrate", 1000000)),
                 timeout=0.02,
+                write_timeout=0.02,
             )
             cfg = ServoConfig(
                 servo_id=servo_id,
@@ -813,9 +843,10 @@ class Mouth:
         span = min(self.open_deg - self.closed_deg, MOUTH_OPEN_MAX_DEG)
         angle = self.closed_deg + span * level
         try:
-            self.ctrl.torque("mouth", True)
-            # 这批 HD1910M 速度 0 才是最快。写成几十反而几乎不动，张嘴幅度看起来很小。
-            self.ctrl.set_angle("mouth", angle, speed=0, acceleration=0, torque_limit=800)
+            with self.io_lock:
+                self.ctrl.torque("mouth", True)
+                # 这批 HD1910M 速度 0 才是最快。写成几十反而几乎不动，张嘴幅度看起来很小。
+                self.ctrl.set_angle("mouth", angle, speed=0, acceleration=0, torque_limit=800)
         except Exception as exc:
             if not self._warned:
                 print(f"嘴舵机写入失败：{exc}")
@@ -826,7 +857,8 @@ class Mouth:
         if self.ctrl is None:
             return
         try:
-            self.ctrl.torque("mouth", enabled)
+            with self.io_lock:
+                self.ctrl.torque("mouth", enabled)
         except Exception as exc:
             if not self._warned:
                 print(f"嘴舵机卸力失败：{exc}", flush=True)
@@ -910,7 +942,8 @@ class Mouth:
                 print("嘴舵机：回零位并卸力 ...", flush=True)
                 self.set_level(0.0)
                 time.sleep(0.35)
-            self.ctrl.torque("mouth", False)
+            with self.io_lock:
+                self.ctrl.torque("mouth", False)
             print("嘴舵机已卸力。", flush=True)
         except Exception as exc:
             if not self._warned:
@@ -934,7 +967,7 @@ class HeadLook:
 
     11 头俯仰、12 脖子俯仰走 CAN，13 yaw、14 roll、15 嘴走已打开的舵机总线。
     yaw、roll 收到 0° 再随机看。12 号脖子只到零位往后 30°，头俯仰同向 15°，让头保持相对水平。
-    张嘴和这一声短叫同时开始、同时结束。关闭后 CAN 回到驾驶姿态，舵机回中。
+    张嘴和这一声短叫同时开始、同时结束。关闭后头、脖子、yaw、roll 回到表演前的默认位置，嘴回零再卸力。
     """
 
     AXES = ("pitch", "neck", "yaw", "roll")
@@ -955,6 +988,12 @@ class HeadLook:
             "mouth": 0.0,
         }
         self.goals = dict(self.pose)
+        self.rest = {
+            "pitch": self.pose["pitch"],
+            "neck": self.pose["neck"],
+            "yaw": 0.0,
+            "roll": 0.0,
+        }
         self.want_mouth = False
         self.deadline = 0.0
         self.mouth_rate_now = 40.0
@@ -968,6 +1007,12 @@ class HeadLook:
         self.head_level = 0.0
         self._mouth_phases: list[tuple[float, float, float]] = []
         self._mouth_i = 0
+        self._last_raw: dict[str, int] = {}
+        self._servo_stop = False
+        self._servo_thread = threading.Thread(
+            target=self._servo_loop, name="head-servo", daemon=True
+        )
+        self._servo_thread.start()
         self._load()
 
     def _load(self) -> None:
@@ -1023,15 +1068,19 @@ class HeadLook:
             print("RB：头部张望开。脖子到零位后 30°，头俯仰同向 15°。每动 3 次叫一声。", flush=True)
         else:
             self.goals = {
-                "pitch": self.drive["pitch"],
-                "neck": self.drive["neck"],
-                "yaw": 0.0,
-                "roll": 0.0,
+                "pitch": self.rest["pitch"],
+                "neck": self.rest["neck"],
+                "yaw": self.rest["yaw"],
+                "roll": self.rest["roll"],
                 "mouth": 0.0,
             }
-            self.freeze()
+            self._arm_mouth()
+            self.mouth_rate_now = self.mouth_rate
+            self.phase = "park"
             print(
-                f"RB：头部张望关。停在当前姿态，头 {self.pose['pitch']:+.1f}° 脖子 {self.pose['neck']:+.1f}°。",
+                "RB：头部张望关。回到默认位置，"
+                f"头 {self.rest['pitch']:+.1f}° 脖子 {self.rest['neck']:+.1f}° "
+                f"yaw {self.rest['yaw']:+.1f}° roll {self.rest['roll']:+.1f}°。",
                 flush=True,
             )
 
@@ -1044,12 +1093,21 @@ class HeadLook:
         self._arm()
         for name in ("yaw", "roll"):
             self.goals[name] = self.pose.get(name, 0.0)
-        self.servos.pop("mouth", None)
+        with self.mouth.io_lock:
+            self.servos.pop("mouth", None)
         self.phase = "off"
+        self.rest = {
+            "pitch": self.pose["pitch"],
+            "neck": self.pose["neck"],
+            "yaw": self.pose.get("yaw", 0.0),
+            "roll": self.pose.get("roll", 0.0),
+        }
         self._write_servos()
         self.mouth.torque(False)
         print(
-            f"头部保持当前姿态：头 {self.pose['pitch']:+.1f}° 脖子 {self.pose['neck']:+.1f}°。",
+            "头部默认位置："
+            f"头 {self.rest['pitch']:+.1f}° 脖子 {self.rest['neck']:+.1f}° "
+            f"yaw {self.rest['yaw']:+.1f}° roll {self.rest['roll']:+.1f}°。",
             flush=True,
         )
 
@@ -1059,7 +1117,8 @@ class HeadLook:
             self.goals[name] = self.pose.get(name, 0.0)
         self.goals["mouth"] = 0.0
         self.pose["mouth"] = 0.0
-        self.servos.pop("mouth", None)
+        with self.mouth.io_lock:
+            self.servos.pop("mouth", None)
         self.phase = "off"
         self._write_servos()
         self.mouth.torque(False)
@@ -1089,12 +1148,10 @@ class HeadLook:
 
     def tick(self, dt: float) -> None:
         if self.phase == "off":
-            self._write_servos()
             return
         for name in self.AXES + ("mouth",):
             rate = self.mouth_rate_now if name == "mouth" else self.rate
             self.pose[name] = ramp(self.pose[name], self.goals[name], rate, dt)
-        self._write_servos()
         if self.phase == "home":
             if self._arrived(self.AXES + ("mouth",)):
                 print("头已到水平位，开始张望。", flush=True)
@@ -1113,11 +1170,17 @@ class HeadLook:
             if time.monotonic() >= self.deadline:
                 self._advance_mouth()
         elif self.phase == "park" and self._arrived(self.AXES + ("mouth",)):
+            with self.mouth.io_lock:
+                self.servos.pop("mouth", None)
+            self.mouth.torque(False)
             self.phase = "off"
-            print("头部已回到驾驶姿态。", flush=True)
+            print("头部已回到默认位置。", flush=True)
 
     def release(self) -> None:
         """卸力 yaw、roll、嘴。没按过 RB 时 self.servos 是空的，也要按 ID 关力矩。"""
+        self._servo_stop = True
+        if self._servo_thread.is_alive():
+            self._servo_thread.join(timeout=0.3)
         bus = self.mouth.bus
         if bus is None:
             print("舵机总线没打开，头部舵机无法卸力。", flush=True)
@@ -1180,7 +1243,8 @@ class HeadLook:
         if self.mouth.ctrl is not None:
             cfg = self.mouth.ctrl.configs.get("mouth")
             if cfg is not None:
-                self.servos["mouth"] = cfg
+                with self.mouth.io_lock:
+                    self.servos["mouth"] = cfg
             self.mouth.torque(True)
         sound_s = self.mouth.start_timed(self.SHORT_TAGS)
         if sound_s < 0.08:
@@ -1218,6 +1282,17 @@ class HeadLook:
             return
         self._apply_mouth_phase()
 
+    def _arm_mouth(self) -> None:
+        """回默认位置时先让嘴跟上，到位后再卸力。"""
+        if self.mouth.ctrl is None:
+            return
+        cfg = self.mouth.ctrl.configs.get("mouth")
+        if cfg is None:
+            return
+        with self.mouth.io_lock:
+            self.servos["mouth"] = cfg
+        self.mouth.torque(True)
+
     def _arm(self) -> None:
         if self.armed:
             return
@@ -1249,23 +1324,36 @@ class HeadLook:
             )
             ctrl.configs[name] = cfg
             ctrl.by_id[cfg.servo_id] = cfg
-            self.servos[name] = cfg
-        mouth_cfg = ctrl.configs.get("mouth")
-        if mouth_cfg is not None:
-            self.servos["mouth"] = mouth_cfg
-        for name, cfg in list(self.servos.items()):
+        with self.mouth.io_lock:
+            for name in ("yaw", "roll"):
+                self.servos[name] = ctrl.configs[name]
+            mouth_cfg = ctrl.configs.get("mouth")
+            if mouth_cfg is not None:
+                self.servos["mouth"] = mouth_cfg
+            for name, cfg in list(self.servos.items()):
+                try:
+                    bus.ping(cfg.servo_id)
+                    raw = bus.read_u16(cfg.servo_id, 0x38) & 0x0FFF
+                    self.pose[name] = (raw - cfg.center_raw) * cfg.direction * 360.0 / 4096.0
+                    bus.write_u8(cfg.servo_id, ADDR_TORQUE_ENABLE, 1)
+                    bus.write_u16(cfg.servo_id, 0x30, 700 if name == "mouth" else 300)
+                    bus.write_u8(cfg.servo_id, 0x29, 0)
+                    bus.write(cfg.servo_id, 0x2E, signed_value(0))
+                    print(f"{name} ID {cfg.servo_id}  现在 {self.pose[name]:+.1f}°", flush=True)
+                except Exception as exc:
+                    print(f"{name} 舵机没有应答（{exc}），这路先不动。", flush=True)
+                    self.servos.pop(name, None)
+
+    def _servo_loop(self) -> None:
+        """舵机串口单独写。主循环只发 CAN，不再等串口 flush。"""
+        while not self._servo_stop:
+            t0 = time.monotonic()
             try:
-                bus.ping(cfg.servo_id)
-                raw = bus.read_u16(cfg.servo_id, 0x38) & 0x0FFF
-                self.pose[name] = (raw - cfg.center_raw) * cfg.direction * 360.0 / 4096.0
-                bus.write_u8(cfg.servo_id, ADDR_TORQUE_ENABLE, 1)
-                bus.write_u16(cfg.servo_id, 0x30, 700 if name == "mouth" else 300)
-                bus.write_u8(cfg.servo_id, 0x29, 0)
-                bus.write(cfg.servo_id, 0x2E, signed_value(0))
-                print(f"{name} ID {cfg.servo_id}  现在 {self.pose[name]:+.1f}°", flush=True)
+                self._write_servos()
             except Exception as exc:
-                print(f"{name} 舵机没有应答（{exc}），这路先不动。", flush=True)
-                self.servos.pop(name, None)
+                note(f"舵机线程写入失败 {exc}")
+            spent = time.monotonic() - t0
+            time.sleep(max(0.005, 0.02 - spent))
 
     def _write_servos(self) -> None:
         ctrl = self.mouth.ctrl
@@ -1277,18 +1365,32 @@ class HeadLook:
             from servo_controller import ServoController
         except Exception:
             return
-        for name, cfg in list(self.servos.items()):
-            if name == "mouth":
-                angle = self.mouth.closed_deg + max(0.0, min(self.open_deg, self.pose["mouth"]))
-            else:
-                angle = 180.0 + self.pose[name]
-            try:
-                raw = ServoController.angle_to_raw(angle, cfg)
-                bus.write_u16(cfg.servo_id, ADDR_GOAL_POSITION, raw)
-            except Exception as exc:
-                print(f"{name} 舵机写入失败：{exc}", flush=True)
-                self.servos.pop(name, None)
+        with self.mouth.io_lock:
+            if not self.servos:
                 return
+            pending = False
+            for name, cfg in list(self.servos.items()):
+                if name == "mouth":
+                    angle = self.mouth.closed_deg + max(0.0, min(self.open_deg, self.pose["mouth"]))
+                else:
+                    angle = 180.0 + self.pose[name]
+                try:
+                    raw = ServoController.angle_to_raw(angle, cfg)
+                    if self._last_raw.get(name) == raw:
+                        continue
+                    bus.write_u16(cfg.servo_id, ADDR_GOAL_POSITION, raw, flush=False)
+                    self._last_raw[name] = raw
+                    pending = True
+                except Exception as exc:
+                    print(f"{name} 舵机写入失败：{exc}", flush=True)
+                    self.servos.pop(name, None)
+                    self._last_raw.pop(name, None)
+                    return
+            if pending:
+                try:
+                    bus.ser.flush()
+                except Exception as exc:
+                    print(f"舵机串口刷新失败：{exc}", flush=True)
 
 
 class DuckVolume:
@@ -1602,18 +1704,27 @@ def main() -> int:
         f"右 {[f'{m}:{lean_right_deg[m]:+.1f}°' for m in ROLL_IDS]}"
     )
 
-    bus, ids = pose.open_bus(cfg)
-    left_id, right_id = (WHEEL_RIGHT, WHEEL_LEFT) if args.swap_wheels else (WHEEL_LEFT, WHEEL_RIGHT)
-    missing_wheels = [w for w in WHEELS if w not in ids]
-    if missing_wheels:
-        print(f"轮电机 {missing_wheels} 没有应答，取消驾驶。", file=sys.stderr)
+    pad_wait = Gamepad()
+    while True:
+        try:
+            bus, ids = pose.open_bus(cfg)
+        except SystemExit as exc:
+            print(f"{exc} 关节还没上线，3 秒后重试。这几秒会听手柄。", flush=True)
+            watch_pad(pad_wait, 3.0)
+            continue
+        left_id, right_id = (WHEEL_RIGHT, WHEEL_LEFT) if args.swap_wheels else (WHEEL_LEFT, WHEEL_RIGHT)
+        missing_wheels = [w for w in WHEELS if w not in ids]
+        missing_stand = [mid for mid in stand_deg if mid not in ids]
+        if not missing_wheels and not missing_stand:
+            break
+        if missing_wheels:
+            print(f"轮电机 {missing_wheels} 没有应答。", flush=True)
+        if missing_stand:
+            print(f"站立关节 {missing_stand} 没有应答。", flush=True)
+        print("关节还没齐，3 秒后重试。这几秒会听手柄。", flush=True)
         bus.close()
-        return 2
-    missing_stand = [mid for mid in stand_deg if mid not in ids]
-    if missing_stand:
-        print(f"站立关节 {missing_stand} 没有应答。为防摔倒，取消驾驶。", file=sys.stderr)
-        bus.close()
-        return 2
+        watch_pad(pad_wait, 3.0)
+    pad_wait.close()
     print(f"  关节在线 {sorted(ids)}，左轮 {left_id} 号，右轮 {right_id} 号")
     # 扫描刚应答完，先记下角度。等空格之后总线容易被停止帧堵住，读不全时用这份补。
     boot_deg = pose.read_degrees(bus, ids, retries=2, strict=False)
@@ -1839,6 +1950,7 @@ def main() -> int:
             speed_armed = False
             next_print = drive_t0
             next_status = drive_t0
+            next_miss = drive_t0
             prev_t = drive_t0
             boost_prev = 0
             hip_tqe_sent = torque_nm
@@ -2063,62 +2175,72 @@ def main() -> int:
                             pose_cmd[mid] = base + (lean_tgt.get(mid, base) - base) * lean_a
                     diag.snap = (fwd_s, spd_left, spd_right)
                     diag.mark("pose")
-                    try:
-                        pose.command_position(bus, pose_ids, pose_cmd, torque_nm, vel_limit=6.0)
-                        leg_u = jump_u if jump_u is not None else height_u
-                        lift_deg = {
-                            mid: stand_deg[mid] + (extended_deg[mid] - stand_deg[mid]) * leg_u
-                            for mid in lift_ids
+                    missed: list[int] = []
+                    missed += pose.command_position(
+                        bus, pose_ids, pose_cmd, torque_nm, vel_limit=6.0, strict=False
+                    )
+                    leg_u = jump_u if jump_u is not None else height_u
+                    lift_deg = {
+                        mid: stand_deg[mid] + (extended_deg[mid] - stand_deg[mid]) * leg_u
+                        for mid in lift_ids
+                    }
+                    # 侧倾时抬起侧的膝和髋 pitch 走向 yaml 里的伸直角，不再只动 roll。
+                    if lean_tgt and jump_u is None:
+                        for mid in lift_ids:
+                            if mid not in lean_tgt:
+                                continue
+                            lift_deg[mid] = lift_deg[mid] + (lean_tgt[mid] - lift_deg[mid]) * lean_a
+                    for hid, sign in HIP_SIGN.items():
+                        if hid in lift_deg:
+                            lift_deg[hid] += sign * d_hip
+                    diag.mark("lift")
+                    knee_ids = [mid for mid in lift_ids if mid not in HIP_SIGN]
+                    hip_ids = [mid for mid in lift_ids if mid in HIP_SIGN]
+                    knee_tqe = args.hip_tqe if jump_u is not None else torque_nm
+                    missed += pose.command_position(
+                        bus, knee_ids, lift_deg, knee_tqe, vel_limit=6.0, strict=False
+                    )
+                    missed += pose.command_position(
+                        bus,
+                        hip_ids,
+                        lift_deg,
+                        hip_tqe_now if balance_active or jump_u is not None else torque_nm,
+                        vel_limit=6.0,
+                        strict=False,
+                    )
+                    diag.mark("head")
+                    if head is not None:
+                        head.tick(dt_real)
+                        neck_cmd = head.can_deg()
+                    else:
+                        neck_cmd = {
+                            mid: float(start_deg.get(mid, stand_deg.get(mid, 0.0)))
+                            for mid in neck_ids
                         }
-                        # 侧倾时抬起侧的膝和髋 pitch 走向 yaml 里的伸直角，不再只动 roll。
-                        if lean_tgt and jump_u is None:
-                            for mid in lift_ids:
-                                if mid not in lean_tgt:
-                                    continue
-                                lift_deg[mid] = lift_deg[mid] + (lean_tgt[mid] - lift_deg[mid]) * lean_a
-                        for hid, sign in HIP_SIGN.items():
-                            if hid in lift_deg:
-                                lift_deg[hid] += sign * d_hip
-                        diag.mark("lift")
-                        knee_ids = [mid for mid in lift_ids if mid not in HIP_SIGN]
-                        hip_ids = [mid for mid in lift_ids if mid in HIP_SIGN]
-                        knee_tqe = args.hip_tqe if jump_u is not None else torque_nm
-                        pose.command_position(bus, knee_ids, lift_deg, knee_tqe, vel_limit=6.0)
-                        pose.command_position(
+                    diag.mark("neck")
+                    if neck_ids:
+                        missed += pose.command_position(
                             bus,
-                            hip_ids,
-                            lift_deg,
-                            hip_tqe_now if balance_active or jump_u is not None else torque_nm,
-                            vel_limit=6.0,
+                            neck_ids,
+                            neck_cmd,
+                            torque_nm,
+                            vel_limit=max(1.2, math.radians(head.rate) * 1.4) if head is not None else 2.0,
+                            strict=False,
                         )
-                        diag.mark("head")
-                        if head is not None:
-                            head.tick(dt_real)
-                            neck_cmd = head.can_deg()
-                        else:
-                            neck_cmd = {
-                                mid: float(start_deg.get(mid, stand_deg.get(mid, 0.0)))
-                                for mid in neck_ids
-                            }
-                        diag.mark("neck")
-                        if neck_ids:
-                            pose.command_position(
-                                bus,
-                                neck_ids,
-                                neck_cmd,
-                                torque_nm,
-                                vel_limit=max(1.2, math.radians(head.rate) * 1.4) if head is not None else 2.0,
+                    diag.mark("wheels")
+                    for wid, spd in ((left_id, spd_left), (right_id, spd_right)):
+                        try:
+                            send_speed(bus, bus.motors[wid], spd * wheel_sign(wid), args.wheel_tqe)
+                        except OSError:
+                            missed.append(wid)
+                    if missed:
+                        diag.can_send_fail += len(missed)
+                        if loop_t >= next_miss:
+                            note(
+                                f"本拍没发出的关节 {sorted(set(missed))} "
+                                f"杆{fwd_s:+.2f} 轮指令 左{spd_left:+.2f} 右{spd_right:+.2f}"
                             )
-                        diag.mark("wheels")
-                        send_speed(bus, bus.motors[left_id], spd_left * wheel_sign(left_id), args.wheel_tqe)
-                        send_speed(bus, bus.motors[right_id], spd_right * wheel_sign(right_id), args.wheel_tqe)
-                    except OSError as exc:
-                        diag.can_send_fail += 1
-                        note(
-                            f"CAN发送失败 phase={diag.phase} errno={getattr(exc, 'errno', '')} {exc} "
-                            f"杆{fwd_s:+.2f} 轮指令 左{spd_left:+.2f} 右{spd_right:+.2f}"
-                        )
-                        raise
+                            next_miss = loop_t + 0.5
 
                     # 状态 5 Hz。只在这一拍收两台轮子的回包，其余拍不 flush，避免把回包清掉。
                     diag.mark("status")

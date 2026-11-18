@@ -1,0 +1,18 @@
+[Unit]
+Description=cyberDuck audio (PipeWire for aidlux)
+After=multi-user.target sound.target
+Before=wheel-drive.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=root
+Group=root
+ExecStart=/home/aidlux/cyberDuck/speaker/audio-boot.sh
+TimeoutStartSec=90
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=audio-boot
+
+[Install]
+WantedBy=multi-user.target

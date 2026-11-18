@@ -8,6 +8,14 @@ if [[ "${EUID}" -ne 0 ]]; then
   exec sudo -E "$0" "$@"
 fi
 
+# 先装音频：开机没登录时 PipeWire 不会自己起来。
+AUDIO_INSTALL="/home/aidlux/cyberDuck/speaker/install-audio-boot.sh"
+if [[ -x "${AUDIO_INSTALL}" ]]; then
+  "${AUDIO_INSTALL}"
+elif [[ -f "${AUDIO_INSTALL}" ]]; then
+  bash "${AUDIO_INSTALL}"
+fi
+
 chmod 755 "${DIR}/wheel-drive-boot.sh"
 install -m 644 "${DIR}/wheel-drive.service" "${UNIT_DST}"
 systemctl daemon-reload

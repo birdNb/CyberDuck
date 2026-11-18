@@ -1,8 +1,8 @@
 [Unit]
 Description=cyberDuck wheel drive
-After=multi-user.target
-StartLimitIntervalSec=120
-StartLimitBurst=8
+After=multi-user.target audio-boot.service
+Wants=audio-boot.service
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple

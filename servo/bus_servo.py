@@ -219,11 +219,13 @@ class FtScsBus:
         instruction: int,
         params: bytes = b"",
         expect_response: bool = True,
+        flush: bool = True,
     ) -> Optional[StatusPacket]:
         self.ser.reset_input_buffer()
         packet = make_packet(servo_id, instruction, params)
         self.ser.write(packet)
-        self.ser.flush()
+        if flush:
+            self.ser.flush()
         if not expect_response:
             return None
         return self._read_status(servo_id)
@@ -259,12 +261,14 @@ class FtScsBus:
         address: int,
         data: bytes,
         response: bool = False,
+        flush: bool = True,
     ) -> Optional[StatusPacket]:
         return self.transact(
             servo_id,
             INST_WRITE,
             bytes((address,)) + bytes(data),
             expect_response=response,
+            flush=flush,
         )
 
     def read_u8(self, servo_id: int, address: int) -> int:
@@ -276,8 +280,15 @@ class FtScsBus:
     def write_u8(self, servo_id: int, address: int, value: int, response: bool = False) -> None:
         self.write(servo_id, address, bytes((value & 0xFF,)), response=response)
 
-    def write_u16(self, servo_id: int, address: int, value: int, response: bool = False) -> None:
-        self.write(servo_id, address, put_u16le(value), response=response)
+    def write_u16(
+        self,
+        servo_id: int,
+        address: int,
+        value: int,
+        response: bool = False,
+        flush: bool = True,
+    ) -> None:
+        self.write(servo_id, address, put_u16le(value), response=response, flush=flush)
 
     def read_state(self, servo_id: int) -> ServoState:
         state = ServoState(servo_id=servo_id)
