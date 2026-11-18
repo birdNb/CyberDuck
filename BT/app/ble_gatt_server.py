@@ -905,14 +905,8 @@ class BleGattServer:
                         self._telemetry._last_ip = ip
                 except Exception:
                     pass
-            if self._voice is not None:
-                try:
-                    from ble_voice import BOOT_IP_VOLUME_PCT
-                except ImportError:
-                    BOOT_IP_VOLUME_PCT = 80
-                if self._volume is not None:
-                    self._volume.set_percent(BOOT_IP_VOLUME_PCT)
-                self._voice.announce_lan_ip(ip)
+            # IP 只走 FFE2 上报，不再语音播报，避免和驾驶鸭叫抢喇叭。
+            log_info(f"[wifi] 局域网 IP {ip}（语音播报已关闭）")
         else:
             log_warn("[wifi] 已连接但尚未拿到局域网 IP")
 
@@ -1274,39 +1268,15 @@ class BleGattServer:
         self._voice = VoicePlayer(log=log_info)
         self._voice.start()
         self._conversation = getattr(self._voice, "conversation", None)
-        threading.Thread(target=self._announce_ip_at_boot, daemon=True).start()
-
-    def _announce_ip_at_boot(self) -> None:
-        """开机若已连上 WiFi，把音量设到 80% 并播报局域网 IP。"""
-        time.sleep(3.0)
-        try:
-            from ble_status_telemetry import read_lan_ip
-            from ble_voice import BOOT_IP_VOLUME_PCT
-        except ImportError:
-            return
-        ip = None
-        for _ in range(40):
-            ip = read_lan_ip()
-            if ip:
-                break
-            time.sleep(0.5)
-        if not ip:
-            log_info("[voice] 开机未检测到局域网 IP，跳过播报")
-            return
-        log_info(f"[voice] 开机检测到局域网 IP: {ip}")
-        if self._volume is not None:
-            self._volume.set_percent(BOOT_IP_VOLUME_PCT)
-            time.sleep(0.3)
-        if self._voice is not None:
-            self._voice.announce_lan_ip(ip)
+        # 开机 IP 语音播报已关闭；局域网 IP 仍由状态遥测走 FFE2。
+        log_info("[voice] 开机 IP 语音播报已关闭")
 
     def _notify_ble_ready(self) -> None:
         if self._ble_ready_announced:
             return
         self._ble_ready_announced = True
-        log_info("BLE 广播就绪，等待小程序扫描连接")
-        if self._voice is not None:
-            self._voice.on_ble_ready()
+        log_info("BLE 广播就绪，等待小程序扫描连接（启动提示音已关闭）")
+        # 不再播「蓝牙就绪，待连接」，避免服务重启时反复占喇叭。
 
     def _ble_ready_timeout_cb(self) -> bool:
         self._notify_ble_ready()

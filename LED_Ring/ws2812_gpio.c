@@ -2,13 +2,17 @@
  * WS2812 单总线：直接位bang TLMM。
  * 40 针 PIN_22 = GPIO_57。
  * 本机没有 /dev/mem 时，改映射 /dev/ws2812_tlmm（同一块 TLMM）。
+ *
+ * 位流只发一整帧。重复发送或半帧复位都会让灯珠逐帧变色，看起来就像闪烁。
  */
 
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/gpio.h>
+#include <pthread.h>
 #include <sched.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -27,11 +31,11 @@
 #define DRV_BIT 6
 #define EGPIO_BIT 12
 
-/* 对齐 WS2812B / NeoPixel 800 kHz：0 码也要有明确的高电平，不能一拉高就拉低。 */
-#define T0H_NS 400
-#define T0L_NS 850
-#define T1H_NS 800
-#define T1L_NS 450
+/* 引脚上要看到的脉宽。0 码约 320ns，1 码约 900ns，中间留出判决间隙。 */
+#define T0H_NS 320
+#define T0L_NS 900
+#define T1H_NS 900
+#define T1L_NS 350
 #define RESET_NS 300000
 
 static char errbuf[256];
@@ -45,6 +49,8 @@ static volatile uint32_t *io_reg;
 static volatile uint32_t *ctl_reg;
 static uint64_t cntfrq;
 static uint64_t t0h, t0l, t1h, t1l, treset;
+static uint64_t edge_cost;
+static int rt_ready;
 
 const char *ws2812_error(void) { return errbuf; }
 
@@ -74,6 +80,8 @@ static inline void gpio_hi(void) {
 static inline void gpio_lo(void) {
     *io_reg = 0;
 }
+
+static uint64_t measure_edge(void);
 
 static int unbind_debug_uart(void) {
     int fd = open("/sys/bus/platform/drivers/qcom_geni_serial/unbind", O_WRONLY);
@@ -147,8 +155,17 @@ static int map_tlmm(int line) {
 
 static void setup_realtime(void) {
     (void)mlockall(MCL_CURRENT | MCL_FUTURE);
-    struct sched_param sp = {.sched_priority = 80};
-    (void)sched_setscheduler(0, SCHED_FIFO, &sp);
+    struct sched_param sp = {.sched_priority = 90};
+    if (sched_setscheduler(0, SCHED_FIFO, &sp) == 0)
+        rt_ready = 1;
+    long ncpu = sysconf(_SC_NPROCESSORS_ONLN);
+    if (ncpu > 2) {
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        /* 倒数第二个核中断最少，位流不容易被 IRQ 拉长。 */
+        CPU_SET((int)ncpu - 2, &set);
+        (void)sched_setaffinity(0, sizeof(set), &set);
+    }
 }
 
 int ws2812_open(int chip, int line, int led_count) {
@@ -159,6 +176,7 @@ int ws2812_open(int chip, int line, int led_count) {
     }
     nleds = led_count;
     took_uart = 0;
+    rt_ready = 0;
 
     asm volatile("mrs %0, cntfrq_el0" : "=r"(cntfrq));
     if (cntfrq == 0)
@@ -169,8 +187,8 @@ int ws2812_open(int chip, int line, int led_count) {
     t1l = ns_to_ticks(T1L_NS);
     if (t0h < 2)
         t0h = 2;
-    if (t1h <= t0h)
-        t1h = t0h + 4;
+    if (t1h < t0h + 6)
+        t1h = t0h + 6;
     treset = ns_to_ticks(RESET_NS);
 
     if (request_gpio_line(chip, line) != 0) {
@@ -188,35 +206,82 @@ int ws2812_open(int chip, int line, int led_count) {
         return -1;
 
     setup_realtime();
+    edge_cost = measure_edge();
     return 0;
 }
 
-void ws2812_show(const uint8_t *grb) {
-    if (!io_reg || !grb)
-        return;
+/* 立刻拉高再拉低时，两次读计数器的间隔。真正的高电平要扣掉这段开销。 */
+static uint64_t measure_edge(void) {
+    uint64_t best = ~0ull;
+    for (int i = 0; i < 32; i++) {
+        gpio_hi();
+        uint64_t a = ticks();
+        gpio_lo();
+        uint64_t b = ticks();
+        if (b > a && (b - a) < best)
+            best = b - a;
+        wait_until(ticks() + ns_to_ticks(2000));
+    }
+    if (best == ~0ull || best < 1)
+        best = 1;
+    if (best > ns_to_ticks(200))
+        best = ns_to_ticks(200);
+    return best;
+}
 
-    /* show() 前先保持低电平，相当于 NeoPixel 的锁存，灯珠才会收下一帧。 */
+static void send_bit(int one) {
+    uint64_t high = one ? t1h : t0h;
+    uint64_t low = one ? t1l : t0l;
+    uint64_t wh = high > edge_cost ? high - edge_cost : 0;
+    uint64_t wl = low > edge_cost ? low - edge_cost : 0;
+    uint64_t t0;
+
+    gpio_hi();
+    t0 = ticks();
+    if (wh)
+        wait_until(t0 + wh);
+    gpio_lo();
+    t0 = ticks();
+    if (wl)
+        wait_until(t0 + wl);
+}
+
+static void show_once(const uint8_t *grb) {
+    const int nbytes = nleds * 3;
+
     gpio_lo();
     wait_until(ticks() + treset);
 
-    const int nbytes = nleds * 3;
     for (int i = 0; i < nbytes; i++) {
         uint8_t byte = grb[i];
-        for (int b = 7; b >= 0; b--) {
-            uint64_t t0 = ticks();
-            gpio_hi();
-            if ((byte >> b) & 1) {
-                wait_until(t0 + t1h);
-                gpio_lo();
-                wait_until(t0 + t1h + t1l);
-            } else {
-                wait_until(t0 + t0h);
-                gpio_lo();
-                wait_until(t0 + t0h + t0l);
-            }
-        }
+        send_bit((byte >> 7) & 1);
+        send_bit((byte >> 6) & 1);
+        send_bit((byte >> 5) & 1);
+        send_bit((byte >> 4) & 1);
+        send_bit((byte >> 3) & 1);
+        send_bit((byte >> 2) & 1);
+        send_bit((byte >> 1) & 1);
+        send_bit(byte & 1);
     }
     gpio_lo();
+}
+
+void ws2812_show(const uint8_t *grb) {
+    sigset_t block, old;
+    int masked = 0;
+
+    if (!io_reg || !grb)
+        return;
+
+    /* 位流期间挡住信号。中途不要掐断重来，半帧复位会被灯珠锁成杂色。 */
+    sigfillset(&block);
+    if (pthread_sigmask(SIG_BLOCK, &block, &old) == 0)
+        masked = 1;
+
+    show_once(grb);
+
+    if (masked)
+        pthread_sigmask(SIG_SETMASK, &old, NULL);
 }
 
 void ws2812_hold_low(void) {

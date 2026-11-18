@@ -27,6 +27,41 @@ def audio_env() -> dict:
     return env
 
 
+_codec_armed = False
+
+
+def ensure_codec_path() -> None:
+    """打开板载 HPH/LO。关掉时 aplay 仍返回 0，但听不见。"""
+    global _codec_armed
+    if _codec_armed:
+        return
+    if shutil.which("tinymix") is None:
+        _codec_armed = True
+        return
+    for args in (
+        ("set", "LO Switch", "1"),
+        ("set", "HPHL Switch", "1"),
+        ("set", "HPHR Switch", "1"),
+        ("set", "CLSH Switch", "1"),
+        ("set", "HPHL_RDAC Switch", "1"),
+        ("set", "HPHR_RDAC Switch", "1"),
+        ("set", "AUX_RDAC Switch", "1"),
+        ("set", "HPHL Volume", "24"),
+        ("set", "HPHR Volume", "24"),
+    ):
+        try:
+            subprocess.run(
+                ["tinymix", *args],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=0.5,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    _codec_armed = True
+
+
 def list_alsa_cards() -> List[str]:
     cards: List[str] = []
     path = "/proc/asound/cards"
@@ -137,6 +172,7 @@ def play_pcm(buf: np.ndarray, device: Optional[str] = None) -> str:
     """
     pcm = _stereo_bytes(buf)
     env = audio_env()
+    ensure_codec_path()
     tried: List[Optional[str]] = []
     if device:
         tried.append(device)

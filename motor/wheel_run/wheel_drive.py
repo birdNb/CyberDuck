@@ -13,10 +13,10 @@
     （drive 姿态）和伸直点（extended 姿态，腿物理伸直时的实测读数）之间
     逐关节一一对应插值：推上升高，拉下降低。零位不准，所以不拟合到 0。
     脖子不跟右摇杆。自平衡只改两侧髋 pitch。
-  A 键：原地起跳。髋和膝从收缩快速伸直，再立刻收回收缩。
-  B 键：卸力停下，程序不退出。再长按 Y 进入驾驶
+  A 键：原地起跳。髋和膝不限速不限力矩，从收缩快速伸直再收回。
+  B 键：卸力停下，程序不退出。卸力等待时 RB 仍可开头部表演，长按 Y 再进入驾驶
   X 键：切换灯效（和 watch_policy.py 同一套灯环）
-  Y 键：关闭 / 打开实时平衡（默认关闭，只用两侧髋）
+  Y 键：关闭 / 打开实时平衡（起立后默认开，只用两侧髋）
   RB：开关头部随机张望（默认关闭）。打开后头、脖子、yaw、roll 按 head_play 张望，嘴和短叫声一起张合
   扳机：嘴舵机张开（上限 30°）。短按短叫，按住满 3 秒才长鸣
   进入驾驶后前 3 秒不发轮速；摇杆同时卡在 ±0.5 视为错误模式，指令作废
@@ -27,11 +27,11 @@
 
 全程力矩保护默认 1 N·m：站立保持、升降和轮电机共用该上限。
 
-启动后先扫描（默认卸力）、等空格或长按 Y，再柔性进入轮行姿态 drive。
-1 / 6 号为轮电机，姿态到位后切速度控制。
+启动后先扫描（默认卸力）。卸力等待时 RB 可开头部表演，腿保持卸力；
+长按 Y 才柔性进入轮行姿态 drive。1 / 6 号为轮电机，姿态到位后切速度控制。
 
 按 B：轮速归零（轮子不追位置）→ 腿和脖子走到卸力姿态并确认到位 →
-逐台回读到停止模式后停住，长按 Y 再进入。Ctrl+C 才关总线退出。
+逐台回读到停止模式后停住；卸力等待时 RB 仍可表演，长按 Y 再进入。Ctrl+C 才关总线退出。
 
 用法（在 motor 目录）：
   python3 wheel_run/wheel_drive.py
@@ -357,8 +357,17 @@ def watch_pad(pad: "Gamepad", seconds: float) -> None:
         time.sleep(0.05)
 
 
-def wait_for_space(running) -> bool:
-    """阻塞等空格或手柄长按 Y。返回 False 表示被 Ctrl+C / 取消。"""
+def wait_for_space(
+    running,
+    bus=None,
+    ids: list[int] | None = None,
+    stand_deg: dict[int, float] | None = None,
+    torque_nm: float = 1.0,
+    period: float = 0.02,
+    mouth: "Mouth | None" = None,
+    led: "LedRing | None" = None,
+) -> bool:
+    """卸力等待：长按 Y / 空格进入轮行；RB 可开头部表演，腿始终卸力。"""
     import termios
     import tty
 
@@ -367,6 +376,29 @@ def wait_for_space(running) -> bool:
     old = None
     pad = Gamepad()
     y_down_at: float | None = None
+    head: HeadLook | None = None
+    neck_ids: list[int] = []
+    look_powered = False
+    prev_t = time.monotonic()
+
+    def _power_down_head() -> None:
+        nonlocal look_powered
+        if head is None:
+            look_powered = False
+            return
+        for mid in neck_ids:
+            try:
+                bus.disable(mid)
+            except Exception:
+                pass
+        head.release_look_servos()
+        with head.mouth.io_lock:
+            head.servos.clear()
+        head.armed = False
+        head._last_raw.clear()
+        head.phase = "off"
+        look_powered = False
+
     try:
         if tty_ok:
             old = termios.tcgetattr(stdin_fd)
@@ -377,36 +409,123 @@ def wait_for_space(running) -> bool:
                 "或改用 --no-wait-space。",
                 file=sys.stderr,
             )
+        if bus is not None and mouth is not None and stand_deg is not None and ids is not None:
+            neck_ids = [
+                mid
+                for mid in (HEAD_PITCH_ID, NECK_PITCH_ID)
+                if mid in ids and mid in stand_deg
+            ]
+            head = HeadLook(mouth, stand_deg)
+            cur = pose.read_degrees(bus, neck_ids, retries=2, strict=False) if neck_ids else {}
+            pitch = float(cur.get(HEAD_PITCH_ID, stand_deg.get(HEAD_PITCH_ID, 0.0)))
+            neck = float(cur.get(NECK_PITCH_ID, stand_deg.get(NECK_PITCH_ID, 0.0)))
+            head.pose["pitch"] = pitch
+            head.pose["neck"] = neck
+            head.goals["pitch"] = pitch
+            head.goals["neck"] = neck
+            head.rest = {"pitch": pitch, "neck": neck, "yaw": 0.0, "roll": 0.0}
+            print(
+                "卸力等待中：RB 可开头部表演（腿保持卸力）；"
+                f"方向键上下调音量；长按 Y {START_Y_HOLD_S:.0f} 秒进入轮行。",
+                flush=True,
+            )
+
+        volume = DuckVolume(mouth.speaker if mouth is not None else None)
+
         while running():
+            now = time.monotonic()
+            dt = max(0.001, now - prev_t)
+            prev_t = now
             pad.poll()
-            y_held = pad.fd >= 0 and bool(pad.buttons[4])
             # 边沿标志清掉，避免进入驾驶后立刻切一次自平衡。
             pad.button_y = False
-            now = time.monotonic()
+            pad.button_a = False
+
+            hat_y = pad.axis[7] if len(pad.axis) > 7 else 0.0
+            if volume.apply_hat(hat_y, now):
+                print(f"音量 {volume.percent():.0f}%", flush=True)
+
+            if pad.button_x:
+                pad.button_x = False
+                if led is not None:
+                    print(f"灯效：{led.cycle()}", flush=True)
+                    led.drain()
+
+            if head is not None and pad.button_rb:
+                pad.button_rb = False
+                was_off = head.phase == "off"
+                head.toggle()
+                if was_off:
+                    look_powered = True
+                    print("腿保持卸力，只动头部。", flush=True)
+
+            y_held = pad.y_held()
             if y_held:
                 if y_down_at is None:
                     y_down_at = now
                 elif now - y_down_at >= START_Y_HOLD_S:
                     print(f"收到长按 Y（{START_Y_HOLD_S:.0f}s），开始进入轮行姿态。")
+                    if head is not None:
+                        head.release()
+                        head = None
+                    if bus is not None and neck_ids:
+                        for mid in neck_ids:
+                            try:
+                                bus.disable(mid)
+                            except Exception:
+                                pass
                     return True
             else:
                 y_down_at = None
 
+            # 表演中或回到默认后都保持头有力矩，直到长按 Y 进轮行才卸。
+            if head is not None and (head.phase != "off" or look_powered):
+                if head.phase != "off":
+                    head.tick(dt)
+                if neck_ids:
+                    neck_cmd = head.can_deg()
+                    try:
+                        pose.command_position(
+                            bus,
+                            neck_ids,
+                            neck_cmd,
+                            torque_nm,
+                            vel_limit=max(1.2, math.radians(head.rate) * 1.4),
+                            strict=False,
+                        )
+                    except OSError as exc:
+                        print(f"头部 CAN 发送失败：{exc}", flush=True)
+
             if tty_ok:
-                ready, _, _ = select.select([sys.stdin], [], [], 0.05)
+                ready, _, _ = select.select([sys.stdin], [], [], 0.0)
                 if ready:
                     ch = sys.stdin.read(1)
                     if ch == " ":
                         print("收到空格，开始进入轮行姿态。")
+                        if head is not None:
+                            head.release()
+                            head = None
+                        if bus is not None and neck_ids:
+                            for mid in neck_ids:
+                                try:
+                                    bus.disable(mid)
+                                except Exception:
+                                    pass
                         return True
                     if ch in ("\x03", "q", "Q"):
                         return False
-            else:
-                time.sleep(0.05)
+            spent = time.monotonic() - now
+            if spent < period:
+                time.sleep(period - spent)
     except (termios.error, OSError) as exc:
         print(f"读键盘失败: {exc}", file=sys.stderr)
         return False
     finally:
+        if head is not None:
+            try:
+                head.release()
+            except Exception:
+                pass
         if old is not None and stdin_fd >= 0:
             try:
                 termios.tcsetattr(stdin_fd, termios.TCSADRAIN, old)
@@ -500,6 +619,18 @@ class LedRing:
 
     def start(self) -> None:
         script = REPO / "LED_Ring" / "white_flow.py"
+        # led-boot 占着同一根 GPIO，先停掉，否则这里会 Device busy。
+        try:
+            subprocess.run(
+                ["systemctl", "stop", "led-boot.service"],
+                capture_output=True,
+                text=True,
+                timeout=5.0,
+                check=False,
+            )
+            time.sleep(0.2)
+        except (OSError, subprocess.SubprocessError) as exc:
+            print(f"停 led-boot 失败（继续试开灯环）：{exc}", flush=True)
         try:
             self._open_fifo()
         except OSError as exc:
@@ -509,6 +640,7 @@ class LedRing:
         cmd = [
             "/usr/bin/python3", "-u", str(script),
             "--remote", "--fifo", str(self.fifo), "--effect", "torque",
+            "--no-sudo", "--chip", "4", "--line", "57",
         ]
         if os.geteuid() != 0:
             cmd = ["sudo", "-E", *cmd]
@@ -572,7 +704,8 @@ class LedRing:
         self.index = (self.index + 1) % len(self.ORDER)
         key, label = self.ORDER[self.index]
         self.label = label
-        if self.proc is None or self.proc.poll() is not None or self.fifo_fd < 0:
+        # 灯环进程重启后，原来的 Popen 已经退出，但管道还在。只要写端开着就继续切灯效。
+        if self.fifo_fd < 0:
             return f"{label}（灯环没接通）"
         try:
             if key == "torque":
@@ -591,7 +724,8 @@ class LedRing:
             return
         ratio = max(0.0, min(1.0, ratio))
         level = int(round(255 * (0.05 + 0.95 * ratio)))
-        if abs(level - self._bright) < 4:
+        # 亮度别刷太勤：fifo 一抖，位 bang 更容易被打断花屏。
+        if abs(level - self._bright) < 12:
             return
         self._bright = level
         try:
@@ -619,10 +753,21 @@ class LedRing:
                 self.fifo.unlink()
         except OSError:
             pass
+        # 驾驶退出后把开机彗星灯还回去。
+        try:
+            subprocess.run(
+                ["systemctl", "start", "led-boot.service"],
+                capture_output=True,
+                text=True,
+                timeout=5.0,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            pass
 
 
 class BodyImu:
-    """LSM6DSV16X 直连读取，和 watch_policy.py 的 open_imu 同一套总线。"""
+    """自平衡用 I2C6 上的 LSM6DSV16X：pin31/GPIO24=SDA，pin11/GPIO25=SCL。"""
 
     def __init__(self) -> None:
         self.lib = None
@@ -662,7 +807,10 @@ class BodyImu:
                     break
             if self.dev is None:
                 raise I2CGpioError("未找到 LSM6DSV16X")
-            print("IMU 已打开，自平衡启用。")
+            print(
+                "IMU 已打开：I2C6  pin31/GPIO24=SDA  pin11/GPIO25=SCL  "
+                f"LSM6DSV16X @ 0x{self.dev.addr:02X}，自平衡启用。"
+            )
         except Exception as exc:
             print(f"IMU 未打开（{exc}），自平衡禁用，其余驾驶功能正常。")
             self.close()
@@ -768,6 +916,9 @@ HIP_SIGN = {8: 1.0, 3: -1.0}
 NECK_PITCH_ID = 12
 HEAD_PITCH_ID = 11
 JUMP_HALF_S = 0.12
+# 起跳不套平时的 1 N·m / 6 rad/s 软限。数值按协议 int16 上限留一点余量。
+JUMP_TQE_NM = 300.0
+JUMP_VEL_RAD_S = 50.0
 
 
 class Mouth:
@@ -1174,7 +1325,7 @@ class HeadLook:
                 self.servos.pop("mouth", None)
             self.mouth.torque(False)
             self.phase = "off"
-            print("头部已回到默认位置。", flush=True)
+            print("头部已回到默认位置并保持，再按 RB 可继续表演。", flush=True)
 
     def release(self) -> None:
         """卸力 yaw、roll、嘴。没按过 RB 时 self.servos 是空的，也要按 ID 关力矩。"""
@@ -1508,10 +1659,26 @@ class Gamepad:
         self.button_rb = False
         self.fd = -1
         self.path = ""
+        self.xbox = False
         self._next_open = 0.0
         self._next_warn = 0.0
         self._bogus_warned = False
         self.try_open()
+
+    @staticmethod
+    def _is_xbox(path: str) -> bool:
+        name = os.path.basename(path)
+        try:
+            text = open(f"/sys/class/input/{name}/device/name", encoding="utf-8").read()
+        except OSError:
+            return False
+        low = text.lower()
+        return "x-box" in low or "xbox" in low
+
+    def y_held(self) -> bool:
+        """长按起立看的是脸部 Y，不是肩键。Xbox 的 Y 在 js 3，北通在 js 4。"""
+        idx = 3 if self.xbox else 4
+        return self.fd >= 0 and idx < len(self.buttons) and self.buttons[idx]
 
     def try_open(self) -> None:
         if self.fd >= 0:
@@ -1528,14 +1695,16 @@ class Gamepad:
                 last_exc = exc
                 continue
             self.path = path
+            self.xbox = self._is_xbox(path)
             self._next_warn = 0.0
             self._bogus_warned = False
             self.axis = [0.0] * 8
             self.axis[4] = -1.0
             self.axis[5] = -1.0
             self.axis_seen = [False] * 8
+            layout = "Xbox，Y 在脸部北键" if self.xbox else "北通"
             print(
-                f"手柄已接入 {path}。请确认是 PC/XInput 模式（摇杆回中应为 0）。"
+                f"手柄已接入 {path}（{layout}）。请确认是 PC/XInput 模式（摇杆回中应为 0）。"
                 "左摇杆前进后退和转弯，右摇杆左右自转，B 键卸力，长按 Y 再进入。"
             )
             return
@@ -1592,15 +1761,24 @@ class Gamepad:
                             self.button_a = True
                         if not init and value == 1 and number == 1:
                             self.button_b = True
-                        # 北通丝印 X 在 js 2，内核 BTN_X 在 js 3，两个都算。
-                        if not init and value == 1 and number in (2, 3):
-                            self.button_x = True
-                        # Y 键切换自平衡（js 4）。不要把 4 当成 LT。
-                        if not init and value == 1 and number == 4:
-                            self.button_y = True
-                        # 这只北通 js 7 是 RB（BTN_TR），不是右扳机。
-                        if not init and value == 1 and number == 7:
-                            self.button_rb = True
+                        if self.xbox:
+                            # Xbox 360：A0 B1 X2 Y3 LB4 RB5。Y 是 3，长按看 buttons[3]。
+                            if not init and value == 1 and number == 2:
+                                self.button_x = True
+                            if not init and value == 1 and number == 3:
+                                self.button_y = True
+                            if not init and value == 1 and number == 5:
+                                self.button_rb = True
+                        else:
+                            # 北通丝印 X 在 js 2，内核 BTN_X 在 js 3，两个都算。
+                            if not init and value == 1 and number in (2, 3):
+                                self.button_x = True
+                            # Y 键在 js 4。不要把 4 当成 LT。
+                            if not init and value == 1 and number == 4:
+                                self.button_y = True
+                            # 这只北通 js 7 是 RB（BTN_TR），不是右扳机。
+                            if not init and value == 1 and number == 7:
+                                self.button_rb = True
         fwd = -self.axis[1]
         turn = -self.axis[0]
         # 北通右摇杆横向是 axis 2、纵向是 axis 3，推上为正（升高）。
@@ -1758,7 +1936,7 @@ def main() -> int:
     mouth = None
     head = None
     try:
-        # 默认卸力：等空格或长按 Y 前不给任何关节发位置/速度力矩。
+        # 默认卸力：等空格或长按 Y 前不给腿发位置/速度力矩。RB 可先开头部表演。
         bus.disable_all(ids)
         print("当前为卸力状态（停止模式），可手动摆姿。")
 
@@ -1779,20 +1957,31 @@ def main() -> int:
                 print(
                     f"平衡估计：陀螺积分 + 加速度 {Balance.ACC_TAU_S:.1f}s 修正，"
                     f"kp={args.balance_kp:.2f} kd={args.balance_kd:.2f} °/(°/s) 限幅 ±{args.balance_max:.0f}°。"
-                    "默认关闭，按 Y 立即进入实时平衡，再按 Y 退出。"
+                    "起立后自平衡默认开，短按 Y 可关掉，再按 Y 打开。"
                 )
-        # 默认关闭自平衡。按 Y 才打开，再按 Y 关掉。
+        # 卸力等待时还不出力。进入轮行后 balance_on 改为开。
         balance_on = False
+        mouth = Mouth()
 
         entered = False
         while running:
             if (not args.no_wait_space) or entered:
                 print(
                     f"已卸力。力矩保护 {torque_nm:.1f} N·m。"
-                    f"扶稳后按空格，或长按手柄 Y {START_Y_HOLD_S:.0f} 秒，才上力矩进入轮行姿态；"
+                    f"RB 可开头部表演（腿保持卸力）；"
+                    f"扶稳后长按手柄 Y {START_Y_HOLD_S:.0f} 秒才上力矩进入轮行姿态；"
                     "Ctrl+C 退出程序。"
                 )
-                if not wait_for_space(lambda: running):
+                if not wait_for_space(
+                    lambda: running,
+                    bus=bus,
+                    ids=ids,
+                    stand_deg=stand_deg,
+                    torque_nm=torque_nm,
+                    period=period,
+                    mouth=mouth,
+                    led=led,
+                ):
                     print("已取消，保持卸力退出。")
                     bus.disable_all(ids)
                     return 0
@@ -1802,7 +1991,7 @@ def main() -> int:
                     return 0
             entered = True
             released = False
-            balance_on = False
+            balance_on = balance is not None
 
             # 先逐台读位置，再停轮。先停轮会连发停止帧，把腿的状态回包冲掉。
             fresh = pose.read_degrees(bus, hold_ids, retries=3, strict=False)
@@ -1895,8 +2084,6 @@ def main() -> int:
                 )
 
             pad = Gamepad()
-            if mouth is None:
-                mouth = Mouth()
             volume = DuckVolume(mouth.speaker)
             mouth_level = 0.0
             mouth_was_down = False
@@ -2081,7 +2268,12 @@ def main() -> int:
                         pad.button_a = False
                         if jump_t0 is None and lift_ok:
                             jump_t0 = loop_t
-                            print("A：原地起跳，髋和膝伸直后立刻收回。", flush=True)
+                            print(
+                                "A：原地起跳，髋和膝不限速不限力矩，伸直后立刻收回。",
+                                flush=True,
+                            )
+                        elif jump_t0 is None and not lift_ok:
+                            print("A：没有 extended 姿态，起跳不可用。", flush=True)
                     if pad.button_y:
                         pad.button_y = False
                         if balance is not None:
@@ -2196,16 +2388,25 @@ def main() -> int:
                     diag.mark("lift")
                     knee_ids = [mid for mid in lift_ids if mid not in HIP_SIGN]
                     hip_ids = [mid for mid in lift_ids if mid in HIP_SIGN]
-                    knee_tqe = args.hip_tqe if jump_u is not None else torque_nm
+                    if jump_u is not None:
+                        knee_tqe = JUMP_TQE_NM
+                        hip_cmd_tqe = JUMP_TQE_NM
+                        lift_vel = JUMP_VEL_RAD_S
+                    else:
+                        knee_tqe = torque_nm
+                        hip_cmd_tqe = (
+                            hip_tqe_now if balance_active else torque_nm
+                        )
+                        lift_vel = 6.0
                     missed += pose.command_position(
-                        bus, knee_ids, lift_deg, knee_tqe, vel_limit=6.0, strict=False
+                        bus, knee_ids, lift_deg, knee_tqe, vel_limit=lift_vel, strict=False
                     )
                     missed += pose.command_position(
                         bus,
                         hip_ids,
                         lift_deg,
-                        hip_tqe_now if balance_active or jump_u is not None else torque_nm,
-                        vel_limit=6.0,
+                        hip_cmd_tqe,
+                        vel_limit=lift_vel,
                         strict=False,
                     )
                     diag.mark("head")

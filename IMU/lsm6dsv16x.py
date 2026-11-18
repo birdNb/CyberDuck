@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""LSM6DSV16X：在 Dragon Q6A I2C6（GPIO_24 SDA / GPIO_25 SCL）上读取六轴。"""
+"""LSM6DSV16X：I2C6，40 针 pin31=SDA（GPIO24）、pin11=SCL（GPIO25）。"""
 from __future__ import annotations
 
 import ctypes
@@ -14,8 +14,8 @@ SRC = os.path.join(DIR, "i2c_gpio.c")
 SO = os.path.join(DIR, "i2c_gpio.so")
 
 GPIO_CHIP = 4
-SDA_LINE = 24  # PIN_3, I2C6_SDA
-SCL_LINE = 25  # PIN_5, I2C6_SCL
+SDA_LINE = 24  # pin31, I2C6 SDA
+SCL_LINE = 25  # pin11, I2C6 SCL
 
 WHO_AM_I = 0x0F
 WHO_AM_I_VAL = 0x70

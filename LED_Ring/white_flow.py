@@ -36,7 +36,8 @@ LED_COUNT = 12
 GPIO_CHIP = 4
 GPIO_LINE = 57  # 40 针 PIN_22
 BRIGHTNESS = 64
-STEP_S = 0.04
+# 帧间隔略放宽，给位 bang 留出不被抢占的空隙，减少花屏。
+STEP_S = 0.05
 TAIL = 5
 HOLD_S = 8.0
 IDLE_BRIGHTNESS = 30
@@ -365,7 +366,16 @@ CYCLE_ORDER = [
 ]
 
 
+_last_frame = b""
+
+
 def show_frame(lib, frame: bytearray) -> None:
+    """画面没变就不再打进灯珠。重复锁存会把位误差放大成闪烁。"""
+    global _last_frame
+    raw = bytes(frame)
+    if raw == _last_frame:
+        return
+    _last_frame = raw
     buf = (ctypes.c_uint8 * len(frame)).from_buffer_copy(frame)
     lib.ws2812_show(buf)
 

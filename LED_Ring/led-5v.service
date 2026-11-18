@@ -1,0 +1,20 @@
+[Unit]
+Description=cyberDuck LED 5V enable (gpiochip4 line 39)
+After=multi-user.target
+Before=led-boot.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+# gpioset 必须常驻，否则退出后线电平会回到默认，5V 会掉。
+ExecStart=/usr/bin/gpioset -m signal gpiochip4 39=1
+Restart=on-failure
+RestartSec=1
+TimeoutStopSec=2
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=led-5v
+
+[Install]
+WantedBy=multi-user.target
