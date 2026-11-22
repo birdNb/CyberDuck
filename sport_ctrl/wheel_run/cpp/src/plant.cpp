@@ -48,7 +48,7 @@ void on_signal(int) { g_sig = static_cast<std::sig_atomic_t>(g_sig + 1); }
 enum Phase : uint32_t { PhBoot = 0, PhWait = 1, PhSlew = 2, PhSettle = 3, PhDrive = 4, PhCut = 5, PhStop = 6, PhExit = 7, PhHold = 8 };
 
 struct Slot {
-    uint8_t kind = 0;
+    uint8_t kind = 0;  // 1 = 关节位置 0x1F，2 = 轮子速度 0x1C
     uint8_t use_raw = 0;
     uint8_t zero = 0;
     int16_t raw = 0;
@@ -160,6 +160,7 @@ struct State {
     std::atomic<uint8_t> estop{0};
     std::atomic<uint8_t> balance_on{0};
     std::atomic<uint8_t> unload_hold{0};
+    std::atomic<uint8_t> torque_off{0};
     std::atomic<uint32_t> sample_mask{0};
     std::atomic<uint32_t> sample_gen{0};
     std::atomic<uint64_t> can_hb_ns{0};
@@ -695,8 +696,6 @@ void* wheel_thread(void* arg) {
     auto* s = static_cast<State*>(arg);
     s->fifo_wheel.store(set_fifo(50) ? 1 : -1);
     float cmd_l = 0, cmd_r = 0, spd_l = 0, spd_r = 0;
-    int16_t held_raw[16]{};
-    uint8_t have_raw[16]{};
     uint64_t prev = mono_ns();
     timespec next{};
     clock_gettime(CLOCK_MONOTONIC, &next);
@@ -712,9 +711,6 @@ void* wheel_thread(void* arg) {
         bool run = ph == PhDrive && !estop && pad.connected;
         if (!run) {
             cmd_l = cmd_r = spd_l = spd_r = 0;
-            Lock lk(s->mu_cmd);
-            s->slot[s->left_id] = {};
-            s->slot[s->right_id] = {};
         } else {
             float scale = pad.gear ? 1.f : 0.5f;
             float cap = s->args.vmax * scale;
@@ -726,49 +722,17 @@ void* wheel_thread(void* arg) {
             cmd_r = ramp(cmd_r, tgt.right, s->args.accel, dt);
             spd_l = lowpass(spd_l, cmd_l, s->args.smooth, dt);
             spd_r = lowpass(spd_r, cmd_r, s->args.smooth, dt);
-            auto chase_one = [&](int id, float spd) {
-                Feedback fb = copy_fb(s, id);
-                bool fresh = fb.t_pos_ns != 0 && !age_exceeds(mono_ns(), fb.t_pos_ns, 200000000ull);
-                Slot sl;
-                if (fresh) {
-                    held_raw[id] = fb.raw_pos;
-                    have_raw[id] = 1;
-                }
-                if (!have_raw[id]) return sl;
-                int16_t raw = held_raw[id];
-                float v = spd * wheel_sign(id);
-                auto fill = [&](int16_t target) {
-                    sl.kind = 1;
-                    sl.use_raw = 1;
-                    sl.raw = target;
-                    sl.vel = std::max(std::fabs(v), 0.8f);
-                    sl.tq = s->args.wheel_torque;
-                    sl.zero = 0;
-                };
-                if (std::fabs(v) < 0.08f) {
-                    fill(raw);
-                    sl.vel = 2.f;
-                    return sl;
-                }
-                int lead = v > 0.f ? kChaseLead : -kChaseLead;
-                int target = static_cast<int>(raw) + lead;
-                bool cross = target > 32767 || target < -32768;
-                if (cross) {
-                    // 不能重设零位：0x03 会离开位置模式，新电机随即报电流校准错误。
-                    fill(raw);
-                    sl.vel = 2.f;
-                    return sl;
-                }
-                Chase chase = wheel_chase(raw, v);
-                fill(chase.raw);
-                sl.vel = chase.vel_limit;
-                return sl;
-            };
-            Slot left = chase_one(s->left_id, spd_l);
-            Slot right = chase_one(s->right_id, spd_r);
+        }
+        auto set_wheel = [&](int id, float spd) {
+            Slot sl;
+            sl.kind = 2;
+            sl.vel = spd * wheel_sign(id);
+            return sl;
+        };
+        {
             Lock lk(s->mu_cmd);
-            s->slot[s->left_id] = left;
-            s->slot[s->right_id] = right;
+            s->slot[s->left_id] = set_wheel(s->left_id, spd_l);
+            s->slot[s->right_id] = set_wheel(s->right_id, spd_r);
         }
         store_f(s->cmd_l_bits, spd_l);
         store_f(s->cmd_r_bits, spd_r);
@@ -854,19 +818,20 @@ void* can_thread(void* arg) {
             --sample_budget;
         }
         ingest(s);
+        if (ph == PhStop) {
+            for (int id = 1; id <= 15; ++id)
+                if (s->online & bit(id)) fail(s->bus->send_stop(id));
+        }
+        if (ph == PhDrive) s->torque_off.store(0);
+        bool wheels_quiet = ph == PhStop || (s->torque_off.load() != 0 && ph != PhDrive);
         auto send_wheel = [&](int id) {
-            if (!(s->online & bit(id))) return;
+            if (!(s->online & bit(id)) || wheels_quiet) return;
             const Slot& sl = slots[id];
             uint64_t wh = s->wheel_hb_ns.load(std::memory_order_relaxed);
             bool wheel_stale = age_exceeds(mono_ns(), wh, 150000000ull);
-            if (ph == PhDrive && !estop && !wheel_stale && sl.kind == 1) {
-                int16_t raw = sl.use_raw ? sl.raw : pos_to_int(sl.pos);
-                fail(s->bus->send_position(id, raw, sl.vel, sl.tq));
-            } else {
-                Feedback fb = copy_fb(s, id);
-                if (fb.t_pos_ns != 0)
-                    fail(s->bus->send_position(id, fb.raw_pos, 2.f, s->args.wheel_torque));
-            }
+            float vel = 0.f;
+            if (ph == PhDrive && !estop && !wheel_stale && sl.kind == 2) vel = sl.vel;
+            fail(s->bus->send_velocity(id, vel));
         };
         send_wheel(s->left_id);
         send_wheel(s->right_id);
@@ -1013,21 +978,25 @@ bool legs_at_unload(State* s) {
 bool release_torque(State* s) {
     if (hard_stop(s)) return false;
     s->unload_hold.store(0);
+    s->torque_off.store(1);
+    s->estop.store(1);
+    s->phase.store(PhStop);
+    if (!wait_for(s, 0.25)) return false;
     s->estop.store(0);
     s->phase.store(PhWait);
-    std::printf("已停在卸力姿态，仍是位置模式。长按 Y %.0f 秒再进入。再按一次 Ctrl+C 退出。\n", kYHoldS);
+    std::printf("已卸力。长按 Y %.0f 秒再进入。再按一次 Ctrl+C 退出。\n", kYHoldS);
     return true;
 }
 
 bool do_unload(State* s) {
-    std::printf("停车：轮子停在当前位置。腿保持位置模式，走到卸力姿态后继续保持。\n");
+    std::printf("停车：轮速归零。腿走到卸力姿态，到位后才卸力。\n");
     s->estop.store(1);
     s->balance_on.store(0);
     s->unload_hold.store(0);
     s->phase.store(PhHold);
     if (!wait_for(s, 0.15)) return false;
     if (s->unload.mask == 0) {
-        std::printf("没有卸力姿态，腿继续保持现在的角度。再按 B 就停在当前位置。\n");
+        std::printf("没有卸力姿态，腿继续保持现在的角度。再按 B 就在当前位置卸力。\n");
         s->unload_hold.store(1);
         return true;
     }
@@ -1062,14 +1031,14 @@ bool do_unload(State* s) {
         }
     }
     if (!fill_job(s, s->unload, s->args.torque, 2.f, std::max(0.6, s->cfg.transition_s))) {
-        std::printf("卸力姿态没能发出去，腿继续保持现在的角度。再按 B 就停在当前位置。\n");
+        std::printf("卸力姿态没能发出去，腿继续保持现在的角度。再按 B 就在当前位置卸力。\n");
         s->phase.store(PhHold);
         s->unload_hold.store(1);
         return true;
     }
     s->phase.store(PhSettle);
     s->unload_hold.store(1);
-    std::printf("腿还在出力。到位后保持该姿态。没到位时再按 B，就停在当前位置。\n");
+    std::printf("腿还在出力。到位后卸力。没到位时再按 B，就在当前位置卸力。\n");
     return true;
 }
 
@@ -1361,6 +1330,8 @@ int bring_up_can(const std::string& iface, const std::string& config) {
 }
 
 int run(const Args& args) {
+    std::setvbuf(stdout, nullptr, _IOLBF, 0);
+    std::setvbuf(stderr, nullptr, _IOLBF, 0);
     std::signal(SIGINT, on_signal);
     std::signal(SIGTERM, on_signal);
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
@@ -1445,7 +1416,8 @@ int run(const Args& args) {
         if (up_pad) pthread_join(th_pad, nullptr);
         return g_sig ? 0 : 1;
     }
-    std::printf("关节在线 %s。左轮 %d，右轮 %d。不发停止模式。\n", mask_text(s->online).c_str(), s->left_id, s->right_id);
+    std::printf("关节在线 %s。左轮 %d，右轮 %d。轮子速度模式，不设圈数。不按 LT ±%.0f rad/s，按住 ±%.0f。\n",
+                mask_text(s->online).c_str(), s->left_id, s->right_id, s->args.vmax * 0.5f, s->args.vmax);
     if (!s->lift_ok) std::printf("没有完整的伸直姿态，升降锁定。\n");
 
     if (!args.no_balance) {
@@ -1533,7 +1505,7 @@ int run(const Args& args) {
             std::fprintf(log, "t_s,fwd,turn,spin,gear,height_u,roll_u,cmd_l,cmd_r,fb_l,fb_r,tor_l,tor_r,voltage,lean,hip,balance,can_us,wheel_us,late_can,late_wheel,tx_fail\n");
             std::printf("驾驶日志 %s\n", path.c_str());
         }
-        std::printf("已站稳。前 %.0f 秒轮子只保持当前位置。左摇杆前进和转弯，右摇杆左右自转、上下升降。\n", kSpeedArmS);
+        std::printf("已站稳。前 %.0f 秒轮速为 0。左摇杆前进和转弯，右摇杆左右自转、上下升降。\n", kSpeedArmS);
         std::printf("RB 开关头部张望。右扳机张嘴并鸭叫。X 切灯。十字键上下调音量，左右侧倾。LB 起身，A 前左翻滚。短按 Y 切换平衡。\n");
         std::printf("默认半速，按住 LT 全速。十字键左右侧倾。短按 Y 开关自平衡。B 卸力。Ctrl+C 退出。\n");
         next_print = mono_s();
@@ -1559,7 +1531,7 @@ int run(const Args& args) {
         }
         if (ph == PhWait) {
             if (!announced) {
-                std::printf("位置模式保持中。长按 Y %.0f 秒进入轮行，Ctrl+C 退出。\n", kYHoldS);
+                std::printf("已卸力。长按 Y %.0f 秒进入轮行，Ctrl+C 退出。\n", kYHoldS);
                 announced = true;
             }
             if (args.no_wait_y && !auto_once) {
@@ -1589,7 +1561,7 @@ int run(const Args& args) {
             }
             if (pad.edge_b != last_edge_b) {
                 last_edge_b = pad.edge_b;
-                std::printf("再按 B：腿还没到卸力姿态，停在当前位置。\n");
+                std::printf("再按 B：腿还没到卸力姿态，在当前位置卸力。\n");
                 release_torque(s);
                 announced = false;
                 continue;
@@ -1706,7 +1678,7 @@ int run(const Args& args) {
     if (up_can) pthread_join(th_can, nullptr);
     if (up_wd) pthread_join(th_wd, nullptr);
     if (up_show) pthread_join(th_show, nullptr);
-    std::printf("已退出。没有发送停止模式，关节保持最后的位置指令。\n");
+    std::printf("已退出。\n");
     return 0;
 }
 

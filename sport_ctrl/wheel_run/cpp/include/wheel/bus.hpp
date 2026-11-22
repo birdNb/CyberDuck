@@ -44,9 +44,10 @@ public:
     const std::string& error() const { return error_; }
 
     bool send(int id, const uint8_t* data, int len);
-    bool send_stop(int id);  // 不发 0x01。切停止模式会让新电机报错。
+    bool send_stop(int id);
     bool send_zero(int id);
     bool send_position(int id, int16_t raw_pos, float vel_rad_s, float torque_nm);
+    bool send_velocity(int id, float vel_rad_s);
     bool send_status(int id);
     bool send_temp(int id);
     bool send_voltage(int id);

@@ -8,10 +8,10 @@ struct Args {
     std::string config = "/home/aidlux/cyberDuck/sport_ctrl/pose_contrl/pose_config.yaml";
     std::string iface = "can0";
     std::string pose = "drive";
-    float vmax = 10.f;
-    float turn = 6.f;
-    float spin = 4.f;
-    float accel = 25.f;
+    float vmax = 20.f;
+    float turn = 12.f;
+    float spin = 8.f;
+    float accel = 40.f;
     float smooth = 0.04f;
     float torque = 1.f;
     float hip_torque = 1.f;

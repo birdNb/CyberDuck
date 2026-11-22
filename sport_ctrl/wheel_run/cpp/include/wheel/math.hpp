@@ -10,7 +10,7 @@ constexpr double kTwoPi = 6.283185307179586;
 constexpr float kDeadzone = 0.12f;
 constexpr float kSpeedArmS = 3.f;
 constexpr float kYHoldS = 1.f;
-constexpr float kRollRateDegS = 12.f;
+constexpr float kRollRateDegS = 24.f;
 constexpr int kChaseLead = 1900;
 
 inline int16_t clip_i16(int value) {

@@ -16,6 +16,14 @@ sudo /home/aidlux/cyberDuck/build-wheel/sport_ctrl/wheel_run/cpp/wheel_drive
 
 需要 root，实时线程才能用 `SCHED_FIFO`。`can0` 如果是 DOWN，程序会自己执行 `motor/setup_can0.sh` 把它拉起来。
 
+开机由 `wheel-drive.service` 拉起，先重试 `motor/setup_can0.sh`，再运行上面的程序。查看和停止：
+
+```bash
+systemctl status wheel-drive
+journalctl -u wheel-drive -f
+sudo systemctl stop wheel-drive
+```
+
 自检不碰电机：
 
 ```bash
@@ -47,15 +55,15 @@ sudo /home/aidlux/cyberDuck/build-wheel/sport_ctrl/wheel_run/cpp/wheel_drive --s
 | 左摇杆左右 | 行进中差速转弯；只有横向时内侧轮停、外侧轮转 |
 | 右摇杆左右 | 原地自转。向左推，车向左自转 |
 | 右摇杆上下 | 只升降两条腿，在 `drive` 和 `extended` 之间插值 |
-| LT | 半速变全速。侧倾也从半幅变满幅 |
+| LT | 半速变全速。不按约 ±10 rad/s，按住约 ±20 rad/s。侧倾也从半幅变满幅 |
 | Y 短按 | 开关自平衡。进驾驶时默认关，只用两侧髋 |
 | Y 长按 | 卸力等待时，按住约 1 秒再进入轮行 |
-| B | 轮子停在当前位置。腿保持位置模式走到卸力姿态，到位后继续保持，不切停止模式。没到位时再按一次 B，就停在当前位置。程序不退出 |
+| B | 轮速归零，腿走到卸力姿态，到位后才卸力。没到位时再按一次 B，就在当前位置卸力。程序不退出 |
 | RB | 开关头部张望。默认关。卸力等待时也能开，腿保持卸力 |
 | 右扳机 | 张嘴并短叫。按住满 3 秒改长鸣。张望开着时扳机不抢嘴 |
 | X | 切换灯环灯效 |
 | 十字键上下 | 喇叭音量，一格 5% |
-| 十字键左右 | 左右侧倾。默认半幅，按住 LT 到满幅 |
+| 十字键左右 | 左右侧倾。默认半幅，按住 LT 到满幅。侧出和回中约 24°/s |
 | LB | 倒地起身。再按 LB 退出。起身时轮子锁定 |
 | A | 前左翻滚。再按 A，或满 5 秒，退出。翻滚时轮子仍跟摇杆 |
 
@@ -74,7 +82,7 @@ sudo /home/aidlux/cyberDuck/build-wheel/sport_ctrl/wheel_run/cpp/wheel_drive --s
 | 表演 | 普通 | 20 ms | 跟 Python 伴随程序交换头部和策略角度 |
 | 主线程 | 普通 | | 状态切换和日志 |
 
-轮子用位置追速，力矩 3 N·m。编码器计数快要超出 int16 时停在当前位置，不再重设零位，也不发停止模式。这两种帧都会离开位置模式，新电机会报电流校准错误。往反方向开，计数退回来之后可以继续转。
+轮子用速度模式 `0x1C`，只发速度，不发圈数。不按 LT 上限 ±10 rad/s，按住 LT 到 ±20 rad/s。腿和脖子仍用位置模式 `0x1F`。停止模式只在卸力姿态到位之后发出。不重设零位。
 
 ## 伴随程序
 

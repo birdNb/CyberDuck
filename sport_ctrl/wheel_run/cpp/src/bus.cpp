@@ -117,9 +117,9 @@ bool Bus::send(int id, const uint8_t* data, int len) {
 }
 
 bool Bus::send_stop(int id) {
-    // 新电机在切换控制模式时会报错。停止模式 0x01 不再发出，调用处改为继续留在位置模式。
-    (void)id;
-    return true;
+    // 只在卸力姿态到位后使用。查询码 0x00，避免停止帧把状态回包灌满总线。
+    const uint8_t d[2] = {0x01, 0x00};
+    return send(id, d, 2);
 }
 
 bool Bus::send_zero(int id) {
@@ -134,6 +134,13 @@ bool Bus::send_position(int id, int16_t raw_pos, float vel_rad_s, float torque_n
     write_i16(d + 4, vel_to_int(vel_rad_s));
     write_i16(d + 6, tqe_to_int(torque_nm));
     return send(id, d, 8);
+}
+
+bool Bus::send_velocity(int id, float vel_rad_s) {
+    // 速度模式只有 4 字节。多出来的字节整帧会被丢掉。查询码 0x00，不让电机每帧回包。
+    uint8_t d[4] = {0x1C, 0x00};
+    write_i16(d + 2, vel_to_int(vel_rad_s));
+    return send(id, d, 4);
 }
 
 bool Bus::send_status(int id) {

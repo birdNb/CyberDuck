@@ -17,9 +17,9 @@ void usage() {
         << "  --config 文件       姿态配置，默认 pose_config.yaml\n"
         << "  --iface can0\n"
         << "  --pose drive\n"
-        << "  --vmax 10           按住 LT 的全速 rad/s，不按只有一半\n"
-        << "  --turn 6 --spin 4   转弯和自转上限，同样按 LT 才到全额\n"
-        << "  --accel 25          轮速斜坡 rad/s^2\n"
+        << "  --vmax 20           按住 LT 的全速 rad/s，不按只有一半\n"
+        << "  --turn 12 --spin 8  转弯和自转上限，同样按 LT 才到全额\n"
+        << "  --accel 40          轮速斜坡 rad/s^2\n"
         << "  --speed-smooth 0.04 轮速低通时间常数秒\n"
         << "  --tqe 1             腿的力矩上限 N·m\n"
         << "  --hip-tqe 1         自平衡时髋 pitch 力矩上限\n"
@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
             return 2;
         }
     }
-    if (args.vmax <= 0.f || args.vmax > 25.f || args.accel <= 0.f || args.wheel_hz < 50 || args.wheel_hz > 500 ||
+    if (args.vmax <= 0.f || args.vmax > 50.f || args.accel <= 0.f || args.wheel_hz < 50 || args.wheel_hz > 500 ||
         args.body_hz < 20 || args.body_hz > 500 || args.torque <= 0.f || args.wheel_torque <= 0.f) {
         std::cerr << "速度、力矩或节拍超出允许范围\n";
         return 2;
