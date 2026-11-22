@@ -1,6 +1,0 @@
-15:31:47 排查日志 /home/aidlux/cyberDuck/sport_ctrl/wheel_run/logs/diag_20261122_153147.log
-15:31:47 can tx_packets=643662 rx_packets=456532 tx_errors=0 rx_errors=0 tx_dropped=0 rx_dropped=0
-15:31:47 喇叭 rc=0 Volume: 0.85
-15:31:47 轮速在独立进程。主循环停住时摇杆和 B 仍由轮速进程处理。
-15:31:47 驾驶循环结束
-15:31:47 排查日志关闭
