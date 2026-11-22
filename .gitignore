@@ -1,3 +1,11 @@
+# 机器人运行日志（本地排查用，不上传）
+sport_ctrl/wheel_run/logs/
+motor/wheel_run/logs/
 locomotion/logs/watch/
+*.log
+
+# 其它本地产物
 CyberDuck_V1
-motor/wheel_run/logs/*
+__pycache__/
+*.pyc
+.DS_Store

@@ -26,7 +26,9 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+_REPO = Path(__file__).resolve().parents[2]
+MOTOR_DIR = _REPO / "motor"
+sys.path.insert(0, str(MOTOR_DIR))
 
 from ht_can import Motor, MotorBus, QUERY_STATUS, QUERY_TEMP
 
@@ -36,10 +38,9 @@ except ImportError:
     yaml = None
 
 DEG = math.pi / 180.0
-CONFIG_PATH = Path(__file__).resolve().parents[2] / "sport_ctrl" / "pose_contrl" / "pose_config.yaml"
+CONFIG_PATH = _REPO / "sport_ctrl" / "pose_contrl" / "pose_config.yaml"
 POSE_ORDER = ("stand", "squat", "fold", "unload", "lean_left", "lean_right", "damp", "release")
 UNLOAD_POSE = "unload"
-MOTOR_DIR = Path(__file__).resolve().parents[1]
 
 
 def smootherstep(u: float) -> float:
@@ -120,7 +121,7 @@ def open_bus(cfg: dict, on_step=None) -> tuple[MotorBus, list[int]]:
     ensure_can(iface)
     down = iface_down_reason(iface)
     if down:
-        raise SystemExit(f"{down}\n请先: sudo ../setup_can0.sh")
+        raise SystemExit(f"{down}\n请先: sudo {MOTOR_DIR / 'setup_can0.sh'}")
     ids = joint_ids(cfg)
     motor_type = str(cfg.get("motor_type", "3532_0"))
     bus = MotorBus(iface)

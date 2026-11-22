@@ -29,13 +29,9 @@ ROOT = Path(__file__).resolve().parents[2] / "motor"
 sys.path.insert(0, str(ROOT))
 
 from ht_can import (
-    ACC_SCALE,
-    MODE_VEL_ACC,
     MODE_VELOCITY,
     Motor,
     MotorBus,
-    TWO_PI,
-    _clip_i16,
     i16_le,
     vel_to_int,
 )
@@ -63,21 +59,16 @@ def iface_down_reason(iface: str) -> str | None:
 def send_speed(
     bus: MotorBus, motor: Motor, vel_rad_s: float, tqe_nm: float = 0.0, reply: bool = False
 ) -> None:
-    """1、6 号轮驱：速度+加速度（0x1E），不写力矩上限。
+    """1、6 号轮驱：速度模式 0x1C，只有模式、查询码、速度。
 
-    位置帧 0x1F 会把轮子力矩卡在 1 N·m，车重压着走不动。
-    tqe_nm 保留参数，轮驱忽略它。
+    这批电机速度帧长度是 4 字节。后面再接力矩或加速度，整帧会被丢掉，
+    轮子就停在进入驾驶时那一帧 0 速上。
+    tqe_nm 保留给调用方，速度模式本身不带力矩字。
     reply 为真时带 0x0E，停车回读速度才用；驾驶循环保持不回包。
     """
     _ = tqe_nm
-    acc_raw = _clip_i16(int(80.0 / TWO_PI * ACC_SCALE))
-    # 查询码 0x00：不让轮子每拍回状态。0x0E 回包会堵住发送，摇杆和侧倾就丢、就慢。
     query = 0x0E if reply else 0x00
-    data = (
-        bytes([MODE_VEL_ACC, query])
-        + i16_le(vel_to_int(vel_rad_s))
-        + i16_le(acc_raw)
-    )
+    data = bytes([MODE_VELOCITY, query]) + i16_le(vel_to_int(vel_rad_s))
     bus.send_cmd(motor.id, data, reply=False)
 
 

@@ -317,15 +317,18 @@ def _rt_main(shm_name: str, ppid: int, cfg: dict) -> None:
             if drive and not prev_drive:
                 arm_t = now
             prev_drive = drive
-            vmax = float(cfg["vmax_fast"] if gear else cfg["vmax"])
+            # 不按 LT 只有全速的一半。转弯和自转一起缩。
+            scale = 1.0 if gear else 0.5
+            cap = float(cfg["vmax"]) * scale
             tgt_l, tgt_r = wheel_targets(
-                fwd, turn, spin, vmax, float(cfg["turn"]), float(cfg["spin"])
+                fwd, turn, spin, cap,
+                float(cfg["turn"]) * scale, float(cfg["spin"]) * scale,
             )
-            if (not drive) or estop or force0 or (now - arm_t) < arm_s or pad.fd < 0:
+            cut = (not drive) or estop or force0 or (now - arm_t) < arm_s or pad.fd < 0
+            if cut:
                 tgt_l = tgt_r = 0.0
-            idle = abs(tgt_l) < 1e-6 and abs(tgt_r) < 1e-6
-            # 摇杆回中就立刻清掉斜坡。否则松杆后滤波还在往前送，轮子停不下来。
-            if idle or not drive or estop or force0 or pad.fd < 0 or (now - arm_t) < arm_s:
+            # 退出驾驶、按 B、手柄掉线立刻清零。正常松杆只把目标降到 0，斜坡负责减速。
+            if (not drive) or estop or force0 or pad.fd < 0 or (now - arm_t) < arm_s:
                 cmd_l = cmd_r = spd_l = spd_r = 0.0
             else:
                 cmd_l = ramp(cmd_l, tgt_l, float(cfg["accel"]), dt)

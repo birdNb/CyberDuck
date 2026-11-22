@@ -1,0 +1,65 @@
+{
+  "bundle": "cyberduck_v2_roulade_forward_left",
+  "task_id": "CyberDuckV2-Flat-Roulade-ForwardLeft",
+  "chinese_name": "前左翻滚",
+  "contract": {
+    "actor_obs": 48,
+    "critic_obs": 55,
+    "action": 14,
+    "action_layout": "12 position joints + 2 ankle velocity joints",
+    "control_hz": 50,
+    "episode_seconds": 5.0,
+    "observation_terms": [
+      "base_ang_vel",
+      "projected_gravity",
+      "joint_pos",
+      "joint_vel",
+      "actions",
+      "roulade_phase"
+    ]
+  },
+  "primary_model": {
+    "file": "model.pt",
+    "source": "model_5499.pt",
+    "iteration": 5499,
+    "training_run": "logs/rsl_rl/cyberduck_v2_roulade_small/2026-11-24_10-03-19_forward_ft",
+    "eval_64env_seed0_seed1": {
+      "success_rate": 1.0,
+      "head_contact": "64/64",
+      "mean_max_roll_deg": 362.7,
+      "final_height_median_m": 0.160
+    },
+    "fixed_yaw0_drift": {
+      "max_forward_disp_m": "0.32-0.41",
+      "max_lateral_disp_m": "0.20-0.33",
+      "final_heading_offset_deg": "-133 to -154"
+    }
+  },
+  "baseline_model": {
+    "file": "model_5000_baseline.pt",
+    "source": "model_5000.pt",
+    "iteration": 5000,
+    "training_run": "logs/rsl_rl/cyberduck_v2_roulade_small/2026-11-21_20-24-10_large_seed0",
+    "eval_64env_seed0_seed1": {
+      "success_rate": 1.0,
+      "head_contact": "64/64",
+      "mean_max_roll_deg": "359.3 / 360.2",
+      "final_height_median_m": 0.158
+    },
+    "fixed_yaw0_drift": {
+      "max_forward_disp_m": "0.17-0.24",
+      "max_lateral_disp_m": "0.28-0.37",
+      "final_heading_offset_deg": "-112 to -139"
+    }
+  },
+  "videos": {
+    "model_5499": "videos/model_5499_fixed_yaw0.mp4",
+    "model_5000": "videos/model_5000_fixed_yaw0.mp4"
+  },
+  "notes": [
+    "Both checkpoints are simulation models for CyberDuckV2-Flat-Roulade-ForwardLeft; they are not exported ONNX and are not hardware-calibrated.",
+    "The model rolls forward with a left shoulder bias; it is intentionally kept as the ForwardLeft skill.",
+    "Do not use model_21248 from the large run: that late checkpoint collapsed to 0% success.",
+    "The params/ directory records the original training configs. The current ForwardLeft task uses the reverted Recovery reward config; rewards do not affect inference."
+  ]
+}
