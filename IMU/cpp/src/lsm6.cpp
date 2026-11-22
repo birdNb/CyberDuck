@@ -96,6 +96,28 @@ void Lsm6::set_mount(const float R[9]) {
     grav_init_ = false;
 }
 
+PolicySample Lsm6::read_raw() {
+    PolicySample s;
+    uint8_t buf[12];
+    if (!opened_ || !read_regs(0x22, buf, 12)) return s;
+    float gyro_s[3] = {s16(buf[0], buf[1]) * static_cast<float>(kGyroRad),
+                       s16(buf[2], buf[3]) * static_cast<float>(kGyroRad),
+                       s16(buf[4], buf[5]) * static_cast<float>(kGyroRad)};
+    float acc_s[3] = {s16(buf[6], buf[7]) * static_cast<float>(kAccLsb) * kG,
+                      s16(buf[8], buf[9]) * static_cast<float>(kAccLsb) * kG,
+                      s16(buf[10], buf[11]) * static_cast<float>(kAccLsb) * kG};
+    mul_mount(mount_, gyro_s, s.gyro);
+    float acc_b[3];
+    mul_mount(mount_, acc_s, acc_b);
+    float measured[3] = {-acc_b[0], -acc_b[1], -acc_b[2]};
+    normalize(measured, -1.f);
+    s.gravity[0] = measured[0];
+    s.gravity[1] = measured[1];
+    s.gravity[2] = measured[2];
+    s.ok = true;
+    return s;
+}
+
 PolicySample Lsm6::read() {
     PolicySample s;
     uint8_t buf[12];

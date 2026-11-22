@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/wheel_drive.dir/src/main.cpp.o CMakeFiles/wheel_drive.dir/src/bus.cpp.o CMakeFiles/wheel_drive.dir/src/config.cpp.o CMakeFiles/wheel_drive.dir/src/plant.cpp.o -o wheel_drive  ../../../IMU/cpp/libimu_lsm6.a -lpthread 

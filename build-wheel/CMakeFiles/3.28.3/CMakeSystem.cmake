@@ -1,0 +1,15 @@
+set(CMAKE_HOST_SYSTEM "Linux-6.6.116-qli-1.7-ver.1.1-05801-gde229c16e2aa-dirty")
+set(CMAKE_HOST_SYSTEM_NAME "Linux")
+set(CMAKE_HOST_SYSTEM_VERSION "6.6.116-qli-1.7-ver.1.1-05801-gde229c16e2aa-dirty")
+set(CMAKE_HOST_SYSTEM_PROCESSOR "aarch64")
+
+
+
+set(CMAKE_SYSTEM "Linux-6.6.116-qli-1.7-ver.1.1-05801-gde229c16e2aa-dirty")
+set(CMAKE_SYSTEM_NAME "Linux")
+set(CMAKE_SYSTEM_VERSION "6.6.116-qli-1.7-ver.1.1-05801-gde229c16e2aa-dirty")
+set(CMAKE_SYSTEM_PROCESSOR "aarch64")
+
+set(CMAKE_CROSSCOMPILING "FALSE")
+
+set(CMAKE_SYSTEM_LOADED 1)

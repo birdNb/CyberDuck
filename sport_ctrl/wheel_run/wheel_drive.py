@@ -624,9 +624,44 @@ class LedRing:
         os.mkfifo(self.fifo, 0o666)
         os.chmod(self.fifo, 0o666)
 
-    def start(self) -> None:
-        script = REPO / "LED_Ring" / "white_flow.py"
-        # led-boot 占着同一根 GPIO，先停掉，否则这里会 Device busy。
+    def _ensure_tlmm(self) -> None:
+        """PIN_22 的寄存器映射在 ws2812_tlmm 里。开机服务会先 insmod，这里自己补上。"""
+        ko = REPO / "LED_Ring" / "ws2812_tlmm.ko"
+        try:
+            listed = subprocess.run(
+                ["lsmod"],
+                capture_output=True,
+                text=True,
+                timeout=2.0,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            print(f"查看灯环驱动失败：{exc}", flush=True)
+            return
+        if "ws2812_tlmm" in listed.stdout:
+            return
+        if not ko.is_file():
+            print(f"灯环驱动文件不在：{ko}", flush=True)
+            return
+        try:
+            ins = subprocess.run(
+                ["insmod", str(ko)],
+                capture_output=True,
+                text=True,
+                timeout=5.0,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            print(f"加载灯环驱动失败：{exc}", flush=True)
+            return
+        if ins.returncode != 0:
+            err = (ins.stderr or ins.stdout).strip()
+            print(f"加载灯环驱动失败：{err}", flush=True)
+            return
+        print("灯环驱动已加载。", flush=True)
+
+    def _stop_other_rings(self) -> None:
+        """同一根 GPIO 上只能有一个灯环进程。开机服务和上一轮留下的进程都先停掉。"""
         try:
             subprocess.run(
                 ["systemctl", "stop", "led-boot.service"],
@@ -635,9 +670,30 @@ class LedRing:
                 timeout=5.0,
                 check=False,
             )
-            time.sleep(0.2)
         except (OSError, subprocess.SubprocessError) as exc:
             print(f"停 led-boot 失败（继续试开灯环）：{exc}", flush=True)
+        try:
+            listed = subprocess.run(
+                ["pgrep", "-f", "/LED_Ring/white_flow.py"],
+                capture_output=True,
+                text=True,
+                timeout=2.0,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            listed = None
+        if listed is not None:
+            for token in listed.stdout.split():
+                try:
+                    os.kill(int(token), signal.SIGTERM)
+                except (OSError, ValueError):
+                    pass
+        time.sleep(0.3)
+
+    def start(self) -> None:
+        script = REPO / "LED_Ring" / "white_flow.py"
+        self._ensure_tlmm()
+        self._stop_other_rings()
         try:
             self._open_fifo()
         except OSError as exc:
@@ -657,6 +713,7 @@ class LedRing:
                 cmd,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
             )
@@ -759,17 +816,6 @@ class LedRing:
             if self.fifo.exists():
                 self.fifo.unlink()
         except OSError:
-            pass
-        # 驾驶退出后把开机彗星灯还回去。
-        try:
-            subprocess.run(
-                ["systemctl", "start", "led-boot.service"],
-                capture_output=True,
-                text=True,
-                timeout=5.0,
-                check=False,
-            )
-        except (OSError, subprocess.SubprocessError):
             pass
 
 
@@ -1526,12 +1572,7 @@ class HeadLook:
 
     def _begin_mouth(self) -> None:
         opened = random.uniform(0.75, 1.0) * self.open_deg
-        if self.mouth.ctrl is not None:
-            cfg = self.mouth.ctrl.configs.get("mouth")
-            if cfg is not None:
-                with self.mouth.io_lock:
-                    self.servos["mouth"] = cfg
-            self.mouth.torque(True)
+        self._arm_mouth()
         sound_s = self.mouth.start_timed(self.SHORT_TAGS)
         if sound_s < 0.08:
             sound_s = 0.28
@@ -1569,15 +1610,26 @@ class HeadLook:
         self._apply_mouth_phase()
 
     def _arm_mouth(self) -> None:
-        """回默认位置时先让嘴跟上，到位后再卸力。"""
-        if self.mouth.ctrl is None:
+        """张嘴或收回时上力矩。这批舵机速度 0 才是最快，不写的话短叫那一下几乎张不开。"""
+        if self.mouth.ctrl is None or self.mouth.bus is None:
             return
         cfg = self.mouth.ctrl.configs.get("mouth")
         if cfg is None:
             return
+        try:
+            from bus_servo import ADDR_GOAL_SPEED, ADDR_TORQUE_ENABLE, ADDR_TORQUE_LIMIT, signed_value
+        except Exception as exc:
+            print(f"嘴舵机准备失败：{exc}", flush=True)
+            return
         with self.mouth.io_lock:
             self.servos["mouth"] = cfg
-        self.mouth.torque(True)
+            try:
+                self.mouth.bus.write_u16(cfg.servo_id, ADDR_TORQUE_LIMIT, 800)
+                self.mouth.bus.write(cfg.servo_id, ADDR_GOAL_SPEED, signed_value(0))
+                self.mouth.bus.write_u8(cfg.servo_id, ADDR_TORQUE_ENABLE, 1)
+            except Exception as exc:
+                print(f"嘴舵机上力矩失败：{exc}", flush=True)
+                self.servos.pop("mouth", None)
 
     def _arm(self) -> None:
         """yaw、roll 掉线或卸力后，下次调用再接上并上力矩。"""
