@@ -629,12 +629,37 @@ class MotorBus:
                 motor.update_from_status(frame)
         return frames
 
-    def scan(self, ids: Sequence[int] = range(1, 13), timeout_each: float = 0.04) -> List[int]:
+    def pump(self, limit: int = 48) -> int:
+        """把已经到达的回包记进电机状态。不等待，避免控制环被收包拖住。"""
+        n = 0
+        for _ in range(limit):
+            frame = self.can.recv(timeout=0)
+            if frame is None:
+                break
+            if frame.error:
+                continue
+            n += 1
+            mid = motor_id_from_can_id(frame.arb_id)
+            motor = self.motors.get(mid)
+            if motor is not None:
+                motor.update_from_status(frame)
+        return n
+
+    def scan(
+        self,
+        ids: Sequence[int] = range(1, 13),
+        timeout_each: float = 0.04,
+        on_step=None,
+    ) -> List[int]:
         """按 ID 对回包。上一台的迟到帧记到对应 ID，缺的再查一轮。"""
         want = [int(mid) for mid in ids]
         found: List[int] = []
         seen: set[int] = set()
         self.can.drain(0.02)
+
+        def _step() -> None:
+            if on_step is not None:
+                on_step()
 
         def _note(frames: List[CanFrame]) -> None:
             for frame in frames:
@@ -648,15 +673,17 @@ class MotorBus:
                 self.motors[mid].update_from_status(frame)
 
         for mid in want:
+            _step()
             self.ping(mid)
             _note(self.collect(timeout_each))
         missing = [mid for mid in want if mid not in seen]
         if missing:
-            time.sleep(0.05)
+            time.sleep(0.02)
             self.can.drain(0.01)
             for mid in missing:
+                _step()
                 self.ping(mid)
-                _note(self.collect(max(timeout_each, 0.08)))
+                _note(self.collect(max(timeout_each, 0.06)))
         return found
 
     def poll_status(

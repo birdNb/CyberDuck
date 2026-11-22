@@ -21,7 +21,7 @@ CAMERA_DIR = HERE.parent
 ROOT = CAMERA_DIR.parent
 MOTOR_DIR = ROOT / "motor"
 POSE_DIR = MOTOR_DIR / "pose_contrl"
-POSE_CONFIG = POSE_DIR / "pose_config.yaml"
+POSE_CONFIG = ROOT / "sport_ctrl" / "pose_contrl" / "pose_config.yaml"
 NECK_STATE_FILE = Path("/tmp/locate_face_neck.state")
 
 if "--gui" in sys.argv and os.environ.get("DISPLAY"):

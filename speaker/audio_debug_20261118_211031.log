@@ -1,0 +1,698 @@
+===== cyberDuck audio debug Wed Nov 18 21:10:31 CST 2026 =====
+
+===== services =====
+active
+active
+active
+active
+active
+active
+adsp=running
+
+===== cards / pcm =====
+ 0 [QCM6490IDP     ]: qcm6490 - QCM6490-IDP
+                      QCM6490-IDP
+00-00: CODEC_DMA-LPAIF_RXTX-RX-0 multicodec-0 :  : playback 1
+00-01: CODEC_DMA-LPAIF_RXTX-RX-1 multicodec-1 :  : playback 1
+00-02: CODEC_DMA-LPAIF_RXTX-TX-3 multicodec-2 :  : capture 1
+00-03: MI2S-LPAIF_VA-TX-PRIMARY msm-stub-aif0-tx-3 :  : capture 1
+00-04: MI2S-LPAIF_VA-RX-PRIMARY msm-stub-aif0-rx-4 :  : playback 1
+
+===== soundwire =====
+total 0
+drwxr-xr-x 2 root root 0 Nov 18 21:10 .
+drwxr-xr-x 4 root root 0 Jan  1  1970 ..
+lrwxrwxrwx 1 root root 0 Nov 18 21:10 sdw-master-0-0 -> ../../../devices/platform/soc@0/3210000.soundwire/sdw-master-0-0
+lrwxrwxrwx 1 root root 0 Nov 18 21:10 sdw-master-1-0 -> ../../../devices/platform/soc@0/3230000.soundwire/sdw-master-1-0
+lrwxrwxrwx 1 root root 0 Nov 18 21:10 sdw:0:0:0217:010d:00:4 -> ../../../devices/platform/soc@0/3210000.soundwire/sdw-master-0-0/sdw:0:0:0217:010d:00:4
+lrwxrwxrwx 1 root root 0 Nov 18 21:10 sdw:1:0:0217:010d:00:3 -> ../../../devices/platform/soc@0/3230000.soundwire/sdw-master-1-0/sdw:1:0:0217:010d:00:3
+
+===== wpctl status =====
+PipeWire 'pipewire-0' [1.0.5, aidlux@aidlux, cookie:2474192103]
+ └─ Clients:
+        35. pipewire                            [1.0.5, aidlux@aidlux, pid:2942]
+        36. WirePlumber [export]                [1.0.5, aidlux@aidlux, pid:4686]
+        37. WirePlumber                         [1.0.5, aidlux@aidlux, pid:4686]
+        38. pipewire                            [1.0.5, aidlux@aidlux, pid:4685]
+        39. pipewire                            [1.0.5, aidlux@aidlux, pid:4685]
+        40. pipewire                            [1.0.5, aidlux@aidlux, pid:4685]
+        59. wpctl                               [1.0.5, aidlux@aidlux, pid:11522]
+
+Audio
+ ├─ Devices:
+ │  
+ ├─ Sinks:
+ │  *   41. pal sink speaker ll                 [vol: 0.85]
+ │      42. pal sink headset_ll                 [vol: 0.85]
+ │  
+ ├─ Sink endpoints:
+ │  
+ ├─ Sources:
+ │  *   43. pal source headset mic              [vol: 1.00]
+ │  
+ ├─ Source endpoints:
+ │  
+ └─ Streams:
+
+Video
+ ├─ Devices:
+ │      47. msm_vidc_decoder                    [v4l2]
+ │      48. msm_vidc_encoder                    [v4l2]
+ │  
+ ├─ Sinks:
+ │  
+ ├─ Sink endpoints:
+ │  
+ ├─ Sources:
+ │  
+ ├─ Source endpoints:
+ │  
+ └─ Streams:
+
+Settings
+ └─ Default Configured Node Names:
+         0. Audio/Sink    pal_sink_speaker_ll
+
+===== wpctl volume =====
+Volume: 0.85
+
+===== key mixer =====
+LO Switch                    Off 
+AUX_RDAC Switch              Off 
+HPHL Switch                  On 
+HPHR Switch                  On 
+CLSH Switch                  On 
+HPHL_RDAC Switch             On 
+HPHR_RDAC Switch             On 
+RX_MACRO RX0 MUX             > ZERO, AIF1_PB, AIF2_PB, AIF3_PB, AIF4_PB,  
+RX_MACRO RX1 MUX             > ZERO, AIF1_PB, AIF2_PB, AIF3_PB, AIF4_PB,  
+RX_MACRO RX2 MUX             > ZERO, AIF1_PB, AIF2_PB, AIF3_PB, AIF4_PB,  
+RX INT2_1 MIX1 INP0          > ZERO, DEC0, DEC1, IIR0, IIR1, RX0, RX1, RX2, RX3, RX4, RX5,  
+RX HPH Mode                  CLS_H_INVALID, CLS_H_HIFI, CLS_H_LP, CLS_AB, CLS_H_LOHIFI, > CLS_H_ULP, CLS_AB_HIFI, CLS_AB_LP, CLS_AB_LOHIFI,  
+HPHL Volume                  24 (range 0->24) 
+HPHR Volume                  24 (range 0->24) 
+RX_RX0 Digital Volume        120 (range 0->124) 
+RX_RX1 Digital Volume        120 (range 0->124) 
+RX_RX2 Digital Volume        84 (range 0->124) 
+
+===== dmesg audio =====
+[Wed Nov 18 20:58:22 2026] OF: reserved mem: initialized node adsp-heap, compatible id shared-dma-pool
+[Wed Nov 18 20:58:22 2026] OF: reserved mem: 0x00000000ff000000..0x00000000ffbfffff (12288 KiB) map reusable adsp-heap
+[Wed Nov 18 20:58:22 2026] OF: reserved mem: 0x0000000086100000..0x00000000888fffff (40960 KiB) nomap non-reusable adsp@86100000
+[Wed Nov 18 20:58:30 2026] systemd[1]: Expecting device dev-fastrpc\x2dadsp\x2dsecure.device - /dev/fastrpc-adsp-secure...
+[Wed Nov 18 20:58:32 2026] remoteproc remoteproc0: Booting fw image qcom/qcm6490/adsp.mdt, size 6852
+[Wed Nov 18 20:58:32 2026] qcom,apr 3000000.remoteproc:glink-edge.adsp_apps.-1.-1: Adding APR/GPR dev: gprsvc:service:2:1
+[Wed Nov 18 20:58:32 2026] msm_vidc: err : ffffffff: codec: __init_reset_clocks: invalid reset tbl 0x0000000000000000 or count 0
+[Wed Nov 18 20:58:32 2026] msm_vidc_v4l2 aa00000.video-codec:non-secure-cb: Adding to iommu group 12
+[Wed Nov 18 20:58:32 2026] msm_vidc_v4l2 aa00000.video-codec: bound aa00000.video-codec:non-secure-cb (ops msm_vidc_component_ops [iris_vpu])
+[Wed Nov 18 20:58:33 2026] qcom,fastrpc 3000000.remoteproc:glink-edge.fastrpcglink-apps-dsp.-1.-1: assigned reserved memory node adsp-heap
+[Wed Nov 18 20:58:33 2026] fastrpc: fastrpc_setup_service_locator: pdr_add_lookup enabled for avs/audio (audio_pdr_adsp, msm/adsp/audio_pd)
+[Wed Nov 18 20:58:33 2026] fastrpc: fastrpc_setup_service_locator: pdr_add_lookup enabled for tms/servreg (sensors_pdr_adsp, msm/adsp/sensor_pd)
+[Wed Nov 18 20:58:34 2026] qcom,apr 3000000.remoteproc:glink-edge.adsp_apps.-1.-1: Adding APR/GPR dev: gprsvc:service:2:2
+[Wed Nov 18 20:58:34 2026] qcom,fastrpc 3000000.remoteproc:glink-edge.fastrpcglink-apps-dsp.-1.-1: fastrpc_pdr_cb: msm/adsp/sensor_pd (sensors_pdr_adsp) is up for PDR on 0
+[Wed Nov 18 20:58:34 2026] qcom,fastrpc 3000000.remoteproc:glink-edge.fastrpcglink-apps-dsp.-1.-1: fastrpc_pdr_cb: msm/adsp/audio_pd (audio_pdr_adsp) is up for PDR on 0
+[Wed Nov 18 20:58:36 2026] qcom,apr 3000000.remoteproc:glink-edge.adsp_apps.-1.-1: Adding APR/GPR dev: gprsvc:spf-core:2:3
+[Wed Nov 18 20:58:36 2026] qcom,apr 3000000.remoteproc:glink-edge.adsp_apps.-1.-1: Adding APR/GPR dev: gprsvc:audio-pkt:2:4
+[Wed Nov 18 20:58:36 2026] qcom-spf_core gprsvc:spf-core:2:3: spf_core_callback: success response received, core->is_ready=1
+[Wed Nov 18 20:58:36 2026] spf-core-platform soc@0:spf-core-platform: spf_core_add_child_devices: apm is up
+[Wed Nov 18 20:58:36 2026] va_macro 3370000.codec: qcom,dmic-sample-rate dt entry missing
+[Wed Nov 18 20:58:36 2026] msm-audio-mem soc@0:spf-core-platform:msm-audio-mem: Adding to iommu group 35
+[Wed Nov 18 20:58:36 2026] msm-audio-mem soc@0:spf-core-platform:msm-audio-mem-cma: assigned reserved memory node qcom,audio-ml
+[Wed Nov 18 20:58:36 2026] qcom-soundwire 3210000.soundwire: Qualcomm Soundwire controller v1.6.0 Registered
+[Wed Nov 18 20:58:36 2026] wcd938x_codec audio-codec: bound sdw:0:0:0217:010d:00:4 (ops wcd938x_sdw_component_ops [snd_soc_wcd938x_sdw])
+[Wed Nov 18 20:58:36 2026] wcd938x_codec audio-codec: bound sdw:1:0:0217:010d:00:3 (ops wcd938x_sdw_component_ops [snd_soc_wcd938x_sdw])
+[Wed Nov 18 20:58:36 2026] qcom-soundwire 3230000.soundwire: Qualcomm Soundwire controller v1.6.0 Registered
+
+===== audio-boot journal =====
+Nov 18 16:51:20 aidlux sudo[11350]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 16:51:20 aidlux sudo[11402]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus PULSE_SERVER=unix:/run/user/1000/pulse/native PIPEWIRE_RUNTIME_DIR=/run/user/1000 ; COMMAND=/usr/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.75
+Nov 18 16:51:20 aidlux sudo[11402]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 16:51:20 aidlux sudo[11402]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 16:51:20 aidlux audio-boot[11162]: OK: PipeWire 已就绪（aidlux /run/user/1000）
+Nov 18 16:51:20 aidlux sudo[11453]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus PULSE_SERVER=unix:/run/user/1000/pulse/native PIPEWIRE_RUNTIME_DIR=/run/user/1000 ; COMMAND=/usr/bin/python3 -u /home/aidlux/cyberDuck/speaker/boot_quack.py
+Nov 18 16:51:20 aidlux sudo[11453]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 16:51:20 aidlux audio-boot[11487]: 开机鸭叫 1/3：greet
+Nov 18 16:51:22 aidlux audio-boot[11487]: 开机鸭叫 2/3：chirp
+Nov 18 16:51:23 aidlux audio-boot[11487]: 开机鸭叫 3/3：peck
+Nov 18 16:51:23 aidlux audio-boot[11487]: 开机鸭叫完成。
+Nov 18 16:51:23 aidlux sudo[11453]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 16:51:23 aidlux systemd[1]: Finished audio-boot.service - cyberDuck audio (PipeWire for aidlux).
+Nov 18 18:02:28 aidlux systemd[1]: audio-boot.service: Deactivated successfully.
+Nov 18 18:02:28 aidlux systemd[1]: Stopped audio-boot.service - cyberDuck audio (PipeWire for aidlux).
+Nov 18 18:02:28 aidlux systemd[1]: Stopping audio-boot.service - cyberDuck audio (PipeWire for aidlux)...
+Nov 18 18:02:28 aidlux systemd[1]: Starting audio-boot.service - cyberDuck audio (PipeWire for aidlux)...
+Nov 18 18:02:28 aidlux sudo[46142]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus ; COMMAND=/usr/bin/systemctl --user start pipewire.socket pipewire.service pipewire-pulse.socket pipewire-pulse.service wireplumber.service
+Nov 18 18:02:28 aidlux sudo[46142]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 18:02:28 aidlux sudo[46142]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 18:02:28 aidlux sudo[46147]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus PULSE_SERVER=unix:/run/user/1000/pulse/native PIPEWIRE_RUNTIME_DIR=/run/user/1000 ; COMMAND=/usr/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
+Nov 18 18:02:28 aidlux sudo[46147]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 18:02:29 aidlux sudo[46147]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 18:02:29 aidlux sudo[46165]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus PULSE_SERVER=unix:/run/user/1000/pulse/native PIPEWIRE_RUNTIME_DIR=/run/user/1000 ; COMMAND=/usr/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.75
+Nov 18 18:02:29 aidlux sudo[46165]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 18:02:29 aidlux sudo[46165]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 18:02:29 aidlux audio-boot[46133]: OK: PipeWire 已就绪（aidlux /run/user/1000）
+Nov 18 18:02:29 aidlux sudo[46170]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus PULSE_SERVER=unix:/run/user/1000/pulse/native PIPEWIRE_RUNTIME_DIR=/run/user/1000 ; COMMAND=/usr/bin/python3 -u /home/aidlux/cyberDuck/speaker/boot_quack.py
+Nov 18 18:02:29 aidlux sudo[46170]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 18:02:29 aidlux audio-boot[46171]: 开机鸭叫 1/3：greet
+Nov 18 18:02:35 aidlux audio-boot[46171]: 开机鸭叫 2/3：chirp
+Nov 18 18:02:39 aidlux audio-boot[46171]: 开机鸭叫 3/3：peck
+Nov 18 18:02:44 aidlux audio-boot[46171]: 开机鸭叫完成。
+Nov 18 18:02:44 aidlux sudo[46170]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 18:02:44 aidlux systemd[1]: Finished audio-boot.service - cyberDuck audio (PipeWire for aidlux).
+-- Boot 448ac3e936564a069961796c5d11daa6 --
+Nov 18 18:36:20 aidlux systemd[1]: Starting audio-boot.service - cyberDuck audio (PipeWire for aidlux)...
+Nov 18 18:36:20 aidlux sudo[3588]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus ; COMMAND=/usr/bin/systemctl --user start pipewire.socket pipewire.service pipewire-pulse.socket pipewire-pulse.service wireplumber.service
+Nov 18 18:36:20 aidlux sudo[3588]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 18:36:20 aidlux sudo[3588]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 18:36:31 aidlux audio-boot[3542]: PipeWire 无响应，尝试复位…
+Nov 18 18:36:31 aidlux sudo[4726]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus ; COMMAND=/usr/bin/systemctl --user stop pipewire-pulse.service wireplumber.service pipewire.service
+Nov 18 18:36:31 aidlux sudo[4726]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 18:37:50 aidlux systemd[1]: audio-boot.service: start operation timed out. Terminating.
+Nov 18 18:37:50 aidlux systemd[1]: audio-boot.service: Main process exited, code=killed, status=15/TERM
+Nov 18 18:37:50 aidlux systemd[1]: audio-boot.service: Failed with result 'timeout'.
+Nov 18 18:37:50 aidlux systemd[1]: Failed to start audio-boot.service - cyberDuck audio (PipeWire for aidlux).
+-- Boot f92ff20db5b7420a8b013379b87b9268 --
+Nov 18 20:58:44 aidlux systemd[1]: Starting audio-boot.service - cyberDuck audio (PipeWire for aidlux)...
+Nov 18 20:58:44 aidlux sudo[3646]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus ; COMMAND=/usr/bin/systemctl --user reset-failed pipewire.service pipewire.socket pipewire-pulse.service pipewire-pulse.socket wireplumber.service
+Nov 18 20:58:44 aidlux sudo[3646]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 20:58:44 aidlux sudo[3646]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 20:58:44 aidlux sudo[3669]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus ; COMMAND=/usr/bin/systemctl --user start pipewire.socket pipewire.service pipewire-pulse.socket pipewire-pulse.service wireplumber.service
+Nov 18 20:58:44 aidlux sudo[3669]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 20:58:44 aidlux sudo[3669]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 20:58:44 aidlux sudo[3698]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus PULSE_SERVER=unix:/run/user/1000/pulse/native PIPEWIRE_RUNTIME_DIR=/run/user/1000 ; COMMAND=/usr/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@
+Nov 18 20:58:44 aidlux sudo[3698]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 20:58:46 aidlux sudo[3698]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 20:58:47 aidlux sudo[4343]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus PULSE_SERVER=unix:/run/user/1000/pulse/native PIPEWIRE_RUNTIME_DIR=/run/user/1000 ; COMMAND=/usr/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@
+Nov 18 20:58:47 aidlux sudo[4343]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 20:58:49 aidlux sudo[4343]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 20:58:49 aidlux sudo[4663]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus PULSE_SERVER=unix:/run/user/1000/pulse/native PIPEWIRE_RUNTIME_DIR=/run/user/1000 ; COMMAND=/usr/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@
+Nov 18 20:58:49 aidlux sudo[4663]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 20:58:51 aidlux sudo[4663]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 20:58:51 aidlux sudo[4707]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus PULSE_SERVER=unix:/run/user/1000/pulse/native PIPEWIRE_RUNTIME_DIR=/run/user/1000 ; COMMAND=/usr/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@
+Nov 18 20:58:51 aidlux sudo[4707]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 20:58:51 aidlux sudo[4707]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 20:58:51 aidlux sudo[4724]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus PULSE_SERVER=unix:/run/user/1000/pulse/native PIPEWIRE_RUNTIME_DIR=/run/user/1000 ; COMMAND=/usr/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
+Nov 18 20:58:51 aidlux sudo[4724]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 20:58:51 aidlux sudo[4724]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 20:58:51 aidlux sudo[4730]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus PULSE_SERVER=unix:/run/user/1000/pulse/native PIPEWIRE_RUNTIME_DIR=/run/user/1000 ; COMMAND=/usr/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.85
+Nov 18 20:58:51 aidlux sudo[4730]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 20:58:51 aidlux sudo[4730]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 20:58:51 aidlux audio-boot[3589]: OK: PipeWire 已就绪（aidlux /run/user/1000 sink=1）
+Nov 18 20:58:51 aidlux sudo[4736]:     root : PWD=/ ; USER=aidlux ; ENV=XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus PULSE_SERVER=unix:/run/user/1000/pulse/native PIPEWIRE_RUNTIME_DIR=/run/user/1000 ; COMMAND=/usr/bin/python3 -u /home/aidlux/cyberDuck/speaker/boot_quack.py
+Nov 18 20:58:51 aidlux sudo[4736]: pam_unix(sudo:session): session opened for user aidlux(uid=1000) by (uid=0)
+Nov 18 20:58:52 aidlux audio-boot[4737]: 开机鸭叫 1/3：greet
+Nov 18 20:58:56 aidlux audio-boot[4737]: 开机鸭叫 2/3：chirp
+Nov 18 20:59:01 aidlux audio-boot[4737]: 开机鸭叫 3/3：peck
+Nov 18 20:59:01 aidlux audio-boot[4737]: 开机鸭叫完成。
+Nov 18 20:59:01 aidlux sudo[4736]: pam_unix(sudo:session): session closed for user aidlux
+Nov 18 20:59:01 aidlux systemd[1]: Finished audio-boot.service - cyberDuck audio (PipeWire for aidlux).
+
+===== pipewire user journal (aidlux) =====
+Nov 18 20:58:56 aidlux pipewire[4685]: getSelectorValues: 2848: Direction: 1
+Nov 18 20:58:56 aidlux pipewire[4685]: getSelectorValues: 2864: Instance: 1
+Nov 18 20:58:56 aidlux pipewire[4685]: findKVs: 2736: key: 0xa1000000 value: 0xa100000e
+Nov 18 20:58:56 aidlux pipewire[4685]: findKVs: 2736: key: 0xab000000 value: 0x1
+Nov 18 20:58:56 aidlux pipewire[4685]: amp_pcm_mtd_control_put: 1116 amp_pcm_mtd_control_put: value = 0
+Nov 18 20:58:56 aidlux pipewire[4685]: amp_pcm_metadata_put: 1217 amp_pcm_metadata_put: enter
+Nov 18 20:58:56 aidlux pipewire[4685]: populateDeviceKV: 3156: Enter device id:3
+Nov 18 20:58:56 aidlux pipewire[4685]: findKVs: 2749: key: 0xa2000000 value: 0xa2000001
+Nov 18 20:58:56 aidlux pipewire[4685]: populateDeviceKV: 3184: Exit device id:3, status 0
+Nov 18 20:58:56 aidlux pipewire[4685]: populateDevicePPKV: 3297: Rx device id:3
+Nov 18 20:58:56 aidlux pipewire[4685]: getSelectorValues: 2930: stream type: 1
+Nov 18 20:58:56 aidlux pipewire[4685]: findKVs: 2736: key: 0xa2000000 value: 0xa2000001
+Nov 18 20:58:56 aidlux pipewire[4685]: findKVs: 2736: key: 0xac000000 value: 0xac000002
+Nov 18 20:58:56 aidlux pipewire[4685]: populateDevicePPCkv: 3449: SpeakerProt Status[0], RAS Status[0]
+Nov 18 20:58:56 aidlux pipewire[4685]: amp_be_metadata_put: 1015 amp_be_metadata_put: enter
+Nov 18 20:58:56 aidlux pipewire[4685]: amp_pcm_mtd_control_put: 1116 amp_pcm_mtd_control_put: value = 2
+Nov 18 20:58:56 aidlux pipewire[4685]: amp_pcm_metadata_put: 1217 amp_pcm_metadata_put: enter
+Nov 18 20:58:56 aidlux pipewire[4685]: session_obj_set_sess_aif_metadata: 1839 Exit
+Nov 18 20:58:56 aidlux pipewire[4685]: amp_pcm_aif_connect_put: 1060 amp_pcm_aif_connect_put: enter
+Nov 18 20:58:56 aidlux pipewire[4685]: agm_session_aif_connect: 648 connecting aifid:1 with session id=110
+Nov 18 20:58:56 aidlux pipewire[4685]: GetConcurrencyInfo: 5456: stream type 1 Tx conc 0, Rx conc 0, concurrency allowed
+Nov 18 20:58:56 aidlux pipewire[4685]: GetConcurrencyInfo: 5456: stream type 1 Tx conc 0, Rx conc 0, concurrency allowed
+Nov 18 20:58:56 aidlux pipewire[4685]: GetConcurrencyInfo: 5456: stream type 1 Tx conc 0, Rx conc 0, concurrency allowed
+Nov 18 20:58:56 aidlux pipewire[4685]: pal_stream_open: 247: Exit. Value of stream_handle 0x55a4a085b0K, status 0
+Nov 18 20:58:56 aidlux pipewire[4685]: pal_stream_start: 324: Enter. Stream handle 0x55a4a085b0K
+Nov 18 20:58:56 aidlux pipewire[4685]: setDeviceMediaConfig: 1062: CODEC_DMA-LPAIF_RXTX-RX-1 rate ch fmt data_fmt 48000 1 2 1
+Nov 18 20:58:56 aidlux pipewire[4685]: amp_be_media_fmt_put: 902 amp_be_media_fmt_put: enter
+Nov 18 20:58:56 aidlux pipewire[4685]: graph_open: 551 entry
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 79 *************************Metadata*************************
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 80 GKV size:4
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 82 key:0xa1000000, value:0xa100000e
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 82 key:0xab000000, value:0x1
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 82 key:0xa2000000, value:0xa2000001
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 82 key:0xac000000, value:0xac000002
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 87 
+                                       CKV count:2
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 89 key:0xa4000000, value:0xf
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 89 key:0xd2000000, value:0x0
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 92
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 94 Property ID:134217744
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 95 property count:4
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 98 Property Values:
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 100 0x1
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 100 0x3
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 100 0x2
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 100 0x5
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 102
+Nov 18 20:58:56 aidlux pipewire[4685]: metadata_print: 103 ****************Metadata Done***************************
+Nov 18 20:58:56 aidlux pipewire[4685]: print_graph_alias: 2364 GKV Alias 142 | StreamRX_PCM_LL_Playback_DeviceRX_Speaker_Instance_Instance_1_DevicePP_Rx_Audio_MBDRC
+Nov 18 20:58:56 aidlux pipewire[4685]: graph_open: 631 miid 40bd mid 7001000 tag c0000002
+Nov 18 20:58:56 aidlux pipewire[4685]: graph_open: 679 miid 4091 mid 7001023 tag c0000004
+Nov 18 20:58:56 aidlux pipewire[4685]: graph_open: 631 miid 40c4 mid 7001019 tag c0000006
+Nov 18 20:58:56 aidlux pipewire[4685]: graph_open: 631 miid 40bf mid 7001005 tag c000000e
+Nov 18 20:58:56 aidlux pipewire[4685]: graph_open: 631 miid 40c0 mid 7001003 tag c0000010
+Nov 18 20:58:56 aidlux pipewire[4685]: graph_open: 631 miid 4165 mid 7001032 tag c0000013
+Nov 18 20:58:56 aidlux pipewire[4685]: GPR: - /usr/src/debug/qcom-args/git/gpr/core/src/gpr_drv.c:__gpr_cmd_register_v2:930 GPR Register: Source Port is 8208 heap_index: 0
+Nov 18 20:59:00 aidlux pipewire[4685]: COSI - /usr/src/debug/qcom-args/git/ar_osal/src/linux/ar_osal_signal.c:ar_osal_signal_timedwait:180 ar_osal_signal_timedwait: Failed to wait on signal, rc = 110
+Nov 18 20:59:00 aidlux pipewire[4685]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 20:59:00 aidlux pipewire[4685]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 20:59:00 aidlux pipewire[4685]: pcm_plug_open: failed to open plugin
+Nov 18 20:59:00 aidlux pipewire[4685]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:268 Last restart too recent. Silencing detected error
+Nov 18 20:59:00 aidlux pipewire[4685]: log:pw-pal-plugin: pal_stream_stop failed for 0x55a4a085b0 error -22
+Nov 18 20:59:00 aidlux pipewire[4685]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 20:59:00 aidlux pipewire[4685]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open:4278 graph open for single gkv failed 21
+Nov 18 20:59:00 aidlux pipewire[4685]: graph_open: 700 Failed to open the graph with error -110
+Nov 18 20:59:00 aidlux pipewire[4685]: graph_open: 749 exit, ret -110
+Nov 18 20:59:00 aidlux pipewire[4685]: session_connect_aif: 771 Error:-110 graph open failed session_id: 110,                           audio interface id:1
+Nov 18 20:59:00 aidlux pipewire[4685]: session_open_with_first_device: 896 Audio interface(Backend):1 <-> session(Frontend):110                    Connect failed error:-110
+Nov 18 20:59:00 aidlux pipewire[4685]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 20:59:00 aidlux pipewire[4685]: start: 1046: pcm open not ready
+Nov 18 20:59:00 aidlux pipewire[4685]: start: 497: Rx session start is failed with status -110
+Nov 18 20:59:00 aidlux pipewire[4685]: pal_stream_start: 369: stream start failed. status -110
+Nov 18 20:59:00 aidlux pipewire[4685]: pal_stream_start: 374: Exit. status -110
+Nov 18 20:59:00 aidlux pipewire[4685]: pal_stream_stop: 392: Enter. Stream handle :0x55a4a085b0K
+Nov 18 20:59:00 aidlux pipewire[4685]: stop: 790: Stream should be in start/pause state, 1
+Nov 18 20:59:00 aidlux pipewire[4685]: pal_stream_stop: 426: stream stop failed. status : -22
+Nov 18 20:59:00 aidlux pipewire[4685]: pal_stream_stop: 431: Exit. status -22
+Nov 18 20:59:00 aidlux pipewire[4685]: pal_stream_close: 265: Enter. Stream handle :0x55a4a085b0K
+Nov 18 20:59:00 aidlux pipewire[4685]: amp_pcm_aif_connect_put: 1060 amp_pcm_aif_connect_put: enter
+Nov 18 20:59:00 aidlux pipewire[4685]: agm_session_aif_connect: 648 disconnecting aifid:1 with session id=110
+Nov 18 20:59:00 aidlux pipewire[4685]: amp_be_metadata_put: 1015 amp_be_metadata_put: enter
+Nov 18 20:59:00 aidlux pipewire[4685]: amp_pcm_mtd_control_put: 1116 amp_pcm_mtd_control_put: value = 2
+Nov 18 20:59:00 aidlux pipewire[4685]: amp_pcm_metadata_put: 1217 amp_pcm_metadata_put: enter
+Nov 18 20:59:00 aidlux pipewire[4685]: session_obj_set_sess_aif_metadata: 1839 Exit
+Nov 18 20:59:00 aidlux pipewire[4685]: amp_pcm_mtd_control_put: 1116 amp_pcm_mtd_control_put: value = 0
+Nov 18 20:59:00 aidlux pipewire[4685]: amp_pcm_metadata_put: 1217 amp_pcm_metadata_put: enter
+Nov 18 20:59:00 aidlux pipewire[4685]: close: 2176: pcm_close Unacceptable pcmLpmRefCnt -1, resetting to 0
+Nov 18 20:59:00 aidlux pipewire[4685]: unable to find path 'PM_QOS_Vote'
+Nov 18 20:59:00 aidlux pipewire[4685]: freeFrontEndIds: 7229: stream type 1, freeing 110
+Nov 18 20:59:00 aidlux pipewire[4685]: close: 490: Enter. deviceCount 1 for device id 3 (PAL_DEVICE_OUT_SPEAKER)
+Nov 18 20:59:00 aidlux pipewire[4685]: Reset path: speaker
+Nov 18 20:59:00 aidlux pipewire[4685]: close: 504: Exit. deviceCount 0 for device id 3 (PAL_DEVICE_OUT_SPEAKER), exit status 0
+Nov 18 20:59:00 aidlux pipewire[4685]: GetConcurrencyInfo: 5456: stream type 1 Tx conc 0, Rx conc 0, concurrency allowed
+Nov 18 20:59:00 aidlux pipewire[4685]: GetConcurrencyInfo: 5456: stream type 1 Tx conc 0, Rx conc 0, concurrency allowed
+Nov 18 20:59:00 aidlux pipewire[4685]: GetConcurrencyInfo: 5456: stream type 1 Tx conc 0, Rx conc 0, concurrency allowed
+Nov 18 20:59:00 aidlux pipewire[4685]: deregisterStream: 3675: stream type 1
+Nov 18 20:59:00 aidlux pipewire[4685]: pal_stream_close: 306: Exit. status 0
+Nov 18 20:59:01 aidlux pipewire[4685]: pal_stream_open: 201: Enter, stream type:1
+Nov 18 20:59:01 aidlux pipewire[4685]: setDeviceAttributes: 366: DeviceAttributes for Device Id 3 updated
+Nov 18 20:59:01 aidlux pipewire[4685]: open: 445: Enter. deviceCount 0 for device id 3 (PAL_DEVICE_OUT_SPEAKER)
+Nov 18 20:59:01 aidlux pipewire[4685]: setDeviceMediaConfig: 1062: CODEC_DMA-LPAIF_RXTX-RX-1 rate ch fmt data_fmt 48000 1 2 1
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_be_media_fmt_put: 902 amp_be_media_fmt_put: enter
+Nov 18 20:59:01 aidlux pipewire[4685]: Apply path: speaker
+Nov 18 20:59:01 aidlux pipewire[4685]: open: 480: Exit. deviceCount 1 for device id 3 (PAL_DEVICE_OUT_SPEAKER), exit status: 0
+Nov 18 20:59:01 aidlux pipewire[4685]: allocateFrontEndIds: 7028: allocateFrontEndIds: front end 110
+Nov 18 20:59:01 aidlux pipewire[4685]: populateStreamKV: 3032: stream type 1
+Nov 18 20:59:01 aidlux pipewire[4685]: getSelectorValues: 2848: Direction: 1
+Nov 18 20:59:01 aidlux pipewire[4685]: getSelectorValues: 2864: Instance: 1
+Nov 18 20:59:01 aidlux pipewire[4685]: findKVs: 2736: key: 0xa1000000 value: 0xa100000e
+Nov 18 20:59:01 aidlux pipewire[4685]: findKVs: 2736: key: 0xab000000 value: 0x1
+Nov 18 20:59:01 aidlux pipewire[4685]: pcm_plug_open: dlopen successful for libagm_pcm_plugin.so
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_pcm_mtd_control_put: 1116 amp_pcm_mtd_control_put: value = 0
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_pcm_metadata_put: 1217 amp_pcm_metadata_put: enter
+Nov 18 20:59:01 aidlux pipewire[4685]: populateDeviceKV: 3156: Enter device id:3
+Nov 18 20:59:01 aidlux pipewire[4685]: findKVs: 2749: key: 0xa2000000 value: 0xa2000001
+Nov 18 20:59:01 aidlux pipewire[4685]: populateDeviceKV: 3184: Exit device id:3, status 0
+Nov 18 20:59:01 aidlux pipewire[4685]: populateDevicePPKV: 3297: Rx device id:3
+Nov 18 20:59:01 aidlux pipewire[4685]: getSelectorValues: 2930: stream type: 1
+Nov 18 20:59:01 aidlux pipewire[4685]: findKVs: 2736: key: 0xa2000000 value: 0xa2000001
+Nov 18 20:59:01 aidlux pipewire[4685]: findKVs: 2736: key: 0xac000000 value: 0xac000002
+Nov 18 20:59:01 aidlux pipewire[4685]: populateDevicePPCkv: 3449: SpeakerProt Status[0], RAS Status[0]
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_be_metadata_put: 1015 amp_be_metadata_put: enter
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_pcm_mtd_control_put: 1116 amp_pcm_mtd_control_put: value = 2
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_pcm_metadata_put: 1217 amp_pcm_metadata_put: enter
+Nov 18 20:59:01 aidlux pipewire[4685]: session_obj_set_sess_aif_metadata: 1839 Exit
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_pcm_aif_connect_put: 1060 amp_pcm_aif_connect_put: enter
+Nov 18 20:59:01 aidlux pipewire[4685]: agm_session_aif_connect: 648 connecting aifid:1 with session id=110
+Nov 18 20:59:01 aidlux pipewire[4685]: GetConcurrencyInfo: 5456: stream type 1 Tx conc 0, Rx conc 0, concurrency allowed
+Nov 18 20:59:01 aidlux pipewire[4685]: GetConcurrencyInfo: 5456: stream type 1 Tx conc 0, Rx conc 0, concurrency allowed
+Nov 18 20:59:01 aidlux pipewire[4685]: GetConcurrencyInfo: 5456: stream type 1 Tx conc 0, Rx conc 0, concurrency allowed
+Nov 18 20:59:01 aidlux pipewire[4685]: pal_stream_open: 247: Exit. Value of stream_handle 0x55a4a085b0K, status 0
+Nov 18 20:59:01 aidlux pipewire[4685]: pal_stream_start: 324: Enter. Stream handle 0x55a4a085b0K
+Nov 18 20:59:01 aidlux pipewire[4685]: pcm_plug_open: failed to open plugin
+Nov 18 20:59:01 aidlux pipewire[4685]: setDeviceMediaConfig: 1062: CODEC_DMA-LPAIF_RXTX-RX-1 rate ch fmt data_fmt 48000 1 2 1
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_be_media_fmt_put: 902 amp_be_media_fmt_put: enter
+Nov 18 20:59:01 aidlux pipewire[4685]: log:pw-pal-plugin: pal_stream_start failed, error -68
+Nov 18 20:59:01 aidlux pipewire[4685]: graph_open: 551 entry
+Nov 18 20:59:01 aidlux pipewire[4685]: log:pw-pal-plugin: pal_stream_stop failed for 0x55a4a085b0 error -22
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 79 *************************Metadata*************************
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 80 GKV size:4
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 82 key:0xa1000000, value:0xa100000e
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 82 key:0xab000000, value:0x1
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 82 key:0xa2000000, value:0xa2000001
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 82 key:0xac000000, value:0xac000002
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 87 
+                                       CKV count:2
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 89 key:0xa4000000, value:0xf
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 89 key:0xd2000000, value:0x0
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 92
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 94 Property ID:134217744
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 95 property count:4
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 98 Property Values:
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 100 0x1
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 100 0x3
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 100 0x2
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 100 0x5
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 102
+Nov 18 20:59:01 aidlux pipewire[4685]: metadata_print: 103 ****************Metadata Done***************************
+Nov 18 20:59:01 aidlux pipewire[4685]: print_graph_alias: 2364 GKV Alias 142 | StreamRX_PCM_LL_Playback_DeviceRX_Speaker_Instance_Instance_1_DevicePP_Rx_Audio_MBDRC
+Nov 18 20:59:01 aidlux pipewire[4685]: graph_open: 631 miid 40bd mid 7001000 tag c0000002
+Nov 18 20:59:01 aidlux pipewire[4685]: graph_open: 679 miid 4091 mid 7001023 tag c0000004
+Nov 18 20:59:01 aidlux pipewire[4685]: graph_open: 631 miid 40c4 mid 7001019 tag c0000006
+Nov 18 20:59:01 aidlux pipewire[4685]: graph_open: 631 miid 40bf mid 7001005 tag c000000e
+Nov 18 20:59:01 aidlux pipewire[4685]: graph_open: 631 miid 40c0 mid 7001003 tag c0000010
+Nov 18 20:59:01 aidlux pipewire[4685]: graph_open: 631 miid 4165 mid 7001032 tag c0000013
+Nov 18 20:59:01 aidlux pipewire[4685]: GPR: - /usr/src/debug/qcom-args/git/gpr/core/src/gpr_drv.c:__gpr_cmd_register_v2:930 GPR Register: Source Port is 8208 heap_index: 0
+Nov 18 20:59:01 aidlux pipewire[4685]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:24
+Nov 18 20:59:01 aidlux pipewire[4685]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open:4278 graph open for single gkv failed 24
+Nov 18 20:59:01 aidlux pipewire[4685]: COSI - /usr/src/debug/qcom-args/git/ar_osal/src/linux/ar_osal_signal.c:ar_osal_signal_destroy:272 ar_osal_signal_destroy: Failed to destroy mutex, rc = 16
+Nov 18 20:59:01 aidlux pipewire[4685]: graph_open: 700 Failed to open the graph with error -68
+Nov 18 20:59:01 aidlux pipewire[4685]: graph_open: 749 exit, ret -68
+Nov 18 20:59:01 aidlux pipewire[4685]: session_connect_aif: 771 Error:-68 graph open failed session_id: 110,                           audio interface id:1
+Nov 18 20:59:01 aidlux pipewire[4685]: session_open_with_first_device: 896 Audio interface(Backend):1 <-> session(Frontend):110                    Connect failed error:-68
+Nov 18 20:59:01 aidlux pipewire[4685]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 20:59:01 aidlux pipewire[4685]: start: 1046: pcm open not ready
+Nov 18 20:59:01 aidlux pipewire[4685]: start: 497: Rx session start is failed with status -68
+Nov 18 20:59:01 aidlux pipewire[4685]: pal_stream_start: 369: stream start failed. status -68
+Nov 18 20:59:01 aidlux pipewire[4685]: pal_stream_start: 374: Exit. status -68
+Nov 18 20:59:01 aidlux pipewire[4685]: pal_stream_stop: 392: Enter. Stream handle :0x55a4a085b0K
+Nov 18 20:59:01 aidlux pipewire[4685]: stop: 790: Stream should be in start/pause state, 1
+Nov 18 20:59:01 aidlux pipewire[4685]: pal_stream_stop: 426: stream stop failed. status : -22
+Nov 18 20:59:01 aidlux pipewire[4685]: pal_stream_stop: 431: Exit. status -22
+Nov 18 20:59:01 aidlux pipewire[4685]: pal_stream_close: 265: Enter. Stream handle :0x55a4a085b0K
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_pcm_aif_connect_put: 1060 amp_pcm_aif_connect_put: enter
+Nov 18 20:59:01 aidlux pipewire[4685]: agm_session_aif_connect: 648 disconnecting aifid:1 with session id=110
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_be_metadata_put: 1015 amp_be_metadata_put: enter
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_pcm_mtd_control_put: 1116 amp_pcm_mtd_control_put: value = 2
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_pcm_metadata_put: 1217 amp_pcm_metadata_put: enter
+Nov 18 20:59:01 aidlux pipewire[4685]: session_obj_set_sess_aif_metadata: 1839 Exit
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_pcm_mtd_control_put: 1116 amp_pcm_mtd_control_put: value = 0
+Nov 18 20:59:01 aidlux pipewire[4685]: amp_pcm_metadata_put: 1217 amp_pcm_metadata_put: enter
+Nov 18 20:59:01 aidlux pipewire[4685]: close: 2176: pcm_close Unacceptable pcmLpmRefCnt -1, resetting to 0
+Nov 18 20:59:01 aidlux pipewire[4685]: unable to find path 'PM_QOS_Vote'
+Nov 18 20:59:01 aidlux pipewire[4685]: freeFrontEndIds: 7229: stream type 1, freeing 110
+Nov 18 20:59:01 aidlux pipewire[4685]: close: 490: Enter. deviceCount 1 for device id 3 (PAL_DEVICE_OUT_SPEAKER)
+Nov 18 20:59:01 aidlux pipewire[4685]: Reset path: speaker
+Nov 18 20:59:01 aidlux pipewire[4685]: close: 504: Exit. deviceCount 0 for device id 3 (PAL_DEVICE_OUT_SPEAKER), exit status 0
+Nov 18 20:59:01 aidlux pipewire[4685]: GetConcurrencyInfo: 5456: stream type 1 Tx conc 0, Rx conc 0, concurrency allowed
+Nov 18 20:59:01 aidlux pipewire[4685]: GetConcurrencyInfo: 5456: stream type 1 Tx conc 0, Rx conc 0, concurrency allowed
+Nov 18 20:59:01 aidlux pipewire[4685]: GetConcurrencyInfo: 5456: stream type 1 Tx conc 0, Rx conc 0, concurrency allowed
+Nov 18 20:59:01 aidlux pipewire[4685]: deregisterStream: 3675: stream type 1
+Nov 18 20:59:01 aidlux pipewire[4685]: pal_stream_close: 306: Exit. status 0
+
+===== pipewire errors filtered =====
+Nov 18 18:01:16 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:01:20 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:01:20 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:01:20 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:01:20 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:01:20 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:01:21 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:01:21 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:01:21 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -131
+Nov 18 18:01:21 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:1
+Nov 18 18:01:21 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:01:24 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:01:28 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:01:28 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:01:28 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:01:28 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:01:28 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:01:30 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:01:34 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:01:34 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:01:34 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:01:34 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:01:34 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:01:36 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:01:37 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:01:37 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -131
+Nov 18 18:01:37 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:1
+Nov 18 18:01:37 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:01:40 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:01:44 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:01:44 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:01:44 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:01:44 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:01:44 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:01:46 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:01:46 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:01:46 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -131
+Nov 18 18:01:46 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:1
+Nov 18 18:01:46 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:01:49 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:01:49 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:01:49 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -131
+Nov 18 18:01:49 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:1
+Nov 18 18:01:49 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:01:53 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:01:53 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:01:53 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -131
+Nov 18 18:01:53 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:1
+Nov 18 18:01:53 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:01:55 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:01:59 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:01:59 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:01:59 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:01:59 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:01:59 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:02:01 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:02:05 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:02:05 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:02:05 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:02:05 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:02:05 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:02:08 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:02:12 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:02:12 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:02:12 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:02:12 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:02:12 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:02:16 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:02:20 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:02:20 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:02:20 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:02:20 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:02:20 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:02:25 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:02:29 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:02:29 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:02:29 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:02:29 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:02:29 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:02:29 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:02:33 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:02:33 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:02:33 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:02:33 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:02:33 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:02:35 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:02:39 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:02:39 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:02:39 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:02:39 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:02:39 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:02:40 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:02:44 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:02:44 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:02:44 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:02:44 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:02:44 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:02:46 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:02:50 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:02:50 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:02:50 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:02:50 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:02:50 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:02:50 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:02:54 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:02:54 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:02:54 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:02:54 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:02:54 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:02:57 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:03:01 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:03:01 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:03:01 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:03:01 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:03:01 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:03:02 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:03:06 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:03:06 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:03:06 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:03:06 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:03:06 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:03:08 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:03:12 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:03:12 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:03:12 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:03:12 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:03:12 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:03:12 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:03:16 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:03:16 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:03:16 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:03:16 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:03:16 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:03:16 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:03:20 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:03:20 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:03:20 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:03:20 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:03:20 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:03:44 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:03:44 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:03:44 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -131
+Nov 18 18:03:44 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:1
+Nov 18 18:03:44 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:03:44 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:03:48 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:03:48 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:03:48 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:03:48 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:03:48 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:03:54 aidlux pipewire[2626]: Apply path: speaker-vbat
+Nov 18 18:03:58 aidlux pipewire[2626]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:03:58 aidlux pipewire[2626]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:03:58 aidlux pipewire[2626]: pcm_plug_open: failed to open plugin
+Nov 18 18:03:58 aidlux pipewire[2626]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:03:58 aidlux pipewire[2626]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:09:24 aidlux pipewire[49788]: graph_init: 380 gsl_init failed error -131
+Nov 18 18:09:26 aidlux pipewire[49851]: initWakeLocks: 1227: Unable to open /sys/power/wake_lock, err:Permission denied
+Nov 18 18:09:33 aidlux pipewire[49943]: graph_init: 380 gsl_init failed error -131
+Nov 18 18:09:35 aidlux pipewire[49980]: graph_init: 380 gsl_init failed error -131
+Nov 18 18:09:37 aidlux pipewire[50014]: graph_init: 380 gsl_init failed error -131
+Nov 18 18:09:38 aidlux pipewire[50043]: initWakeLocks: 1227: Unable to open /sys/power/wake_lock, err:Permission denied
+Nov 18 18:09:45 aidlux pipewire[50043]: Apply path: speaker-vbat
+Nov 18 18:09:49 aidlux pipewire[50043]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:09:49 aidlux pipewire[50043]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:09:49 aidlux pipewire[50043]: pcm_plug_open: failed to open plugin
+Nov 18 18:09:49 aidlux pipewire[50043]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:09:49 aidlux pipewire[50043]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:09:50 aidlux pipewire[50043]: Apply path: speaker-vbat
+Nov 18 18:09:54 aidlux pipewire[50043]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:09:54 aidlux pipewire[50043]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:09:54 aidlux pipewire[50043]: pcm_plug_open: failed to open plugin
+Nov 18 18:09:54 aidlux pipewire[50043]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:09:54 aidlux pipewire[50043]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:09:55 aidlux pipewire[50043]: Apply path: speaker-vbat
+Nov 18 18:09:59 aidlux pipewire[50043]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:09:59 aidlux pipewire[50043]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:09:59 aidlux pipewire[50043]: pcm_plug_open: failed to open plugin
+Nov 18 18:09:59 aidlux pipewire[50043]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:09:59 aidlux pipewire[50043]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:10:17 aidlux pipewire[50043]: Apply path: speaker-vbat
+Nov 18 18:10:17 aidlux pipewire[50043]: pcm_plug_open: failed to open plugin
+Nov 18 18:10:17 aidlux pipewire[50043]: log:pw-pal-plugin: pal_stream_start failed, error -68
+Nov 18 18:10:17 aidlux pipewire[50043]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:24
+Nov 18 18:10:17 aidlux pipewire[50043]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:10:45 aidlux pipewire[50043]: Apply path: speaker-vbat
+Nov 18 18:10:49 aidlux pipewire[50043]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:10:49 aidlux pipewire[50043]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:10:49 aidlux pipewire[50043]: pcm_plug_open: failed to open plugin
+Nov 18 18:10:49 aidlux pipewire[50043]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:10:49 aidlux pipewire[50043]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:10:50 aidlux pipewire[50043]: Apply path: speaker-vbat
+Nov 18 18:10:54 aidlux pipewire[50043]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:10:54 aidlux pipewire[50043]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:10:54 aidlux pipewire[50043]: pcm_plug_open: failed to open plugin
+Nov 18 18:10:54 aidlux pipewire[50043]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:10:54 aidlux pipewire[50043]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:10:55 aidlux pipewire[50043]: Apply path: speaker-vbat
+Nov 18 18:10:59 aidlux pipewire[50043]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 18:10:59 aidlux pipewire[50043]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 18:10:59 aidlux pipewire[50043]: pcm_plug_open: failed to open plugin
+Nov 18 18:10:59 aidlux pipewire[50043]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 18:10:59 aidlux pipewire[50043]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:11:08 aidlux pipewire[50043]: Apply path: speaker-vbat
+Nov 18 18:11:08 aidlux pipewire[50043]: pcm_plug_open: failed to open plugin
+Nov 18 18:11:08 aidlux pipewire[50043]: log:pw-pal-plugin: pal_stream_start failed, error -68
+Nov 18 18:11:08 aidlux pipewire[50043]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:24
+Nov 18 18:11:08 aidlux pipewire[50043]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:12:18 aidlux pipewire[50043]: Apply path: speaker-vbat
+Nov 18 18:12:18 aidlux pipewire[50043]: pcm_plug_open: failed to open plugin
+Nov 18 18:12:18 aidlux pipewire[50043]: log:pw-pal-plugin: pal_stream_start failed, error -68
+Nov 18 18:12:18 aidlux pipewire[50043]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:24
+Nov 18 18:12:18 aidlux pipewire[50043]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:12:19 aidlux pipewire[50043]: Apply path: speaker-vbat
+Nov 18 18:12:19 aidlux pipewire[50043]: log:pw-pal-plugin: pal_stream_start failed, error -68
+Nov 18 18:12:19 aidlux pipewire[50043]: pcm_plug_open: failed to open plugin
+Nov 18 18:12:19 aidlux pipewire[50043]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:24
+Nov 18 18:12:19 aidlux pipewire[50043]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 18:38:01 aidlux pipewire[6205]: initWakeLocks: 1227: Unable to open /sys/power/wake_lock, err:Permission denied
+Nov 18 20:58:46 aidlux pipewire[2901]: graph_init: 380 gsl_init failed error -131
+Nov 18 20:58:48 aidlux pipewire[4279]: graph_init: 380 gsl_init failed error -131
+Nov 18 20:58:51 aidlux pipewire[4650]: graph_init: 380 gsl_init failed error -131
+Nov 18 20:58:51 aidlux pipewire[4685]: initWakeLocks: 1227: Unable to open /sys/power/wake_lock, err:Permission denied
+Nov 18 20:58:52 aidlux pipewire[4685]: Apply path: speaker
+Nov 18 20:58:53 aidlux pipewire[4685]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 20:58:54 aidlux pipewire[4685]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 20:58:56 aidlux pipewire[4685]: Apply path: speaker
+Nov 18 20:59:00 aidlux pipewire[4685]: AR Error Detection Logger - /usr/src/debug/qcom-args/git/ar_util/src/ar_util_err_detection.c:ar_err_det_detect_spf_error:192 Graph open/close timeout. Desync likely. Restarting
+Nov 18 20:59:00 aidlux pipewire[4685]: log:pw-pal-plugin: pal_stream_start failed, error -110
+Nov 18 20:59:00 aidlux pipewire[4685]: pcm_plug_open: failed to open plugin
+Nov 18 20:59:00 aidlux pipewire[4685]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:21
+Nov 18 20:59:00 aidlux pipewire[4685]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 20:59:01 aidlux pipewire[4685]: Apply path: speaker
+Nov 18 20:59:01 aidlux pipewire[4685]: pcm_plug_open: failed to open plugin
+Nov 18 20:59:01 aidlux pipewire[4685]: log:pw-pal-plugin: pal_stream_start failed, error -68
+Nov 18 20:59:01 aidlux pipewire[4685]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:24
+Nov 18 20:59:01 aidlux pipewire[4685]: session_obj_open: 2210 Unable to open a session with Session ID:110
+
+===== probe play once =====
+开机鸭叫 1/3：greet
+开机鸭叫 2/3：chirp
+开机鸭叫 3/3：peck
+开机鸭叫完成。
+
+===== pipewire after probe =====
+Nov 18 21:10:32 aidlux pipewire[4685]: open: 445: Enter. deviceCount 0 for device id 3 (PAL_DEVICE_OUT_SPEAKER)
+Nov 18 21:10:32 aidlux pipewire[4685]: Apply path: speaker
+Nov 18 21:10:32 aidlux pipewire[4685]: open: 480: Exit. deviceCount 1 for device id 3 (PAL_DEVICE_OUT_SPEAKER), exit status: 0
+Nov 18 21:10:32 aidlux pipewire[4685]: pal_stream_start: 324: Enter. Stream handle 0x55a4a085b0K
+Nov 18 21:10:32 aidlux pipewire[4685]: log:pw-pal-plugin: pal_stream_start failed, error -68
+Nov 18 21:10:32 aidlux pipewire[4685]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:24
+Nov 18 21:10:32 aidlux pipewire[4685]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 21:10:32 aidlux pipewire[4685]: pal_stream_start: 369: stream start failed. status -68
+Nov 18 21:10:32 aidlux pipewire[4685]: pal_stream_start: 374: Exit. status -68
+Nov 18 21:10:32 aidlux pipewire[4685]: pal_stream_stop: 431: Exit. status -22
+Nov 18 21:10:32 aidlux pipewire[4685]: close: 490: Enter. deviceCount 1 for device id 3 (PAL_DEVICE_OUT_SPEAKER)
+Nov 18 21:10:32 aidlux pipewire[4685]: close: 504: Exit. deviceCount 0 for device id 3 (PAL_DEVICE_OUT_SPEAKER), exit status 0
+Nov 18 21:10:32 aidlux pipewire[4685]: pal_stream_close: 306: Exit. status 0
+Nov 18 21:10:34 aidlux pipewire[4685]: open: 445: Enter. deviceCount 0 for device id 3 (PAL_DEVICE_OUT_SPEAKER)
+Nov 18 21:10:34 aidlux pipewire[4685]: Apply path: speaker
+Nov 18 21:10:34 aidlux pipewire[4685]: open: 480: Exit. deviceCount 1 for device id 3 (PAL_DEVICE_OUT_SPEAKER), exit status: 0
+Nov 18 21:10:34 aidlux pipewire[4685]: log:pw-pal-plugin: pal_stream_start failed, error -68
+Nov 18 21:10:34 aidlux pipewire[4685]: pal_stream_start: 324: Enter. Stream handle 0x55a4a085b0K
+Nov 18 21:10:34 aidlux pipewire[4685]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:24
+Nov 18 21:10:34 aidlux pipewire[4685]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 21:10:34 aidlux pipewire[4685]: pal_stream_start: 369: stream start failed. status -68
+Nov 18 21:10:34 aidlux pipewire[4685]: pal_stream_start: 374: Exit. status -68
+Nov 18 21:10:34 aidlux pipewire[4685]: pal_stream_stop: 431: Exit. status -22
+Nov 18 21:10:34 aidlux pipewire[4685]: close: 490: Enter. deviceCount 1 for device id 3 (PAL_DEVICE_OUT_SPEAKER)
+Nov 18 21:10:34 aidlux pipewire[4685]: close: 504: Exit. deviceCount 0 for device id 3 (PAL_DEVICE_OUT_SPEAKER), exit status 0
+Nov 18 21:10:34 aidlux pipewire[4685]: pal_stream_close: 306: Exit. status 0
+Nov 18 21:10:35 aidlux pipewire[4685]: open: 445: Enter. deviceCount 0 for device id 3 (PAL_DEVICE_OUT_SPEAKER)
+Nov 18 21:10:35 aidlux pipewire[4685]: Apply path: speaker
+Nov 18 21:10:35 aidlux pipewire[4685]: open: 480: Exit. deviceCount 1 for device id 3 (PAL_DEVICE_OUT_SPEAKER), exit status: 0
+Nov 18 21:10:35 aidlux pipewire[4685]: pal_stream_start: 324: Enter. Stream handle 0x55a4a085b0K
+Nov 18 21:10:35 aidlux pipewire[4685]: log:pw-pal-plugin: pal_stream_start failed, error -68
+Nov 18 21:10:35 aidlux pipewire[4685]: gsl - /usr/src/debug/qcom-args/git/gsl/src/gsl_graph.c:gsl_graph_open_sgids_and_connections:2864 Graph open failed:24
+Nov 18 21:10:35 aidlux pipewire[4685]: session_obj_open: 2210 Unable to open a session with Session ID:110
+Nov 18 21:10:35 aidlux pipewire[4685]: pal_stream_start: 369: stream start failed. status -68
+Nov 18 21:10:35 aidlux pipewire[4685]: pal_stream_start: 374: Exit. status -68
+Nov 18 21:10:35 aidlux pipewire[4685]: pal_stream_stop: 431: Exit. status -22
+Nov 18 21:10:35 aidlux pipewire[4685]: close: 490: Enter. deviceCount 1 for device id 3 (PAL_DEVICE_OUT_SPEAKER)
+Nov 18 21:10:35 aidlux pipewire[4685]: close: 504: Exit. deviceCount 0 for device id 3 (PAL_DEVICE_OUT_SPEAKER), exit status 0
+Nov 18 21:10:35 aidlux pipewire[4685]: pal_stream_close: 306: Exit. status 0

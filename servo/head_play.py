@@ -41,7 +41,7 @@ from synth import SR  # noqa: E402
 
 COUNTS = 4096.0
 SHORT_TAGS = ("peck", "chirp", "greet", "coo", "inquire")
-POSE_YAML = ROOT / "motor" / "pose_contrl" / "pose_config.yaml"
+POSE_YAML = ROOT / "sport_ctrl" / "pose_contrl" / "pose_config.yaml"
 SERVO_YAML = Path(__file__).resolve().parent / "servo_config.yaml"
 
 

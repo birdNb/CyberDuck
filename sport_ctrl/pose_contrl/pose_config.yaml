@@ -1,0 +1,179 @@
+# Joint poses in degrees. Motor 15 is not included.
+# Capture: python3 pose.py capture stand
+# Switch:  python3 pose.py go stand
+#
+# 腿关节约定（hipRoll 中位为 0）：
+#   右腿 2 膝 / 3 髋 pitch / 4 髋 roll；左腿 7 膝 / 8 髋 pitch / 9 髋 roll。
+#   stand / extended：膝+髋 pitch 完全伸直到 0。
+#   unload：膝+髋 pitch 完全收缩；drive：轮行收缩工作位。
+#   lean_left / lean_right：左右侧倾（主要改 4、9）。
+interface: can0
+start_id: 1
+end_id: 12
+skip_ids: []
+motor_type: '3532_0'
+transition_s: 3.0
+hz: 50
+vel_limit: 1.0
+torque_nm: 1.0
+damping_torque_nm: 0.25
+poses:
+  stand:
+    mode: position
+    joints:
+      # 完全伸直：膝 / 髋 pitch / 髋 roll 到 0。
+      '1': 0.0
+      '2': 0.0
+      '3': 0.0
+      '4': 0.0
+      '5': 0.0
+      '6': 0.0
+      '7': 0.0
+      '8': 0.0
+      '9': 0.0
+      '10': 0.0
+      '11': -26.32
+      '12': -20.0
+  squat:
+    mode: position
+    joints:
+      '1': 14.72
+      '2': -10.08
+      '3': 87.37
+      '4': -8.03
+      '5': 4.1
+      '6': -9.14
+      '7': 8.78
+      '8': -89.17
+      '9': 5.47
+      '10': 1.58
+      '11': -111.06
+      '12': -91.12
+  fold:
+    mode: position
+    joints:
+      '1': 48.1
+      '2': -85.75
+      '3': 181.8
+      '4': -4.03
+      '5': 0.65
+      '6': -38.99
+      '7': 100.19
+      '8': 186.12
+      '9': 3.31
+      '10': -4.64
+      '11': -9.4
+      '12': -0.9
+  drive:
+    mode: position
+    joints:
+      # 轮行收缩工作位；髋 roll 保持 0。
+      # 右髋 pitch 比左腿对称位少收 5°，让右后轮着地。
+      '1': -32.83
+      '2': -99.51
+      '3': -98.89
+      '4': 7.00
+      '5': -4.65
+      '6': 32.83
+      '7': 95.51
+      '8': 97.39
+      '9': -7.50
+      '10': -2.85
+      # 头俯仰正得越大越往下看。默认姿态用此刻实测：头 87.16°，脖子 83.16°。
+      '11': 87.16
+      '12': 83.16
+  extended:
+    mode: position
+    joints:
+      # 升降上限：与 stand 一致，膝 / 髋 pitch 伸直到 0，髋 roll 0。
+      '1': 0.0
+      '2': 0.0
+      '3': 0.0
+      '4': 0.0
+      '5': 0.0
+      '6': 0.0
+      '7': 0.0
+      '8': 0.0
+      '9': 0.0
+      '10': 0.0
+      # 和 drive 一样把头抬起来，升降时不要又低下去。
+      '11': 38.0
+      '12': 83.56
+  # 卸力姿态：膝+髋 pitch 完全收缩。髋 roll 用坐稳时的实测角，不要改回 0。
+  unload:
+    mode: position
+    joints:
+      '1': 12.17
+      '2': -124.52
+      '3': -130.86
+      '4': -17.82
+      '5': -7.96
+      '6': -50.62
+      # 左膝收到 122° 即可，再往里 1 N·m 顶不住。
+      '7': 122.0
+      # 左髋 pitch 少收 5°，让左后轮着地。
+      '8': 125.86
+      '9': 19.33
+      '10': -3.38
+      '11': 89.93
+      '12': 85.32
+  # 左右侧倾（方向键）。右肩向下为正。
+  # 抬起的一侧腿伸到 0，另一侧保持 drive 收缩；髋 roll ±20°。
+  # 默认只走到 50%，按住 LT 才到这里的 100%。
+  lean_right:
+    mode: position
+    joints:
+      '2': -100.51
+      '3': -93.39
+      '4': 20.0
+      '7': 0.0
+      '8': 0.0
+      '9': 20.0
+  lean_left:
+    mode: position
+    joints:
+      '2': 0.0
+      '3': 0.0
+      '4': -20.0
+      '7': 100.51
+      '8': 98.39
+      '9': -20.0
+  damp:
+    mode: damping
+    joints: {}
+  release:
+    mode: release
+    joints: {}
+
+# 脖子 / 头。11 头俯仰、12 脖子俯仰走 CAN，13 yaw、14 roll、15 嘴走舵机。
+# 舵机原始值 0~4096 对应 0~360°。yaw 的 0° 在 2144，roll 的 0° 在 2048，嘴闭合在 1001。
+# 进入头部程序时 11、12、13、14 先收到 0°（伸直）。
+neck:
+  rate_deg_s: 40
+  mouth_rate_deg_s: 200
+  torque_nm: 0.8
+  pitch:
+    id: 11
+    min_deg: -20.0
+    max_deg: 20.0
+  neck:
+    id: 12
+    min_deg: -25.0
+    max_deg: 25.0
+  yaw:
+    id: 13
+    min_deg: -45.0
+    max_deg: 45.0
+    center_raw: 2144
+    direction: 1
+  roll:
+    id: 14
+    min_deg: -25.0
+    max_deg: 25.0
+    center_raw: 2048
+    direction: 1
+  mouth:
+    id: 15
+    open_deg: 30.0
+    center_raw: 1001
+    direction: -1

@@ -9,4 +9,4 @@ add_compile_options(-O3 -Wall -Wextra -Wno-unused-parameter)
 
 add_subdirectory(motor/cpp)
 add_subdirectory(IMU/cpp)
-add_subdirectory(locomotion)
+add_subdirectory(sport_ctrl/locomotion)

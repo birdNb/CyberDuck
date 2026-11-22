@@ -4,7 +4,7 @@ set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 UNIT_DST="/etc/systemd/system/audio-boot.service"
 DRIVE_UNIT="/etc/systemd/system/wheel-drive.service"
-DRIVE_SRC="/home/aidlux/cyberDuck/motor/wheel_run/wheel-drive.service"
+DRIVE_SRC="/home/aidlux/cyberDuck/sport_ctrl/wheel_run/wheel-drive.service"
 
 if [[ "${EUID}" -ne 0 ]]; then
   exec sudo -E "$0" "$@"

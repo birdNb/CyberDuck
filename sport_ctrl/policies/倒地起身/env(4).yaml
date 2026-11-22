@@ -1,0 +1,1883 @@
+decimation: 10
+scene:
+  num_envs: 1024
+  env_spacing: 2.0
+  terrain:
+    init_state:
+      pos: !!python/tuple
+      - 0.0
+      - 0.0
+      - 0.0
+      rot: !!python/tuple
+      - 1.0
+      - 0.0
+      - 0.0
+      - 0.0
+      lin_vel: !!python/tuple
+      - 0.0
+      - 0.0
+      - 0.0
+      ang_vel: !!python/tuple
+      - 0.0
+      - 0.0
+      - 0.0
+      joint_pos:
+        .*: 0.0
+      joint_vel:
+        .*: 0.0
+    spec_fn: !!python/name:mjlab.entity.entity.%3Clambda%3E ''
+    articulation: null
+    sort_actuators: false
+    lights: !!python/tuple
+    - name: sun
+      body: world
+      mode: fixed
+      target: null
+      type: directional
+      castshadow: true
+      pos: !!python/tuple
+      - 0.0
+      - 0.0
+      - 1.5
+      dir: !!python/tuple
+      - 0.0
+      - 0.0
+      - -1.0
+      cutoff: 45.0
+      exponent: 10.0
+      diffuse: null
+      specular: null
+      ambient: null
+      active: true
+      attenuation: !!python/tuple
+      - 1.0
+      - 0.0
+      - 0.0
+    cameras: !!python/tuple []
+    textures: !!python/tuple
+    - name: groundplane
+      type: 2d
+      builtin: checker
+      rgb1: !!python/tuple
+      - 0.2
+      - 0.3
+      - 0.4
+      rgb2: !!python/tuple
+      - 0.1
+      - 0.2
+      - 0.3
+      width: 300
+      height: 300
+      mark: edge
+      markrgb: !!python/tuple
+      - 0.8
+      - 0.8
+      - 0.8
+      random: 0.01
+      file: null
+      cubefiles: null
+      gridsize: null
+      gridlayout: null
+      nchannel: 3
+      hflip: false
+      vflip: false
+    materials: !!python/tuple
+    - name: groundplane
+      rgba: !!python/tuple
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      texuniform: true
+      texrepeat: !!python/tuple
+      - 4.0
+      - 4.0
+      reflectance: 0.2
+      texture: groundplane
+      geom_names_expr: !!python/tuple
+      - terrain$
+    meshes: !!python/tuple []
+    geoms: !!python/tuple []
+    collisions: !!python/tuple []
+    terrain_type: plane
+    terrain_generator: null
+    env_spacing: 2.0
+    max_init_terrain_level: null
+    num_envs: 1024
+    debug_vis: false
+  entities:
+    robot:
+      init_state:
+        pos: !!python/tuple
+        - 0.0
+        - 0.0
+        - 0.252
+        rot: !!python/tuple
+        - 1.0
+        - 0.0
+        - 0.0
+        - 0.0
+        lin_vel: !!python/tuple
+        - 0.0
+        - 0.0
+        - 0.0
+        ang_vel: !!python/tuple
+        - 0.0
+        - 0.0
+        - 0.0
+        joint_pos:
+          r_hip_yaw_joint: 0.0
+          r_hip_roll_joint: 0.0
+          r_hip_pitch_joint: 0.49
+          r_calf_joint: -0.444
+          r_ankle_joint: 0.0
+          r_roller_back_joint: 0.0
+          r_roller_front_joint: 0.0
+          l_hip_yaw_joint: 0.0
+          l_hip_roll_joint: 0.0
+          l_hip_pitch_joint: 0.49
+          l_calf_joint: -0.444
+          l_ankle_joint: 0.0
+          l_roller_back_joint: 0.0
+          l_roller_front_joint: 0.0
+          neck_pitch_joint: -0.36
+          head_pitch_joint: 0.405
+          head_yaw_joint: 0.0
+          head_roll_joint: 0.011
+          mouth_joint: 0.0
+        joint_vel:
+          r_hip_yaw_joint: 0.0
+          r_hip_roll_joint: 0.0
+          r_hip_pitch_joint: 0.0
+          r_calf_joint: 0.0
+          r_ankle_joint: 0.0
+          r_roller_back_joint: 0.0
+          r_roller_front_joint: 0.0
+          l_hip_yaw_joint: 0.0
+          l_hip_roll_joint: 0.0
+          l_hip_pitch_joint: 0.0
+          l_calf_joint: 0.0
+          l_ankle_joint: 0.0
+          l_roller_back_joint: 0.0
+          l_roller_front_joint: 0.0
+          neck_pitch_joint: 0.0
+          head_pitch_joint: 0.0
+          head_yaw_joint: 0.0
+          head_roll_joint: 0.0
+          mouth_joint: 0.0
+      spec_fn: !!python/name:ht_microduck.robot.cyberduck_v2_constants.get_robot_spec ''
+      articulation:
+        actuators: !!python/tuple
+        - target_names_expr: !!python/tuple
+          - r_hip_yaw_joint
+          - r_hip_roll_joint
+          - r_hip_pitch_joint
+          - r_calf_joint
+          - l_hip_yaw_joint
+          - l_hip_roll_joint
+          - l_hip_pitch_joint
+          - l_calf_joint
+          - neck_pitch_joint
+          - head_pitch_joint
+          - head_yaw_joint
+          - head_roll_joint
+          - mouth_joint
+          transmission_type: !!python/object/apply:mjlab.actuator.actuator.TransmissionType
+          - joint
+          armature: 0.0069753532276
+          frictionloss: null
+          viscous_damping: null
+          delay_min_lag: 0
+          delay_max_lag: 3
+          delay_hold_prob: 0.4
+          delay_update_period: 10
+          delay_per_env_phase: true
+          stiffness: 10.0
+          damping: 0.4
+          effort_limit: 2.0
+          json_path: null
+        - target_names_expr: !!python/tuple
+          - r_ankle_joint
+          - l_ankle_joint
+          transmission_type: !!python/object/apply:mjlab.actuator.actuator.TransmissionType
+          - joint
+          armature: 0.0069753532276
+          frictionloss: null
+          viscous_damping: null
+          delay_min_lag: 0
+          delay_max_lag: 3
+          delay_hold_prob: 0.4
+          delay_update_period: 10
+          delay_per_env_phase: true
+          stiffness: 0.0
+          damping: 0.4
+          effort_limit: 2.0
+          json_path: null
+        soft_joint_pos_limit_factor: 1.0
+      sort_actuators: true
+      lights: !!python/tuple []
+      cameras: !!python/tuple []
+      textures: !!python/tuple []
+      materials: !!python/tuple []
+      meshes: !!python/tuple []
+      geoms: !!python/tuple []
+      collisions: !!python/tuple []
+  sensors: !!python/tuple
+  - name: wheel_ground_contact
+    primary:
+      mode: geom
+      pattern: !!python/tuple
+      - r_roller_back_collision
+      - r_roller_front_collision
+      - l_roller_back_collision
+      - l_roller_front_collision
+      entity: robot
+      exclude: !!python/tuple []
+    secondary:
+      mode: geom
+      pattern: terrain
+      entity: null
+      exclude: !!python/tuple []
+    fields: !!python/tuple
+    - found
+    - force
+    reduce: netforce
+    num_slots: 1
+    secondary_policy: first
+    track_air_time: false
+    global_frame: false
+    history_length: 0
+    debug: false
+  - name: standup_self_contact
+    primary:
+      mode: geom
+      pattern: !!python/tuple
+      - base_front_collision
+      - base_rear_collision
+      - r_hip_roll_collision
+      - r_hip_pitch_collision
+      - r_roller_back_collision
+      - r_roller_front_collision
+      - l_hip_roll_collision
+      - l_hip_pitch_collision
+      - l_roller_back_collision
+      - l_roller_front_collision
+      - head_collision
+      - mouth_collision
+      entity: robot
+      exclude: !!python/tuple []
+    secondary:
+      mode: subtree
+      pattern: base_link
+      entity: robot
+      exclude: !!python/tuple []
+    fields: !!python/tuple
+    - found
+    reduce: none
+    num_slots: 1
+    secondary_policy: first
+    track_air_time: false
+    global_frame: false
+    history_length: 0
+    debug: false
+  extent: null
+  spec_fn: null
+observations:
+  actor:
+    terms:
+      base_ang_vel:
+        func: !!python/name:ht_microduck.tasks.mdp.official_observations.base_ang_vel_imu_misaligned ''
+        params:
+          max_angle_deg: 6.0
+        noise:
+          operation: add
+          _tensor_cache: {}
+          n_min: -0.03
+          n_max: 0.03
+        clip: null
+        scale: null
+        delay_min_lag: 0
+        delay_max_lag: 1
+        delay_per_env: true
+        delay_hold_prob: 0.0
+        delay_update_period: 64
+        delay_per_env_phase: true
+        history_length: 0
+        flatten_history_dim: true
+      projected_gravity:
+        func: !!python/name:ht_microduck.tasks.mdp.official_observations.projected_gravity_imu_misaligned ''
+        params:
+          max_angle_deg: 6.0
+        noise:
+          operation: add
+          _tensor_cache: {}
+          n_min: -0.01
+          n_max: 0.01
+        clip: null
+        scale: null
+        delay_min_lag: 0
+        delay_max_lag: 1
+        delay_per_env: true
+        delay_hold_prob: 0.0
+        delay_update_period: 64
+        delay_per_env_phase: true
+        history_length: 0
+        flatten_history_dim: true
+      joint_pos:
+        func: &id001 !!python/name:mjlab.envs.mdp.observations.joint_pos_rel ''
+        params:
+          asset_cfg:
+            name: robot
+            joint_names: !!python/tuple
+            - r_hip_yaw_joint
+            - r_hip_roll_joint
+            - r_hip_pitch_joint
+            - r_calf_joint
+            - l_hip_yaw_joint
+            - l_hip_roll_joint
+            - l_hip_pitch_joint
+            - l_calf_joint
+            - neck_pitch_joint
+            - head_pitch_joint
+            - head_yaw_joint
+            - head_roll_joint
+            joint_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            body_names: null
+            body_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            geom_names: null
+            geom_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            site_names: null
+            site_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            actuator_names: null
+            actuator_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            tendon_names: null
+            tendon_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            camera_names: null
+            camera_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            light_names: null
+            light_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            material_names: null
+            material_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            texture_names: null
+            texture_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            pair_names: null
+            pair_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            preserve_order: true
+          biased: true
+        noise:
+          operation: add
+          _tensor_cache: {}
+          n_min: -0.001
+          n_max: 0.001
+        clip: null
+        scale: null
+        delay_min_lag: 0
+        delay_max_lag: 0
+        delay_per_env: true
+        delay_hold_prob: 0.0
+        delay_update_period: 0
+        delay_per_env_phase: true
+        history_length: 0
+        flatten_history_dim: true
+      joint_vel:
+        func: &id002 !!python/name:mjlab.envs.mdp.observations.joint_vel_rel ''
+        params:
+          asset_cfg:
+            name: robot
+            joint_names: !!python/tuple
+            - r_hip_yaw_joint
+            - r_hip_roll_joint
+            - r_hip_pitch_joint
+            - r_calf_joint
+            - l_hip_yaw_joint
+            - l_hip_roll_joint
+            - l_hip_pitch_joint
+            - l_calf_joint
+            - neck_pitch_joint
+            - head_pitch_joint
+            - head_yaw_joint
+            - head_roll_joint
+            - r_ankle_joint
+            - l_ankle_joint
+            joint_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            body_names: null
+            body_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            geom_names: null
+            geom_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            site_names: null
+            site_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            actuator_names: null
+            actuator_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            tendon_names: null
+            tendon_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            camera_names: null
+            camera_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            light_names: null
+            light_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            material_names: null
+            material_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            texture_names: null
+            texture_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            pair_names: null
+            pair_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            preserve_order: true
+        noise:
+          operation: add
+          _tensor_cache: {}
+          n_min: -0.25
+          n_max: 0.25
+        clip: null
+        scale: null
+        delay_min_lag: 1
+        delay_max_lag: 1
+        delay_per_env: true
+        delay_hold_prob: 0.0
+        delay_update_period: 0
+        delay_per_env_phase: true
+        history_length: 0
+        flatten_history_dim: true
+      actions:
+        func: &id003 !!python/name:ht_microduck.tasks.mdp.cyberduck_observations.clipped_last_action ''
+        params: {}
+        noise: null
+        clip: null
+        scale: null
+        delay_min_lag: 0
+        delay_max_lag: 0
+        delay_per_env: true
+        delay_hold_prob: 0.0
+        delay_update_period: 0
+        delay_per_env_phase: true
+        history_length: 0
+        flatten_history_dim: true
+    concatenate_terms: true
+    concatenate_dim: -1
+    enable_corruption: true
+    history_length: null
+    flatten_history_dim: true
+    nan_policy: disabled
+    nan_check_per_term: true
+  critic:
+    terms:
+      base_ang_vel:
+        func: !!python/name:mjlab.envs.mdp.observations.base_ang_vel ''
+        params: {}
+        noise: null
+        clip: null
+        scale: null
+        delay_min_lag: 0
+        delay_max_lag: 0
+        delay_per_env: true
+        delay_hold_prob: 0.0
+        delay_update_period: 0
+        delay_per_env_phase: true
+        history_length: 0
+        flatten_history_dim: true
+      projected_gravity:
+        func: !!python/name:mjlab.envs.mdp.observations.projected_gravity ''
+        params: {}
+        noise: null
+        clip: null
+        scale: null
+        delay_min_lag: 0
+        delay_max_lag: 0
+        delay_per_env: true
+        delay_hold_prob: 0.0
+        delay_update_period: 0
+        delay_per_env_phase: true
+        history_length: 0
+        flatten_history_dim: true
+      joint_pos:
+        func: *id001
+        params:
+          asset_cfg:
+            name: robot
+            joint_names: !!python/tuple
+            - r_hip_yaw_joint
+            - r_hip_roll_joint
+            - r_hip_pitch_joint
+            - r_calf_joint
+            - l_hip_yaw_joint
+            - l_hip_roll_joint
+            - l_hip_pitch_joint
+            - l_calf_joint
+            - neck_pitch_joint
+            - head_pitch_joint
+            - head_yaw_joint
+            - head_roll_joint
+            joint_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            body_names: null
+            body_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            geom_names: null
+            geom_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            site_names: null
+            site_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            actuator_names: null
+            actuator_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            tendon_names: null
+            tendon_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            camera_names: null
+            camera_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            light_names: null
+            light_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            material_names: null
+            material_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            texture_names: null
+            texture_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            pair_names: null
+            pair_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            preserve_order: true
+        noise: null
+        clip: null
+        scale: null
+        delay_min_lag: 0
+        delay_max_lag: 0
+        delay_per_env: true
+        delay_hold_prob: 0.0
+        delay_update_period: 0
+        delay_per_env_phase: true
+        history_length: 0
+        flatten_history_dim: true
+      joint_vel:
+        func: *id002
+        params:
+          asset_cfg:
+            name: robot
+            joint_names: !!python/tuple
+            - r_hip_yaw_joint
+            - r_hip_roll_joint
+            - r_hip_pitch_joint
+            - r_calf_joint
+            - l_hip_yaw_joint
+            - l_hip_roll_joint
+            - l_hip_pitch_joint
+            - l_calf_joint
+            - neck_pitch_joint
+            - head_pitch_joint
+            - head_yaw_joint
+            - head_roll_joint
+            - r_ankle_joint
+            - l_ankle_joint
+            joint_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            body_names: null
+            body_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            geom_names: null
+            geom_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            site_names: null
+            site_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            actuator_names: null
+            actuator_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            tendon_names: null
+            tendon_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            camera_names: null
+            camera_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            light_names: null
+            light_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            material_names: null
+            material_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            texture_names: null
+            texture_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            pair_names: null
+            pair_ids: !!python/object/apply:builtins.slice
+            - null
+            - null
+            - null
+            preserve_order: true
+        noise: null
+        clip: null
+        scale: null
+        delay_min_lag: 0
+        delay_max_lag: 0
+        delay_per_env: true
+        delay_hold_prob: 0.0
+        delay_update_period: 0
+        delay_per_env_phase: true
+        history_length: 0
+        flatten_history_dim: true
+      actions:
+        func: *id003
+        params: {}
+        noise: null
+        clip: null
+        scale: null
+        delay_min_lag: 0
+        delay_max_lag: 0
+        delay_per_env: true
+        delay_hold_prob: 0.0
+        delay_update_period: 0
+        delay_per_env_phase: true
+        history_length: 0
+        flatten_history_dim: true
+      base_lin_vel:
+        func: !!python/name:mjlab.envs.mdp.observations.base_lin_vel ''
+        params: {}
+        noise: null
+        clip: null
+        scale: null
+        delay_min_lag: 0
+        delay_max_lag: 0
+        delay_per_env: true
+        delay_hold_prob: 0.0
+        delay_update_period: 0
+        delay_per_env_phase: true
+        history_length: 0
+        flatten_history_dim: true
+      wheel_contact:
+        func: !!python/name:ht_microduck.tasks.mdp.cyberduck_observations.wheel_contact ''
+        params:
+          sensor_name: wheel_ground_contact
+        noise: null
+        clip: null
+        scale: null
+        delay_min_lag: 0
+        delay_max_lag: 0
+        delay_per_env: true
+        delay_hold_prob: 0.0
+        delay_update_period: 0
+        delay_per_env_phase: true
+        history_length: 0
+        flatten_history_dim: true
+    concatenate_terms: true
+    concatenate_dim: -1
+    enable_corruption: false
+    history_length: null
+    flatten_history_dim: true
+    nan_policy: disabled
+    nan_check_per_term: true
+actions:
+  joint_pos:
+    entity_name: robot
+    clip: null
+    transmission_type: !!python/object/apply:mjlab.actuator.actuator.TransmissionType
+    - joint
+    actuator_names: !!python/tuple
+    - r_hip_yaw_joint
+    - r_hip_roll_joint
+    - r_hip_pitch_joint
+    - r_calf_joint
+    - l_hip_yaw_joint
+    - l_hip_roll_joint
+    - l_hip_pitch_joint
+    - l_calf_joint
+    - neck_pitch_joint
+    - head_pitch_joint
+    - head_yaw_joint
+    - head_roll_joint
+    scale: 1.0
+    offset: 0.0
+    preserve_order: true
+    use_default_offset: true
+    bound_targets: true
+    raw_action_limit: null
+  joint_vel:
+    entity_name: robot
+    clip:
+      .*: !!python/tuple
+      - -20.0
+      - 20.0
+    transmission_type: !!python/object/apply:mjlab.actuator.actuator.TransmissionType
+    - joint
+    actuator_names: !!python/tuple
+    - r_ankle_joint
+    - l_ankle_joint
+    scale: 10.0
+    offset: 0.0
+    preserve_order: true
+    use_default_offset: true
+    raw_action_limit: 2.0
+events:
+  htdw3532_init:
+    func: !!python/name:ht_microduck.actuator.HTDW_3532_02_DNE.nt_actuator.htdw3532_init ''
+    params: {}
+    mode: startup
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+  bam_init:
+    func: !!python/name:ht_microduck.actuator.HD_1910_C001.bam_actuator.bam_init ''
+    params: {}
+    mode: startup
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+  standup_geometry:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_events.init_standup_geometry ''
+    params: {}
+    mode: startup
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+  foot_friction:
+    func: !!python/name:mjlab.envs.mdp.dr.geom.geom_friction ''
+    params:
+      asset_cfg:
+        name: robot
+        joint_names: null
+        joint_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        body_names: null
+        body_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        geom_names: !!python/tuple
+        - r_roller_back_collision
+        - r_roller_front_collision
+        - l_roller_back_collision
+        - l_roller_front_collision
+        geom_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        site_names: null
+        site_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        actuator_names: null
+        actuator_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        tendon_names: null
+        tendon_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        camera_names: null
+        camera_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        light_names: null
+        light_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        material_names: null
+        material_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        texture_names: null
+        texture_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        pair_names: null
+        pair_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        preserve_order: false
+      operation: abs
+      ranges: !!python/tuple
+      - 0.7
+      - 1.3
+      shared_random: true
+    mode: startup
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+  encoder_bias:
+    func: !!python/name:mjlab.envs.mdp.dr.joint.encoder_bias ''
+    params:
+      asset_cfg:
+        name: robot
+        joint_names: !!python/tuple
+        - r_hip_yaw_joint
+        - r_hip_roll_joint
+        - r_hip_pitch_joint
+        - r_calf_joint
+        - l_hip_yaw_joint
+        - l_hip_roll_joint
+        - l_hip_pitch_joint
+        - l_calf_joint
+        - neck_pitch_joint
+        - head_pitch_joint
+        - head_yaw_joint
+        - head_roll_joint
+        joint_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        body_names: null
+        body_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        geom_names: null
+        geom_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        site_names: null
+        site_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        actuator_names: null
+        actuator_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        tendon_names: null
+        tendon_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        camera_names: null
+        camera_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        light_names: null
+        light_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        material_names: null
+        material_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        texture_names: null
+        texture_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        pair_names: null
+        pair_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        preserve_order: true
+      bias_range: !!python/tuple
+      - -0.015
+      - 0.015
+    mode: startup
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+  base_com:
+    func: &id004 !!python/name:mjlab.envs.mdp.dr.body.body_com_offset ''
+    params:
+      asset_cfg:
+        name: robot
+        joint_names: null
+        joint_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        body_names: !!python/tuple
+        - base_link
+        body_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        geom_names: null
+        geom_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        site_names: null
+        site_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        actuator_names: null
+        actuator_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        tendon_names: null
+        tendon_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        camera_names: null
+        camera_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        light_names: null
+        light_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        material_names: null
+        material_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        texture_names: null
+        texture_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        pair_names: null
+        pair_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        preserve_order: false
+      operation: add
+      ranges:
+        0: !!python/tuple
+        - -0.025
+        - 0.025
+        1: !!python/tuple
+        - -0.025
+        - 0.025
+        2: !!python/tuple
+        - -0.03
+        - 0.03
+    mode: startup
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+  randomize_mass_inertia:
+    func: !!python/name:mjlab.envs.mdp.dr.body.pseudo_inertia ''
+    params:
+      asset_cfg:
+        name: robot
+        joint_names: null
+        joint_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        body_names: !!python/tuple
+        - base_link
+        body_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        geom_names: null
+        geom_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        site_names: null
+        site_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        actuator_names: null
+        actuator_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        tendon_names: null
+        tendon_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        camera_names: null
+        camera_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        light_names: null
+        light_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        material_names: null
+        material_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        texture_names: null
+        texture_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        pair_names: null
+        pair_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        preserve_order: false
+      alpha_range: !!python/tuple
+      - -0.02564664719377529
+      - 0.024395082084716024
+    mode: startup
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+  reset_scene:
+    func: !!python/name:mjlab.envs.mdp.events.reset_scene_to_default ''
+    params: {}
+    mode: reset
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+  randomize_com:
+    func: *id004
+    params:
+      asset_cfg:
+        name: robot
+        joint_names: null
+        joint_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        body_names: !!python/tuple
+        - base_link
+        body_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        geom_names: null
+        geom_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        site_names: null
+        site_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        actuator_names: null
+        actuator_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        tendon_names: null
+        tendon_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        camera_names: null
+        camera_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        light_names: null
+        light_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        material_names: null
+        material_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        texture_names: null
+        texture_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        pair_names: null
+        pair_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        preserve_order: false
+      operation: add
+      ranges: !!python/tuple
+      - -0.003
+      - 0.003
+    mode: reset
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+  randomize_head_com:
+    func: *id004
+    params:
+      asset_cfg:
+        name: robot
+        joint_names: null
+        joint_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        body_names: !!python/tuple
+        - neck_pitch_link
+        - head_pitch_link
+        - head_yaw_link
+        - head_roll_link
+        - r_hip_yaw_link
+        body_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        geom_names: null
+        geom_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        site_names: null
+        site_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        actuator_names: null
+        actuator_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        tendon_names: null
+        tendon_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        camera_names: null
+        camera_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        light_names: null
+        light_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        material_names: null
+        material_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        texture_names: null
+        texture_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        pair_names: null
+        pair_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        preserve_order: false
+      operation: add
+      ranges: !!python/tuple
+      - -0.003
+      - 0.003
+    mode: reset
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+  randomize_armature:
+    func: !!python/name:mjlab.envs.mdp.dr.joint.joint_armature ''
+    params:
+      asset_cfg:
+        name: robot
+        joint_names: !!python/tuple
+        - r_hip_yaw_joint
+        - r_hip_roll_joint
+        - r_hip_pitch_joint
+        - r_calf_joint
+        - l_hip_yaw_joint
+        - l_hip_roll_joint
+        - l_hip_pitch_joint
+        - l_calf_joint
+        - neck_pitch_joint
+        - head_pitch_joint
+        - head_yaw_joint
+        - head_roll_joint
+        - r_ankle_joint
+        - l_ankle_joint
+        joint_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        body_names: null
+        body_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        geom_names: null
+        geom_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        site_names: null
+        site_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        actuator_names: null
+        actuator_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        tendon_names: null
+        tendon_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        camera_names: null
+        camera_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        light_names: null
+        light_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        material_names: null
+        material_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        texture_names: null
+        texture_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        pair_names: null
+        pair_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        preserve_order: true
+      operation: scale
+      ranges: !!python/tuple
+      - 0.9
+      - 1.1
+    mode: reset
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+  randomize_joint_friction:
+    func: !!python/name:ht_microduck.tasks.mdp.official_events.randomize_bam_friction ''
+    params:
+      scale_range: !!python/tuple
+      - 0.9
+      - 1.1
+    mode: reset
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+  set_standup_state:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_events.reset_standup_state ''
+    params:
+      spawn_weights: !!python/tuple
+      - 0.4
+      - 0.3
+      - 0.2
+      - 0.1
+      - 0.0
+      joint_noise_std: 0.08
+    mode: reset
+    interval_range_s: null
+    is_global_time: false
+    min_step_count_between_reset: 0
+seed: 0
+sim:
+  nconmax: 128
+  njmax: 1500
+  contact_sensor_maxmatch: 64
+  broadphase: null
+  broadphase_filter: null
+  ls_parallel: null
+  mujoco:
+    timestep: 0.002
+    integrator: implicitfast
+    impratio: 1.0
+    cone: pyramidal
+    jacobian: auto
+    solver: newton
+    iterations: 100
+    tolerance: 1.0e-08
+    ls_iterations: 50
+    ls_tolerance: 0.01
+    ccd_iterations: 50
+    gravity: !!python/tuple
+    - 0.0
+    - 0.0
+    - -9.81
+    disableflags: !!python/tuple []
+    enableflags: !!python/tuple []
+  nan_guard:
+    enabled: false
+    buffer_size: 100
+    output_dir: /tmp/mjlab/nan_dumps
+    max_envs_to_dump: 5
+viewer:
+  origin_type: !!python/object/apply:mjlab.viewer.viewer_config.OriginType
+  - 1
+  height: 240
+  width: 320
+  enable_reflections: true
+  enable_shadows: true
+  geom_group: !!python/tuple
+  - 1
+  - 1
+  - 1
+  - 0
+  - 0
+  - 0
+  site_group: !!python/tuple
+  - 1
+  - 1
+  - 1
+  - 0
+  - 0
+  - 0
+  env_idx: 0
+  max_extra_envs: 2
+  reward_bar_max_terms: 20
+  distance: 1.2
+  elevation: -45.0
+  azimuth: 90.0
+  fovy: null
+  lookat: !!python/tuple
+  - 0.0
+  - 0.0
+  - 0.0
+  entity_name: robot
+  body_name: base_link
+episode_length_s: 6.0
+rewards:
+  height:
+    func: &id005 !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_height ''
+    params:
+      std: 0.04
+      target_height: 0.2416
+    weight: 2.0
+  height_sharp:
+    func: *id005
+    params:
+      std: 0.015
+      target_height: 0.2416
+    weight: 1.5
+  upright:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_upright ''
+    params:
+      upright_std: 0.4
+    weight: 1.5
+  standing_composite:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_standing_composite ''
+    params:
+      height_std: 0.04
+      upright_std: 0.4
+      pose_std: 0.4
+      target_height: 0.2416
+    weight: 3.5
+  stance_pose:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_stance_pose ''
+    params:
+      pose_std: 0.12
+      target_height: 0.2416
+    weight: 2.0
+  yaw_roll_pose:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_yaw_roll_pose ''
+    params:
+      pose_std: 0.1
+      target_height: 0.2416
+    weight: 3.0
+  com_height:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_com_height ''
+    params:
+      height_std: 0.03
+      target_height: 0.1974
+    weight: 1.0
+  rise_velocity:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_rise_velocity ''
+    params:
+      max_height: 0.2416
+    weight: 1.0
+  rise_potential:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_rise_potential ''
+    params: {}
+    weight: 2.0
+  flat_recovery:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_flat_recovery ''
+    params:
+      tilt_full_deg: 100.0
+      tilt_zero_deg: 20.0
+    weight: 1.5
+  rise_continuity:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_rise_continuity ''
+    params:
+      tilt_full_deg: 100.0
+      tilt_zero_deg: 20.0
+    weight: 4.0
+  settle:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_settle ''
+    params:
+      max_linear_speed: 0.2
+      max_angular_speed: 0.8
+    weight: 3.0
+  stand_still:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_stand_still ''
+    params:
+      speed_std: 0.5
+    weight: 2.0
+  stand_action_rate:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_stand_action_rate ''
+    params:
+      joint_std: 0.3
+    weight: 0.0
+  stand_angvel:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_stand_angvel ''
+    params:
+      max_angular_speed: 0.8
+    weight: -0.5
+  both_sides:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_both_sides ''
+    params: {}
+    weight: 1.0
+  head_upright:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_head_upright ''
+    params: {}
+    weight: 1.0
+  neck_pose_l2:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_neck_pose_l2 ''
+    params: {}
+    weight: -0.6
+  action_rate_l2:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_bounded_action_rate ''
+    params:
+      delta_max: 5.0
+    weight: -0.1
+  joint_torque_rate_l2:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_joint_torque_rate_l2 ''
+    params: {}
+    weight: 0.0
+  body_ang_vel:
+    func: !!python/name:mjlab.tasks.velocity.mdp.rewards.body_angular_velocity_penalty ''
+    params:
+      asset_cfg:
+        name: robot
+        joint_names: null
+        joint_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        body_names: !!python/tuple
+        - base_link
+        body_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        geom_names: null
+        geom_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        site_names: null
+        site_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        actuator_names: null
+        actuator_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        tendon_names: null
+        tendon_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        camera_names: null
+        camera_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        light_names: null
+        light_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        material_names: null
+        material_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        texture_names: null
+        texture_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        pair_names: null
+        pair_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        preserve_order: false
+    weight: -0.01
+  dof_pos_limits:
+    func: !!python/name:mjlab.envs.mdp.rewards.joint_pos_limits ''
+    params:
+      asset_cfg:
+        name: robot
+        joint_names: !!python/tuple
+        - r_hip_yaw_joint
+        - r_hip_roll_joint
+        - r_hip_pitch_joint
+        - r_calf_joint
+        - l_hip_yaw_joint
+        - l_hip_roll_joint
+        - l_hip_pitch_joint
+        - l_calf_joint
+        - neck_pitch_joint
+        - head_pitch_joint
+        - head_yaw_joint
+        - head_roll_joint
+        joint_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        body_names: null
+        body_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        geom_names: null
+        geom_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        site_names: null
+        site_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        actuator_names: null
+        actuator_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        tendon_names: null
+        tendon_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        camera_names: null
+        camera_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        light_names: null
+        light_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        material_names: null
+        material_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        texture_names: null
+        texture_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        pair_names: null
+        pair_ids: !!python/object/apply:builtins.slice
+        - null
+        - null
+        - null
+        preserve_order: true
+    weight: -1.0
+  gentle_rise:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_rewards.standup_trunk_vertical_accel ''
+    params: {}
+    weight: 0.002
+  self_collisions:
+    func: !!python/name:mjlab.tasks.velocity.mdp.rewards.self_collision_cost ''
+    params:
+      sensor_name: standup_self_contact
+    weight: -0.5
+terminations:
+  time_out:
+    func: !!python/name:mjlab.envs.mdp.terminations.time_out ''
+    params: {}
+    time_out: true
+  nan_state:
+    func: !!python/name:ht_microduck.tasks.mdp.official_events.robot_state_is_nan ''
+    params: {}
+    time_out: false
+commands: {}
+curriculum:
+  standup_spawn_mix:
+    func: !!python/name:ht_microduck.tasks.config.cyberduck_v2.flat_standup_env_cfg._spawn_weight_curriculum ''
+    params:
+      event_name: set_standup_state
+      weight_stages: !!python/tuple
+      - step: 0
+        weights: !!python/tuple
+        - 0.4
+        - 0.3
+        - 0.2
+        - 0.1
+        - 0.0
+      - step: 14400
+        weights: !!python/tuple
+        - 0.3
+        - 0.25
+        - 0.25
+        - 0.15
+        - 0.05
+      - step: 36000
+        weights: !!python/tuple
+        - 0.2
+        - 0.2
+        - 0.25
+        - 0.2
+        - 0.15
+      - step: 60000
+        weights: !!python/tuple
+        - 0.15
+        - 0.15
+        - 0.25
+        - 0.25
+        - 0.2
+  settle_weight:
+    func: &id006 !!python/name:ht_microduck.tasks.mdp.official_curriculums.reward_weight_ramp ''
+    params:
+      reward_name: settle
+      start_weight: 3.0
+      end_weight: 10.0
+      ramp_steps: 7200
+      delay_steps: 14400
+  stand_still_weight:
+    func: *id006
+    params:
+      reward_name: stand_still
+      start_weight: 2.0
+      end_weight: 6.0
+      ramp_steps: 7200
+      delay_steps: 9600
+  stand_action_rate_weight:
+    func: *id006
+    params:
+      reward_name: stand_action_rate
+      start_weight: 0.0
+      end_weight: 8.0
+      ramp_steps: 9600
+      delay_steps: 14400
+  stand_angvel_weight:
+    func: *id006
+    params:
+      reward_name: stand_angvel
+      start_weight: -0.5
+      end_weight: -1.5
+      ramp_steps: 9600
+      delay_steps: 14400
+  neck_pose_weight:
+    func: *id006
+    params:
+      reward_name: neck_pose_l2
+      start_weight: -0.6
+      end_weight: -1.6
+      ramp_steps: 7200
+      delay_steps: 7200
+  head_upright_weight:
+    func: *id006
+    params:
+      reward_name: head_upright
+      start_weight: 1.0
+      end_weight: 2.5
+      ramp_steps: 7200
+      delay_steps: 7200
+  yaw_roll_pose_weight:
+    func: *id006
+    params:
+      reward_name: yaw_roll_pose
+      start_weight: 3.0
+      end_weight: 8.0
+      ramp_steps: 9600
+      delay_steps: 4800
+  stance_pose_weight:
+    func: *id006
+    params:
+      reward_name: stance_pose
+      start_weight: 2.0
+      end_weight: 10.0
+      ramp_steps: 14400
+      delay_steps: 0
+  action_rate_weight:
+    func: *id006
+    params:
+      reward_name: action_rate_l2
+      start_weight: -0.1
+      end_weight: -0.4
+      ramp_steps: 14400
+      delay_steps: 0
+  torque_rate_weight:
+    func: &id007 !!python/name:ht_microduck.tasks.mdp.official_curriculums.reward_weight ''
+    params:
+      reward_name: joint_torque_rate_l2
+      weight_stages:
+      - step: 0
+        weight: 0.0
+      - step: 60000
+        weight: -0.0005
+      - step: 84000
+        weight: -0.001
+  rise_potential_weight:
+    func: *id007
+    params:
+      reward_name: rise_potential
+      weight_stages:
+      - step: 0
+        weight: 2.0
+      - step: 36000
+        weight: 3.0
+      - step: 72000
+        weight: 4.0
+metrics:
+  standup_success:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_metrics.standup_success ''
+    params: {}
+    per_substep: false
+    reduce: max
+  standup_height_error:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_metrics.standup_height_metric ''
+    params: {}
+    per_substep: false
+    reduce: mean
+  standup_tilt:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_metrics.standup_tilt_metric ''
+    params: {}
+    per_substep: false
+    reduce: mean
+  standup_pose_rms:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_metrics.standup_pose_metric ''
+    params: {}
+    per_substep: false
+    reduce: mean
+  standup_both_sides:
+    func: !!python/name:ht_microduck.tasks.mdp.cyberduck_standup_metrics.standup_both_sides_metric ''
+    params: {}
+    per_substep: false
+    reduce: mean
+recorders: {}
+is_finite_horizon: false
+auto_reset: true
+scale_rewards_by_dt: true

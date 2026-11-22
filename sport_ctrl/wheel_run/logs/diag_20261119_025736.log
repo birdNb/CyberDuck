@@ -1,0 +1,10 @@
+02:57:36 排查日志 /home/aidlux/cyberDuck/motor/wheel_run/logs/diag_20261119_025736.log
+02:57:36 can tx_packets=21536 rx_packets=24761 tx_errors=0 rx_errors=0 tx_dropped=0 rx_dropped=0
+02:57:36 主循环卡住 phase=init 已258ms 杆+0.00 轮指令 左+0.00 右+0.00 发送失败0 tx_packets=21562 rx_packets=24761 tx_errors=0 rx_errors=0 tx_dropped=0 rx_dropped=0
+02:57:37 主循环卡住 phase=init 已761ms 杆+0.00 轮指令 左+0.00 右+0.00 发送失败0 tx_packets=21612 rx_packets=24761 tx_errors=0 rx_errors=0 tx_dropped=0 rx_dropped=0
+02:57:37 喇叭 wpctl 失败 Command '['wpctl', 'get-volume', '@DEFAULT_AUDIO_SINK@']' timed out after 1.0 seconds
+02:57:37 轮速在独立进程。主循环停住时摇杆和 B 仍由轮速进程处理。
+02:57:37 主循环恢复 phase=sleep
+13:00:56 慢 log 53ms 杆-0.00 轮指令 左+0.00 右+0.00
+13:01:32 驾驶循环结束
+13:01:32 排查日志关闭

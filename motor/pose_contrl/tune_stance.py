@@ -33,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from pose import command_position, load_config, move_to_pose, open_bus
 
-CONFIG = Path(__file__).with_name("pose_config.yaml")
+CONFIG = Path(__file__).resolve().parents[2] / "sport_ctrl" / "pose_contrl" / "pose_config.yaml"
 IDS = (2, 3, 4, 5, 7, 8, 9, 10)
 NAMES = {
     2: "右膝",

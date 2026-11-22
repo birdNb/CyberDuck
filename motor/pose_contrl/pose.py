@@ -36,7 +36,7 @@ except ImportError:
     yaml = None
 
 DEG = math.pi / 180.0
-CONFIG_PATH = Path(__file__).with_name("pose_config.yaml")
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "sport_ctrl" / "pose_contrl" / "pose_config.yaml"
 POSE_ORDER = ("stand", "squat", "fold", "unload", "lean_left", "lean_right", "damp", "release")
 UNLOAD_POSE = "unload"
 MOTOR_DIR = Path(__file__).resolve().parents[1]
@@ -115,7 +115,7 @@ def pose_spec(cfg: dict, name: str) -> dict:
     return spec
 
 
-def open_bus(cfg: dict) -> tuple[MotorBus, list[int]]:
+def open_bus(cfg: dict, on_step=None) -> tuple[MotorBus, list[int]]:
     iface = str(cfg.get("interface", "can0"))
     ensure_can(iface)
     down = iface_down_reason(iface)
@@ -126,11 +126,11 @@ def open_bus(cfg: dict) -> tuple[MotorBus, list[int]]:
     bus = MotorBus(iface)
     for mid in ids:
         bus.add_motor(Motor(mid, motor_type, f"J{mid}"))
-    found = bus.scan(ids, timeout_each=0.06)
+    found = bus.scan(ids, timeout_each=0.05, on_step=on_step)
     missing = [i for i in ids if i not in found]
     if missing:
-        time.sleep(0.2)
-        found = sorted(set(found) | set(bus.scan(missing, timeout_each=0.1)))
+        time.sleep(0.05)
+        found = sorted(set(found) | set(bus.scan(missing, timeout_each=0.07, on_step=on_step)))
         missing = [i for i in ids if i not in found]
     if missing:
         print(f"未应答，本次跳过: {missing}")
@@ -420,7 +420,13 @@ def hold_until_reached(
             if err > tol_for(joint_id):
                 far.append(joint_id)
                 measured.append((joint_id, err))
-        if (
+        if stall_s is not None and (missing or not fresh):
+            if stall_from is None:
+                stall_from = time.monotonic()
+            elif time.monotonic() - stall_from >= stall_s:
+                print(f"{label}没有等来关节反馈，停止等待并卸力。", flush=True)
+                return True
+        elif (
             stall_s is not None
             and measured
             and not missing

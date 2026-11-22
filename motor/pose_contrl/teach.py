@@ -37,6 +37,7 @@ from pose import (
 HZ = 30.0
 PLAY_HZ = 100.0
 DIR = Path(__file__).with_name("teachings")
+CONFIG = Path(__file__).resolve().parents[2] / "sport_ctrl" / "pose_contrl" / "pose_config.yaml"
 NAME_OK = re.compile(r"^[\w\-\u4e00-\u9fff]+$", re.UNICODE)
 
 
@@ -272,7 +273,7 @@ def play_saved(name: str) -> int:
         raise SystemExit(f"没有 {path}")
     ids, frames, times = load_clip(path)
     summary(frames, ids)
-    cfg = load_config(Path(__file__).with_name("pose_config.yaml"))
+    cfg = load_config(CONFIG)
     bus, online = open_bus(cfg)
     missing = [mid for mid in ids if mid not in online]
     if missing:
@@ -293,7 +294,7 @@ def play_saved(name: str) -> int:
 
 
 def session() -> int:
-    cfg = load_config(Path(__file__).with_name("pose_config.yaml"))
+    cfg = load_config(CONFIG)
     bus, ids = open_bus(cfg)
     damp_nm = 0.08
     hold_nm = abs(float(cfg.get("torque_nm", 1.2)))

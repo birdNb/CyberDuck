@@ -48,15 +48,23 @@ ADDRS = (0x6A, 0x6B)
 
 def _load_mount() -> tuple[tuple[float, float, float], ...]:
     """R @ v_sensor = v_base_link。文件缺失时用单位阵，不再套官方鸭子的安装旋转。"""
-    path = os.path.join(os.path.dirname(DIR), "locomotion", "config", "imu_mount.json")
+    root = os.path.dirname(DIR)
+    paths = (
+        os.path.join(root, "sport_ctrl", "locomotion", "config", "imu_mount.json"),
+        os.path.join(root, "locomotion", "config", "imu_mount.json"),
+    )
     try:
         import json
 
-        with open(path, encoding="utf-8") as f:
-            rows = json.load(f)["R"]
-        return tuple(tuple(float(v) for v in row) for row in rows)
+        for path in paths:
+            if not os.path.isfile(path):
+                continue
+            with open(path, encoding="utf-8") as f:
+                rows = json.load(f)["R"]
+            return tuple(tuple(float(v) for v in row) for row in rows)
     except (OSError, KeyError, TypeError, ValueError):
-        return ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+        pass
+    return ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
 
 
 _MOUNT = _load_mount()
