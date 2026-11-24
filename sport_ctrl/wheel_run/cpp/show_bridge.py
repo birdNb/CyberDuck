@@ -237,14 +237,14 @@ def main() -> int:
                 elif head is not None:
                     drop_head()
 
-            fwd, turn, spin, _boost, _height, _lt, rt_on = pad.poll()
+            fwd, turn, spin, _boost, _height, lt_on, rt_on = pad.poll()
             bogus = Gamepad.sticks_look_bogus(fwd, turn, spin)
             if bogus:
                 pad.button_a = False
                 pad.button_x = False
                 pad.button_rb = False
             hat_y = pad.axis[7] if len(pad.axis) > 7 else 0.0
-            if not bogus and volume.apply_hat(hat_y, now):
+            if not bogus and not lt_on and volume.apply_hat(hat_y, now):
                 print(f"音量 {volume.percent():.0f}%", flush=True)
             if pad.button_x and not bogus:
                 pad.button_x = False

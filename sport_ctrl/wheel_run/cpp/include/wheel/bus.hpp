@@ -46,7 +46,8 @@ public:
     bool send(int id, const uint8_t* data, int len);
     bool send_stop(int id);
     bool send_zero(int id);
-    bool send_position(int id, int16_t raw_pos, float vel_rad_s, float torque_nm);
+    // query=0x0E 时电机对本次位置指令回状态，实现“一发一收”50 Hz 同步，不必再另发 0x00/0x0E。
+    bool send_position(int id, int16_t raw_pos, float vel_rad_s, float torque_nm, uint8_t query = 0x00);
     bool send_velocity(int id, float vel_rad_s);
     bool send_status(int id);
     bool send_temp(int id);

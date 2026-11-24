@@ -1,0 +1,88 @@
+{
+  "bundle": "cyberduck_v2_roulade_hard150_2997",
+  "task": "CyberDuckV2-Flat-Roulade-Recovery-Speed150",
+  "description": "Recovery + 对称模型 + head_pitch 收头 + 嘴部惩罚 + 150 RPM 仿真硬裁剪 + 动作幅度惩罚的继续训练模型",
+  "source_run": "logs/rsl_rl/cyberduck_v2_roulade_recovery_speed150/2026-11-26_15-31-22_recovery_speed150_hard150_from1998",
+  "source_checkpoint": "model_2997.pt",
+  "iteration": 2997,
+  "checkpoint": "model.pt",
+  "sha256": "78aea84f890f840a0267b8112514da2e4637e6e02ab7d559acc264a86435c548",
+  "contract": "cyberduck_roulade_recovery_obs48_v4",
+  "interface": {
+    "actor_observation_dim": 48,
+    "critic_observation_dim": 55,
+    "action_dim": 14,
+    "control_hz": 50,
+    "episode_length_s": 5.0
+  },
+  "training": {
+    "num_envs": 4096,
+    "seed": 0,
+    "max_iterations": 1000,
+    "learning_rate": 0.0001,
+    "resume": true,
+    "initial_checkpoint": "head_tuck_from999/model_1998.pt",
+    "hard_joint_speed_clamp_rpm": 150.0,
+    "rewards": [
+      "Recovery 原始奖励",
+      "joint_speed_limit -0.5",
+      "action_amplitude_l2 -0.05",
+      "head_tuck +1.5（只约束 head_pitch）",
+      "mouth_contact_penalty -1.0"
+    ]
+  },
+  "evaluation": {
+    "num_envs": 32,
+    "steps": 260,
+    "yaw_deg": 0,
+    "success_episodes": 32,
+    "success_rate": 1.0,
+    "head_contact_rate": 1.0,
+    "mean_max_angle_deg": 352.69620870066205,
+    "min_max_angle_deg": 345.0483707549179,
+    "max_max_angle_deg": 368.0963523355057,
+    "mean_max_tilt_deg": 150.51697393533254,
+    "mean_min_height_m": 0.08342262823134661,
+    "mean_final_height_m": 0.1593710700981319,
+    "files": [
+      "metrics/eval_yaw0_32env.json",
+      "metrics/rollout_250steps.csv"
+    ]
+  },
+  "data_ranges": {
+    "observed_speed_max_rpm": 152.29961275445768,
+    "observed_steps_over_150rpm": 54,
+    "actual_speed_max_rpm": 149.99999734394112,
+    "actual_steps_over_150rpm": 0,
+    "actual_joint_speed_max_joint": "l_hip_pitch_joint",
+    "action_abs_mean": 0.7136878977322153,
+    "action_abs_max": 5.664179801940918,
+    "action_abs_max_joint": "head_roll",
+    "actual_torque_abs_max_nm": 2.0,
+    "actual_steps_over_0_6nm": 249,
+    "actual_duration_over_0_6nm_s": 4.98,
+    "speed_steps_over_60rpm": 135,
+    "speed_duration_over_60rpm_s": 2.7,
+    "speed_steps_over_no_load": 0,
+    "files": [
+      "metrics/actuator_safety.json",
+      "metrics/actuator_trace.csv"
+    ]
+  },
+  "status": {
+    "success_rate": 1.0,
+    "sim_joint_speed_150rpm_compliant": true,
+    "hard_clamped_simulation": true,
+    "physical_driver_verified": false,
+    "action_amplitude_small": false,
+    "torque_limit_nm": 2.0
+  },
+  "warnings": [
+    "150 RPM 是仿真环境里的 qvel 硬裁剪，不是电机驱动器模型；实机仍需驱动器速度/电流限幅。",
+    "CSV 观测速度峰值 152.3 RPM，超过 150； actuator_trace 的实际裁剪后峰值为 149.999997 RPM，0 步超过 150。",
+    "动作幅度仍偏大：均值 0.714，最大 5.664；动作幅度惩罚没有压到小范围。",
+    "仿真力矩峰值为 2.0 N·m；249/250 个控制步有任一路超过连续额定 0.6 N·m，热/电流未验证。",
+    "头部/颈部姿态问题仍存在；此模型使用 head_pitch 收头奖励和嘴部接触惩罚训练。",
+    "这是仿真 .pt 检查点，不是 ONNX，也未做实机标定。"
+  ]
+}

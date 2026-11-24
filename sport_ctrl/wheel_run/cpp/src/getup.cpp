@@ -1,5 +1,7 @@
 #include "wheel/getup.hpp"
 
+#include "wheel/policy_log.hpp"
+
 #include <cmath>
 #include <cstdint>
 #include <fstream>
@@ -79,6 +81,24 @@ bool read_exact(std::ifstream& in, void* dst, size_t n) {
 }
 
 }  // namespace
+
+constexpr const char* kGetupObs[46] = {
+    "gyro_x", "gyro_y", "gyro_z", "grav_x", "grav_y", "grav_z",
+    "q_r_hip_yaw", "q_r_hip_roll", "q_r_hip_pitch", "q_r_calf",
+    "q_l_hip_yaw", "q_l_hip_roll", "q_l_hip_pitch", "q_l_calf",
+    "q_neck_pitch", "q_head_pitch", "q_head_yaw", "q_head_roll",
+    "qd_r_hip_yaw", "qd_r_hip_roll", "qd_r_hip_pitch", "qd_r_calf",
+    "qd_l_hip_yaw", "qd_l_hip_roll", "qd_l_hip_pitch", "qd_l_calf",
+    "qd_neck_pitch", "qd_head_pitch", "qd_head_yaw", "qd_head_roll", "qd_r_ankle", "qd_l_ankle",
+    "prev_r_hip_yaw", "prev_r_hip_roll", "prev_r_hip_pitch", "prev_r_calf",
+    "prev_l_hip_yaw", "prev_l_hip_roll", "prev_l_hip_pitch", "prev_l_calf",
+    "prev_neck_pitch", "prev_head_pitch", "prev_head_yaw", "prev_head_roll", "prev_r_ankle", "prev_l_ankle",
+};
+constexpr const char* kGetupAct[14] = {
+    "act_r_hip_yaw", "act_r_hip_roll", "act_r_hip_pitch", "act_r_calf",
+    "act_l_hip_yaw", "act_l_hip_roll", "act_l_hip_pitch", "act_l_calf",
+    "act_neck_pitch", "act_head_pitch", "act_head_yaw", "act_head_roll", "act_r_ankle", "act_l_ankle",
+};
 
 bool Getup::load(const std::string& path) {
     ready_ = false;
@@ -175,6 +195,8 @@ void Getup::step(float dt, const GetupSense& in, GetupGoal& out) {
     for (int i = 0; i < 12; ++i) obs[6 + i] = encode_pos(q[i], kJoints[i].lo, kJoints[i].hi, kJoints[i].latent);
     for (int i = 0; i < 14; ++i) obs[18 + i] = qd[i];
     for (int i = 0; i < 14; ++i) obs[32 + i] = last_action_[i];
+    float raw[46];
+    for (int i = 0; i < 46; ++i) raw[i] = obs[i];
     for (int i = 0; i < 46; ++i) obs[i] = (obs[i] - mean_[i]) / (std_[i] + kNormEps);
 
     float h0[512];
@@ -190,6 +212,7 @@ void Getup::step(float dt, const GetupSense& in, GetupGoal& out) {
     if (act[13] > kWheelLimit) act[13] = kWheelLimit;
     if (act[13] < -kWheelLimit) act[13] = -kWheelLimit;
     for (int i = 0; i < 14; ++i) last_action_[i] = act[i];
+    if (active_) log_policy_run("getup", kGetupObs, 46, raw, kGetupAct, 14, act);
 
     out.active = active_;
     if (!active_) return;

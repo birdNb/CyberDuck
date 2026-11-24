@@ -9,6 +9,7 @@ namespace wheel {
 constexpr double kTwoPi = 6.283185307179586;
 constexpr float kDeadzone = 0.12f;
 constexpr float kSpeedArmS = 3.f;
+constexpr float kBootArmS = 3.f;  // 上电扫完后再等一会，PCAN-USB 才稳
 constexpr float kYHoldS = 1.f;
 constexpr float kRollRateDegS = 24.f;
 constexpr int kChaseLead = 1900;

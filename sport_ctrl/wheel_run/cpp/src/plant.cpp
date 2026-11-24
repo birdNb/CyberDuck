@@ -4,6 +4,7 @@
 
 #include "wheel/getup.hpp"
 #include "wheel/plant.hpp"
+#include "wheel/roll.hpp"
 
 #include "imu/lsm6.hpp"
 #include "wheel/bus.hpp"
@@ -41,6 +42,9 @@
 extern char** environ;
 
 namespace wheel {
+
+int bring_up_can(const std::string& iface, const std::string& config);
+
 namespace {
 
 volatile std::sig_atomic_t g_sig = 0;
@@ -160,6 +164,11 @@ struct State {
     bool getup_lb = false;
     uint64_t getup_prev_ns = 0;
     std::atomic<uint8_t> getup_on{0};
+    Roll roll;
+    RollGoal roll_goal;
+    bool roll_chord = false;
+    uint64_t roll_prev_ns = 0;
+    std::atomic<uint8_t> roll_on{0};
     Slot slot[16]{};
     Feedback fb[16]{};
     PadSnap pad{};
@@ -171,11 +180,14 @@ struct State {
     std::atomic<uint8_t> balance_on{0};
     std::atomic<uint8_t> unload_hold{0};
     std::atomic<uint8_t> torque_off{0};
+    std::atomic<uint8_t> link_recover{0};
+    std::atomic<uint64_t> link_quiet_until_ns{0};
     std::atomic<uint32_t> sample_mask{0};
     std::atomic<uint32_t> sample_gen{0};
     std::atomic<uint64_t> can_hb_ns{0};
     std::atomic<uint64_t> wheel_hb_ns{0};
     std::atomic<uint64_t> drive_t0_ns{0};
+    std::atomic<uint64_t> cmd_ready_ns{0};
     std::atomic<uint32_t> tx_fail{0};
     std::atomic<uint32_t> late_can{0};
     std::atomic<uint32_t> late_wheel{0};
@@ -208,6 +220,26 @@ double mono_s() { return static_cast<double>(mono_ns()) * 1e-9; }
 
 bool age_exceeds(uint64_t now, uint64_t stamp, uint64_t limit_ns) {
     return stamp != 0 && now >= stamp && now - stamp > limit_ns;
+}
+
+bool iface_up(const std::string& iface) {
+    std::string path = "/sys/class/net/" + iface + "/flags";
+    FILE* f = std::fopen(path.c_str(), "r");
+    if (!f) return false;
+    unsigned flags = 0;
+    int n = std::fscanf(f, "%x", &flags);
+    std::fclose(f);
+    return n == 1 && (flags & 1u) != 0;
+}
+
+uint64_t read_rx_packets(const std::string& iface) {
+    std::string path = "/sys/class/net/" + iface + "/statistics/rx_packets";
+    FILE* f = std::fopen(path.c_str(), "r");
+    if (!f) return 0;
+    unsigned long long v = 0;
+    int n = std::fscanf(f, "%llu", &v);
+    std::fclose(f);
+    return n == 1 ? static_cast<uint64_t>(v) : 0;
 }
 
 void add_ns(timespec& t, uint64_t ns) {
@@ -361,12 +393,17 @@ bool sample_motors(State* s, uint32_t mask, int timeout_ms) {
     s->sample_mask.store(mask);
     double end = mono_s() + timeout_ms / 1000.0;
     while (s->sample_mask.load() != 0) {
-        if (hard_stop(s)) return false;
+        if (hard_stop(s)) {
+            s->sample_mask.store(0);
+            return false;
+        }
         if (mono_s() >= end) break;
         timespec ts{0, 10000000};
         nanosleep(&ts, nullptr);
     }
     uint32_t left = s->sample_mask.load();
+    // 超时必须清掉，否则 CAN 线程会一直按 mask 狂发 0x0E，把 PCAN-USB 灌死。
+    s->sample_mask.store(0);
     if (left) std::fprintf(stderr, "这些关节没有读到角度: %s\n", mask_text(left).c_str());
     return left == 0;
 }
@@ -690,11 +727,19 @@ void* body_thread(void* arg) {
                         put_deg(s, 12, show.n12, show.nvel, show.ntq);
                     }
                 }
-                if (s->getup_on.load()) {
+                if (s->getup_on.load() && !s->roll_on.load()) {
                     const GetupGoal& goal = s->getup_goal;
                     for (int id = 1; id <= 15; ++id) {
                         if (goal.tq[id] <= 0.f) continue;
                         put_deg(s, id, goal.deg[id], 6.f, goal.tq[id]);
+                    }
+                }
+                if (s->roll_on.load()) {
+                    const RollGoal& goal = s->roll_goal;
+                    float vel = goal.cmd_vel > 0.1f ? goal.cmd_vel : 6.f;
+                    for (int id = 1; id <= 15; ++id) {
+                        if (goal.tq[id] <= 0.f) continue;
+                        put_deg(s, id, goal.deg[id], vel, goal.tq[id]);
                     }
                 }
             }
@@ -761,10 +806,70 @@ void* wheel_thread(void* arg) {
     return nullptr;
 }
 
+uint32_t scan_bus(Bus& bus, int begin, int end, Feedback* fb);
+bool pose_ready(const State& s);
+
+void recover_bus(State* s) {
+    std::printf("关节失控：卸力，并重新接通 %s。\n", s->args.iface.c_str());
+    {
+        Lock lk(s->mu_cmd);
+        s->roll_goal = {};
+        s->getup_goal = {};
+    }
+    s->roll_on.store(0);
+    s->getup_on.store(0);
+    s->balance_on.store(0);
+    s->torque_off.store(1);
+    s->sample_mask.store(0);
+    s->phase.store(PhWait);
+    if (s->bus && s->bus->ok()) {
+        for (int round = 0; round < 4; ++round) {
+            for (int id = 1; id <= 12; ++id) s->bus->send_stop(id);
+        }
+    }
+    s->bus.reset();
+    // PCAN-USB 常出现口还 UP、但 RX 已卡死；强制 down/up 清掉。
+    bring_up_can(s->args.iface, s->args.config);
+    for (int attempt = 0; attempt < 2 && g_sig == 0; ++attempt) {
+        s->can_hb_ns.store(mono_ns(), std::memory_order_relaxed);
+        if (!iface_up(s->args.iface)) bring_up_can(s->args.iface, s->args.config);
+        auto bus = std::make_unique<Bus>(s->args.iface);
+        if (!bus->ok()) {
+            std::fprintf(stderr, "重连失败：%s\n", bus->error().c_str());
+            if (!wait_for(s, 0.4)) break;
+            continue;
+        }
+        Feedback found_fb[16]{};
+        uint32_t found = scan_bus(*bus, s->cfg.start_id, s->cfg.end_id, found_fb);
+        s->online = found;
+        if (!pose_ready(*s)) {
+            std::fprintf(stderr, "重连后关节还没齐（在线 %s）。\n", mask_text(found).c_str());
+            if (!wait_for(s, 0.5)) break;
+            continue;
+        }
+        for (int id = 1; id <= 15; ++id) {
+            if (!(found & bit(id))) continue;
+            Lock lk(s->mu_fb);
+            s->fb[id] = found_fb[id];
+        }
+        s->bus = std::move(bus);
+        s->link_quiet_until_ns.store(mono_ns() + 5000000000ull);
+        s->cmd_ready_ns.store(mono_ns() + static_cast<uint64_t>(kBootArmS * 1e9f));
+        s->link_recover.store(0);
+        s->can_hb_ns.store(mono_ns(), std::memory_order_relaxed);
+        std::printf("关节已重连，在线 %s。已卸力，再等 %.0f 秒后长按 Y 进入。\n", mask_text(found).c_str(),
+                    kBootArmS);
+        return;
+    }
+    s->link_quiet_until_ns.store(mono_ns() + 5000000000ull);
+    s->link_recover.store(0);
+    s->can_hb_ns.store(mono_ns(), std::memory_order_relaxed);
+    std::fprintf(stderr, "这次没接上，五秒后再试。\n");
+}
+
 void* can_thread(void* arg) {
     auto* s = static_cast<State*>(arg);
     s->fifo_can.store(set_fifo(60) ? 1 : -1);
-    int rr_cmd = 1;
     int rr_stat = 1;
     uint64_t last_wheel_q = 0;
     struct Track {
@@ -780,84 +885,107 @@ void* can_thread(void* arg) {
     };
     while (s->phase.load() != PhExit) {
         uint64_t t0 = mono_ns();
+        if (!s->bus || s->link_recover.load() != 0) {
+            if (s->link_recover.load() != 0 || mono_ns() >= s->link_quiet_until_ns.load()) recover_bus(s);
+            s->can_hb_ns.store(mono_ns(), std::memory_order_relaxed);
+            pace(next, s->can_period_ns, &s->late_can);
+            continue;
+        }
         ingest(s);
         uint32_t ph = s->phase.load();
         bool estop = s->estop.load() != 0;
         Slot slots[16];
         GetupGoal getup_goal;
+        RollGoal roll_goal;
         {
             Lock lk(s->mu_cmd);
             std::memcpy(slots, s->slot, sizeof(slots));
             getup_goal = s->getup_goal;
+            roll_goal = s->roll_goal;
         }
         if (ph == PhWait) {
             ShowCmd show = copy_show(s);
-            if (getup_goal.active) {
-                int budget = 4;
-                for (int n = 0; n < 16 && budget > 0; ++n) {
-                    int id = rr_cmd;
-                    rr_cmd = id % 15 + 1;
-                    if (!(s->online & bit(id)) || is_wheel(id) || getup_goal.tq[id] <= 0.f) continue;
-                    float deg = getup_goal.deg[id];
-                    bool due = !track[id].valid || std::fabs(deg - track[id].deg) >= 0.05f || t0 - track[id].ns >= 100000000ull;
-                    if (!due) continue;
-                    if (s->bus->send_position(id, pos_to_int(deg2rad(deg)), 6.f, getup_goal.tq[id])) {
+            if (roll_goal.active) getup_goal = {};
+            // 策略/站立：0x1F 查询码用 0x0E，一发一收，50 Hz 同步控制和反馈。
+            constexpr uint8_t kPosFb = 0x0E;
+            if (roll_goal.active) {
+                for (int id = 1; id <= 15; ++id) {
+                    if (!(s->online & bit(id)) || is_wheel(id) || roll_goal.tq[id] <= 0.f) continue;
+                    float deg = roll_goal.deg[id];
+                    float vel = roll_goal.cmd_vel > 0.1f ? roll_goal.cmd_vel : 6.f;
+                    if (s->bus->send_position(id, pos_to_int(deg2rad(deg)), vel, roll_goal.tq[id], kPosFb)) {
                         track[id].deg = deg;
                         track[id].ns = t0;
                         track[id].valid = true;
-                        --budget;
+                    } else {
+                        s->tx_fail.fetch_add(1, std::memory_order_relaxed);
+                    }
+                }
+            } else if (getup_goal.active) {
+                for (int id = 1; id <= 15; ++id) {
+                    if (!(s->online & bit(id)) || is_wheel(id) || getup_goal.tq[id] <= 0.f) continue;
+                    float deg = getup_goal.deg[id];
+                    if (s->bus->send_position(id, pos_to_int(deg2rad(deg)), 6.f, getup_goal.tq[id], kPosFb)) {
+                        track[id].deg = deg;
+                        track[id].ns = t0;
+                        track[id].valid = true;
                     } else {
                         s->tx_fail.fetch_add(1, std::memory_order_relaxed);
                     }
                 }
             }
-            bool neck = show_live(show) && show.neck && show.mask == 0 && !getup_goal.active;
+            bool neck = show_live(show) && show.neck && show.mask == 0 && !getup_goal.active && !roll_goal.active;
             if (neck) {
+                // 张望保持 0x00，避免空闲时回包把总线打满。
                 if (s->online & bit(11))
                     fail(s->bus->send_position(11, pos_to_int(deg2rad(show.n11)), show.nvel, show.ntq));
                 if (s->online & bit(12))
                     fail(s->bus->send_position(12, pos_to_int(deg2rad(show.n12)), show.nvel, show.ntq));
             }
         } else if (ph == PhSlew || ph == PhSettle || ph == PhDrive || ph == PhHold) {
-            int budget = 4;
-            for (int n = 0; n < 16 && budget > 0; ++n) {
-                int id = rr_cmd;
-                rr_cmd = id % 15 + 1;
+            constexpr uint8_t kPosFb = 0x0E;
+            for (int id = 1; id <= 15; ++id) {
                 if (!(s->online & bit(id)) || is_wheel(id) || slots[id].kind != 1) continue;
                 float deg = rad2deg(slots[id].pos);
-                bool due = !track[id].valid || std::fabs(deg - track[id].deg) >= 0.05f || t0 - track[id].ns >= 100000000ull;
-                if (!due) continue;
-                if (s->bus->send_position(id, pos_to_int(slots[id].pos), slots[id].vel, slots[id].tq)) {
+                if (s->bus->send_position(id, pos_to_int(slots[id].pos), slots[id].vel, slots[id].tq, kPosFb)) {
                     track[id].deg = deg;
                     track[id].ns = t0;
                     track[id].valid = true;
-                    --budget;
                 } else {
                     s->tx_fail.fetch_add(1, std::memory_order_relaxed);
                 }
             }
         }
-        if (t0 - last_wheel_q >= 20000000ull) {
+        const bool skill = roll_goal.active || getup_goal.active;
+        const bool body_fb =
+            skill || ph == PhSlew || ph == PhSettle || ph == PhDrive || ph == PhHold;
+        // 身体已用 0x1F+0x0E 带回包，不再另发状态查询。轮子速度帧仍是 0x00，单独问。
+        const uint64_t wheel_q_period = body_fb ? 80000000ull : 40000000ull;
+        if (t0 - last_wheel_q >= wheel_q_period) {
             if (s->online & bit(s->left_id)) fail(s->bus->send_status(s->left_id));
             if (s->online & bit(s->right_id)) fail(s->bus->send_status(s->right_id));
             last_wheel_q = t0;
         }
-        for (int n = 0; n < 16; ++n) {
-            int id = rr_stat;
-            rr_stat = id % 15 + 1;
-            if ((s->online & bit(id)) && !is_wheel(id)) {
-                fail(s->bus->send_status(id));
-                break;
+        if (!body_fb) {
+            for (int n = 0; n < 16; ++n) {
+                int id = rr_stat;
+                rr_stat = id % 15 + 1;
+                if ((s->online & bit(id)) && !is_wheel(id)) {
+                    fail(s->bus->send_status(id));
+                    break;
+                }
             }
         }
         uint32_t want = s->sample_mask.load();
-        int sample_budget = 6;
+        int sample_budget = 2;
         for (int id = 1; id <= 15 && sample_budget > 0; ++id) {
             if (!(want & bit(id))) continue;
             fail(s->bus->send_status(id));
             --sample_budget;
         }
+        // 位置带回包后立刻收齐，供本拍策略/日志使用。
         ingest(s);
+        if (body_fb) ingest(s);
         if (ph == PhStop) {
             for (int id = 1; id <= 15; ++id)
                 if (s->online & bit(id)) fail(s->bus->send_stop(id));
@@ -888,12 +1016,14 @@ void* wd_thread(void* arg) {
     Bus bus(s->args.iface);
     bool warned = false;
     bool latched = false;
+    uint64_t lost_since = 0;
     timespec next{};
     clock_gettime(CLOCK_MONOTONIC, &next);
     add_ns(next, 20000000);
     while (s->phase.load() != PhExit) {
         uint64_t now = mono_ns();
-        bool drive = s->phase.load() == PhDrive;
+        uint32_t ph = s->phase.load();
+        bool drive = ph == PhDrive;
         uint64_t wh = s->wheel_hb_ns.load(std::memory_order_relaxed);
         uint64_t ch = s->can_hb_ns.load(std::memory_order_relaxed);
         bool wheel_bad = drive && age_exceeds(now, wh, 150000000ull);
@@ -909,6 +1039,40 @@ void* wd_thread(void* arg) {
             std::fprintf(stderr, "看门没有自己的 CAN 口：%s\n", bus.error().c_str());
             warned = true;
         }
+        bool watch = ph == PhWait || ph == PhSlew || ph == PhSettle || ph == PhDrive || ph == PhHold;
+        static uint64_t last_rx = 0;
+        static uint64_t rx_flat_since = 0;
+        if (!watch || s->link_recover.load() != 0 || now < s->link_quiet_until_ns.load()) {
+            lost_since = 0;
+            rx_flat_since = 0;
+            last_rx = read_rx_packets(s->args.iface);
+        } else {
+            bool down = !iface_up(s->args.iface);
+            // 口还 UP 但电机回包计数长时间不动：PCAN RX 卡死或总线被灌死。
+            // 不用“反馈变稀”判断，避免 RB 张望误触发；看内核 rx_packets。
+            uint64_t rx = read_rx_packets(s->args.iface);
+            bool rx_dead = false;
+            if (rx > last_rx) {
+                last_rx = rx;
+                rx_flat_since = 0;
+            } else if (rx_flat_since == 0) {
+                rx_flat_since = now;
+            } else if (now - rx_flat_since >= 1500000000ull) {
+                rx_dead = true;
+            }
+            bool lost = down || rx_dead;
+            if (!lost) {
+                lost_since = 0;
+            } else if (lost_since == 0) {
+                lost_since = now;
+            } else if (now - lost_since >= 600000000ull) {
+                s->link_recover.store(1);
+                lost_since = 0;
+                rx_flat_since = 0;
+                std::fprintf(stderr, "关节失控：%s。准备卸力并重连。\n",
+                             down ? "CAN 口掉了" : "电机回包中断");
+            }
+        }
         pace(next, 20000000, nullptr);
     }
     return nullptr;
@@ -918,20 +1082,24 @@ uint32_t scan_bus(Bus& bus, int begin, int end, Feedback* fb) {
     uint32_t found = 0;
     auto once = [&](int id, int wait_ms) {
         bus.drain();
-        bus.send_ping(id);
+        // 用 0x0E 状态查询，不用 0x04 版本 ping：右轮 1 号对 ping 经常不回。
+        bus.send_status(id);
         uint64_t t0 = mono_ns();
         while (mono_ns() - t0 < static_cast<uint64_t>(wait_ms) * 1000000ull) {
             Frame frame;
             if (!bus.poll(frame, 10)) continue;
-            if (frame.id != id) continue;
-            decode_feedback(fb[id], frame.data, frame.dlc, mono_ns());
-            found |= bit(id);
-            return;
+            // 晚到的其它 ID 回包也收下，避免漏扫。
+            if (frame.id < 1 || frame.id > 15) continue;
+            decode_feedback(fb[frame.id], frame.data, frame.dlc, mono_ns());
+            found |= bit(frame.id);
+            if (frame.id == id) return;
         }
     };
-    for (int id = begin; id <= end; ++id) once(id, 40);
-    for (int id = begin; id <= end; ++id)
-        if (!(found & bit(id))) once(id, 70);
+    for (int id = begin; id <= end; ++id) once(id, 60);
+    for (int pass = 0; pass < 3; ++pass) {
+        for (int id = begin; id <= end; ++id)
+            if (!(found & bit(id))) once(id, 120);
+    }
     return found;
 }
 
@@ -1015,8 +1183,19 @@ bool legs_at_unload(State* s) {
     return true;
 }
 
+void cancel_skills(State* s) {
+    {
+        Lock lk(s->mu_cmd);
+        s->roll_goal = {};
+        s->getup_goal = {};
+    }
+    s->roll_on.store(0);
+    s->getup_on.store(0);
+}
+
 bool release_torque(State* s) {
     if (hard_stop(s)) return false;
+    cancel_skills(s);
     s->unload_hold.store(0);
     s->torque_off.store(1);
     s->estop.store(1);
@@ -1030,6 +1209,7 @@ bool release_torque(State* s) {
 
 bool do_unload(State* s) {
     std::printf("停车：轮速归零。腿走到卸力姿态，到位后才卸力。\n");
+    cancel_skills(s);
     s->estop.store(1);
     s->balance_on.store(0);
     s->unload_hold.store(0);
@@ -1238,7 +1418,7 @@ void* show_thread(void* arg) {
             std::fprintf(stderr, "表演程序没能启动：%s\n", std::strerror(rc));
             return;
         }
-        std::printf("表演程序已启动。RB 头部张望，右扳机鸭叫，X 切灯，十字键上下调音量，LB 起身，A 前左翻滚。\n");
+        std::printf("表演程序已启动。RB 头部张望，右扳机鸭叫，X 切灯，十字键上下调音量，LB 起身，LT+上向前翻滚。\n");
     };
     spawn();
     int client = -1;
@@ -1287,7 +1467,14 @@ void* show_thread(void* arg) {
                 Lock lk(s->mu_cmd);
                 goal = s->getup_goal;
             }
-            if (goal.active) {
+            RollGoal roll_goal;
+            {
+                Lock lk(s->mu_cmd);
+                roll_goal = s->roll_goal;
+            }
+            if (roll_goal.active) {
+                n += std::snprintf(out + n, sizeof(out) - static_cast<size_t>(n), "G 1 %.3f %.3f\n", roll_goal.yaw, roll_goal.roll);
+            } else if (goal.active) {
                 n += std::snprintf(out + n, sizeof(out) - static_cast<size_t>(n), "G 1 %.3f %.3f\n", goal.yaw, goal.roll);
             } else {
                 n += std::snprintf(out + n, sizeof(out) - static_cast<size_t>(n), "G 0\n");
@@ -1388,6 +1575,82 @@ int bring_up_can(const std::string& iface, const std::string& config) {
     return 0;
 }
 
+void tick_roll(State* s) {
+    if (!s->roll.ready()) return;
+    uint64_t now = mono_ns();
+    float dt = 0.02f;
+    if (s->roll_prev_ns != 0 && now > s->roll_prev_ns) dt = static_cast<float>(now - s->roll_prev_ns) * 1e-9f;
+    s->roll_prev_ns = now;
+    uint32_t ph = s->phase.load();
+    bool allow = ph == PhDrive || ph == PhWait;
+    PadSnap pad = copy_pad(s);
+    bool up = pad.connected && pad.axis[7] <= -0.5f;
+    bool chord = up && pad.lt;
+    bool rise = chord && !s->roll_chord;
+    s->roll_chord = chord;
+    ImuSnap imu = copy_imu(s);
+    if (!imu.ok) {
+        if (rise) std::printf("没有 IMU，向前翻滚不能跑。\n");
+        if (s->roll_on.load()) {
+            Lock lk(s->mu_cmd);
+            s->roll_goal = {};
+            s->roll_on.store(0);
+        }
+        return;
+    }
+    RollSense sense;
+    for (int i = 0; i < 3; ++i) {
+        sense.gyro[i] = imu.gyro[i];
+        sense.grav[i] = imu.grav[i];
+    }
+    for (int id = 1; id <= 12; ++id) {
+        Feedback fb = copy_fb(s, id);
+        sense.pos[id] = fb.position;
+        sense.vel[id] = fb.velocity;
+    }
+    ShowCmd show = copy_show(s);
+    if (show.has_servo) {
+        sense.servo_yaw = show.servo_yaw;
+        sense.servo_roll = show.servo_roll;
+    }
+    if (rise && s->cmd_ready_ns.load() != 0 && mono_ns() < s->cmd_ready_ns.load()) {
+        std::printf("还要再等 %.1f 秒再翻滚，CAN 刚起来先别推指令。\n",
+                    static_cast<double>(s->cmd_ready_ns.load() - mono_ns()) * 1e-9);
+        rise = false;
+    }
+    sense.chord_rise = rise;
+    sense.allow = allow;
+    sense.other_busy = s->getup_on.load() != 0;
+    RollGoal goal;
+    s->roll.step(dt, sense, goal);
+    if (goal.say_start) {
+        if (s->roll.csv_mode()) {
+            std::printf("LT+上：CSV 慢放，先走到仿真默认姿态，再按帧播放。力矩 2 N·m。按 B 立刻卸力。\n");
+        } else {
+            std::printf("LT+上：先走到翻滚初始姿态（仿真默认角），到位后再推理。力矩 2 N·m，速度上限 150 RPM。按 B 立刻卸力，再按 LT+上退出。\n");
+        }
+    }
+    if (goal.say_ready) {
+        if (s->roll.csv_mode()) std::printf("初始姿态到位，开始 CSV 慢放。\n");
+        else std::printf("初始姿态到位，开始 hard150/2997 翻滚推理。日志 logs/policy_roll_*.csv。\n");
+    }
+    if (goal.say_stop) std::printf("LT+上：退出向前翻滚。\n");
+    if (goal.say_done) {
+        if (s->roll.csv_mode()) {
+            std::printf("CSV 慢放结束。超时未到位 %d 帧。\n", s->roll.miss_frames());
+        } else {
+            std::printf("向前翻滚已跑满 5 秒，退出。\n");
+        }
+    }
+    if (goal.say_busy) std::printf("起身还在执行，向前翻滚不启动。\n");
+    if (goal.say_refuse) std::printf("现在不能翻滚。先长按 Y 站起来，或停在等待。\n");
+    {
+        Lock lk(s->mu_cmd);
+        s->roll_goal = goal;
+    }
+    s->roll_on.store(goal.active ? 1 : 0);
+}
+
 void tick_getup(State* s) {
     if (!s->getup.ready()) return;
     uint64_t now = mono_ns();
@@ -1397,8 +1660,13 @@ void tick_getup(State* s) {
     uint32_t ph = s->phase.load();
     bool allow = ph == PhDrive || ph == PhWait;
     PadSnap pad = copy_pad(s);
-    bool rise = pad.connected && pad.lb_held && !s->getup_lb;
+    bool rise = pad.connected && pad.lb_held && !s->getup_lb && s->roll_on.load() == 0;
     s->getup_lb = pad.connected && pad.lb_held;
+    if (rise && s->cmd_ready_ns.load() != 0 && mono_ns() < s->cmd_ready_ns.load()) {
+        std::printf("还要再等 %.1f 秒再起身，CAN 刚起来先别推指令。\n",
+                    static_cast<double>(s->cmd_ready_ns.load() - mono_ns()) * 1e-9);
+        rise = false;
+    }
     ImuSnap imu = copy_imu(s);
     if (!imu.ok) return;
     GetupSense sense;
@@ -1536,7 +1804,15 @@ int run(const Args& args) {
     } else {
         std::printf("起身策略没载入（%s）。\n", s->getup.reason().c_str());
     }
+    if (s->roll.load("/home/aidlux/cyberDuck/sport_ctrl/policies/cyberduck_v2_roulade_hard150_2997/actor_2997.bin")) {
+        std::printf("向前翻滚 hard150/2997 已载入。符号对齐 check_joint_signs。按住 LT+上：先到仿真默认姿态，再推理 5 秒。力矩 2 N·m，速度 150 RPM。\n");
+    } else {
+        std::printf("向前翻滚没载入（%s）。\n", s->roll.reason().c_str());
+    }
+    std::printf("驾驶和翻滚中摇杆、B 卸力保持有效。只有 CAN 口掉线才自动重连。\n");
     s->phase.store(PhWait);
+    // 扫完关节后总线还要喘口气；马上推轮速/翻滚容易把 PCAN-USB 冲挂。
+    s->cmd_ready_ns.store(mono_ns() + static_cast<uint64_t>(kBootArmS * 1e9f));
     if (s->imu) up_imu = start_thread(th_imu, imu_thread, s, "wheel-imu");
     up_body = start_thread(th_body, body_thread, s, "wheel-body");
     up_wheel = start_thread(th_wheel, wheel_thread, s, "wheel-speed");
@@ -1554,6 +1830,7 @@ int run(const Args& args) {
         if (s->fifo_can.load() < 0 || s->fifo_wheel.load() < 0) {
             std::printf("没有拿到 SCHED_FIFO。用 root 启动才能保证电机节拍不被日志和手柄抢走。\n");
         }
+        std::printf("上电后先等 %.0f 秒再给指令（Y / LT+上 / LB），等 PCAN 稳定。\n", kBootArmS);
     }
 
     bool announced = false;
@@ -1572,6 +1849,11 @@ int run(const Args& args) {
     bool was_bogus = false;
     double next_print = 0;
     double next_log = 0;
+    // 策略主循环锁 50 Hz，避免 nanosleep(20ms) 叠加上次耗时掉到 ~43 Hz。
+    constexpr uint64_t kPolicyPeriodNs = 20000000ull;
+    timespec policy_next{};
+    clock_gettime(CLOCK_MONOTONIC, &policy_next);
+    add_ns(policy_next, kPolicyPeriodNs);
     FILE* log = nullptr;
     auto close_log = [&]() {
         if (!log) return;
@@ -1579,7 +1861,15 @@ int run(const Args& args) {
         std::fclose(log);
         log = nullptr;
     };
+    auto cmds_ready = [&]() -> bool {
+        uint64_t ready = s->cmd_ready_ns.load();
+        if (ready == 0 || mono_ns() >= ready) return true;
+        double left = static_cast<double>(ready - mono_ns()) * 1e-9;
+        std::printf("还要再等 %.1f 秒，CAN 刚起来先别推指令。\n", left);
+        return false;
+    };
     auto start_slew = [&]() -> bool {
+        if (!cmds_ready()) return false;
         std::printf("开始进入轮行姿态 %s。\n", args.pose.c_str());
         s->estop.store(1);
         if (!fill_job(s, s->stand, args.torque, s->slew_vel, std::max(0.5, s->cfg.transition_s))) {
@@ -1613,7 +1903,7 @@ int run(const Args& args) {
             std::printf("驾驶日志 %s\n", path.c_str());
         }
         std::printf("已站稳。前 %.0f 秒轮速为 0。左摇杆前进和转弯，右摇杆左右自转、上下升降。\n", kSpeedArmS);
-        std::printf("RB 开关头部张望。右扳机张嘴并鸭叫。X 切灯。十字键上下调音量，左右侧倾。LB 起身，A 前左翻滚。短按 Y 切换平衡。\n");
+        std::printf("RB 开关头部张望。右扳机张嘴并鸭叫。X 切灯。十字键上下调音量，左右侧倾。LB 起身，LT+上向前翻滚。短按 Y 切换平衡。\n");
         std::printf("默认半速，按住 LT 全速。十字键左右侧倾。短按 Y 开关自平衡。B 卸力。Ctrl+C 退出。\n");
         next_print = mono_s();
         next_log = mono_s();
@@ -1625,6 +1915,7 @@ int run(const Args& args) {
             if (s->phase.load() != PhWait && s->phase.load() != PhStop) do_unload(s);
             break;
         }
+        tick_roll(s);
         tick_getup(s);
         uint32_t ph = s->phase.load();
         PadSnap pad = copy_pad(s);
@@ -1645,6 +1936,13 @@ int run(const Args& args) {
             if (args.no_wait_y && !auto_once) {
                 auto_once = true;
                 if (!start_slew()) announced = false;
+                continue;
+            }
+            if (pad.edge_b != last_edge_b) {
+                last_edge_b = pad.edge_b;
+                std::printf("B：再卸一次力。\n");
+                release_torque(s);
+                announced = false;
                 continue;
             }
             if (pad.y_held && !y_block) {
@@ -1678,9 +1976,14 @@ int run(const Args& args) {
         } else if (ph == PhDrive) {
             if (pad.edge_b != last_edge_b) {
                 last_edge_b = pad.edge_b;
-                std::printf("B：卸力停下。\n");
                 close_log();
-                do_unload(s);
+                if (s->roll_on.load() || s->getup_on.load()) {
+                    std::printf("B：退出策略，立刻卸力。\n");
+                    release_torque(s);
+                } else {
+                    std::printf("B：卸力停下。\n");
+                    do_unload(s);
+                }
                 if (g_sig) break;
                 announced = false;
                 continue;
@@ -1764,8 +2067,7 @@ int run(const Args& args) {
                 next_print = now + 0.5;
             }
         }
-        timespec ts{0, 20000000};
-        nanosleep(&ts, nullptr);
+        pace(policy_next, kPolicyPeriodNs, nullptr);
     }
 
     close_log();

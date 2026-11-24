@@ -24,8 +24,8 @@ struct Args {
     bool no_balance = false;
     bool no_wait_y = false;
     bool swap_wheels = false;
-    int wheel_hz = 200;
-    int body_hz = 100;
+    int wheel_hz = 50;
+    int body_hz = 50;
 };
 
 int run(const Args& args);

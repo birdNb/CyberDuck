@@ -1,0 +1,235 @@
+{
+  "task": "CyberDuckV2-Flat-Roulade-Recovery-Speed150",
+  "checkpoint": "logs/rsl_rl/cyberduck_v2_roulade_recovery_speed150/2026-11-26_15-31-22_recovery_speed150_hard150_from1998/model_2997.pt",
+  "num_envs": 32,
+  "steps": 260,
+  "reset_episodes": 32.0,
+  "success_episodes": 32.0,
+  "success_rate": 1.0,
+  "envs": [
+    {
+      "max_angle_deg": 358.35112039000154,
+      "head_contacted": true,
+      "max_tilt_deg": 149.94536949095934,
+      "min_height_m": 0.08365745842456818,
+      "final_height_m": 0.17008987069129944
+    },
+    {
+      "max_angle_deg": 350.93872589513694,
+      "head_contacted": true,
+      "max_tilt_deg": 149.28520438692092,
+      "min_height_m": 0.08714289963245392,
+      "final_height_m": 0.14868785440921783
+    },
+    {
+      "max_angle_deg": 357.54559520004693,
+      "head_contacted": true,
+      "max_tilt_deg": 150.14348595802474,
+      "min_height_m": 0.08667616546154022,
+      "final_height_m": 0.14881838858127594
+    },
+    {
+      "max_angle_deg": 355.31324349247666,
+      "head_contacted": true,
+      "max_tilt_deg": 152.3448422671415,
+      "min_height_m": 0.08136865496635437,
+      "final_height_m": 0.1531725376844406
+    },
+    {
+      "max_angle_deg": 345.6603557045511,
+      "head_contacted": true,
+      "max_tilt_deg": 156.102429857889,
+      "min_height_m": 0.08860714733600616,
+      "final_height_m": 0.16387568414211273
+    },
+    {
+      "max_angle_deg": 351.0442113366786,
+      "head_contacted": true,
+      "max_tilt_deg": 154.66986598137052,
+      "min_height_m": 0.07474981248378754,
+      "final_height_m": 0.16665413975715637
+    },
+    {
+      "max_angle_deg": 351.3075834310743,
+      "head_contacted": true,
+      "max_tilt_deg": 150.38071208827762,
+      "min_height_m": 0.08863101154565811,
+      "final_height_m": 0.1649884283542633
+    },
+    {
+      "max_angle_deg": 349.2550023024587,
+      "head_contacted": true,
+      "max_tilt_deg": 151.25624671722488,
+      "min_height_m": 0.08257199078798294,
+      "final_height_m": 0.15764403343200684
+    },
+    {
+      "max_angle_deg": 358.50709458988797,
+      "head_contacted": true,
+      "max_tilt_deg": 151.3637948758959,
+      "min_height_m": 0.08754923194646835,
+      "final_height_m": 0.15824492275714874
+    },
+    {
+      "max_angle_deg": 348.5978015005201,
+      "head_contacted": true,
+      "max_tilt_deg": 148.99343236595632,
+      "min_height_m": 0.07822199910879135,
+      "final_height_m": 0.15631718933582306
+    },
+    {
+      "max_angle_deg": 349.02733843704385,
+      "head_contacted": true,
+      "max_tilt_deg": 147.57589490561188,
+      "min_height_m": 0.08029450476169586,
+      "final_height_m": 0.14613111317157745
+    },
+    {
+      "max_angle_deg": 350.1692094624866,
+      "head_contacted": true,
+      "max_tilt_deg": 148.68491272114684,
+      "min_height_m": 0.08148812502622604,
+      "final_height_m": 0.15324628353118896
+    },
+    {
+      "max_angle_deg": 351.6290394541718,
+      "head_contacted": true,
+      "max_tilt_deg": 146.90298466858223,
+      "min_height_m": 0.088065966963768,
+      "final_height_m": 0.16693827509880066
+    },
+    {
+      "max_angle_deg": 357.94174617190765,
+      "head_contacted": true,
+      "max_tilt_deg": 151.12879538731244,
+      "min_height_m": 0.0852673351764679,
+      "final_height_m": 0.15694092214107513
+    },
+    {
+      "max_angle_deg": 351.6080844337982,
+      "head_contacted": true,
+      "max_tilt_deg": 149.49513708125045,
+      "min_height_m": 0.08269093930721283,
+      "final_height_m": 0.15348877012729645
+    },
+    {
+      "max_angle_deg": 350.0606094546834,
+      "head_contacted": true,
+      "max_tilt_deg": 147.8660686623107,
+      "min_height_m": 0.08669821172952652,
+      "final_height_m": 0.1636374443769455
+    },
+    {
+      "max_angle_deg": 345.0483707549179,
+      "head_contacted": true,
+      "max_tilt_deg": 150.24092543672413,
+      "min_height_m": 0.08716640621423721,
+      "final_height_m": 0.15866734087467194
+    },
+    {
+      "max_angle_deg": 350.50533673192126,
+      "head_contacted": true,
+      "max_tilt_deg": 147.8138860170518,
+      "min_height_m": 0.07924164831638336,
+      "final_height_m": 0.1577616184949875
+    },
+    {
+      "max_angle_deg": 350.7164988603014,
+      "head_contacted": true,
+      "max_tilt_deg": 151.3350944210035,
+      "min_height_m": 0.0843377485871315,
+      "final_height_m": 0.1669732630252838
+    },
+    {
+      "max_angle_deg": 352.5956205047553,
+      "head_contacted": true,
+      "max_tilt_deg": 147.8461381703126,
+      "min_height_m": 0.08722217381000519,
+      "final_height_m": 0.15432095527648926
+    },
+    {
+      "max_angle_deg": 368.0963523355057,
+      "head_contacted": true,
+      "max_tilt_deg": 152.4085952528544,
+      "min_height_m": 0.08739010989665985,
+      "final_height_m": 0.16163231432437897
+    },
+    {
+      "max_angle_deg": 353.5346349118486,
+      "head_contacted": true,
+      "max_tilt_deg": 152.38393826995065,
+      "min_height_m": 0.08451370149850845,
+      "final_height_m": 0.16993410885334015
+    },
+    {
+      "max_angle_deg": 347.9924828155169,
+      "head_contacted": true,
+      "max_tilt_deg": 153.8768673583537,
+      "min_height_m": 0.07117311656475067,
+      "final_height_m": 0.15812231600284576
+    },
+    {
+      "max_angle_deg": 352.1817930033225,
+      "head_contacted": true,
+      "max_tilt_deg": 152.26945063908292,
+      "min_height_m": 0.07387547940015793,
+      "final_height_m": 0.15886880457401276
+    },
+    {
+      "max_angle_deg": 350.53656435680654,
+      "head_contacted": true,
+      "max_tilt_deg": 150.40747276944572,
+      "min_height_m": 0.08603507280349731,
+      "final_height_m": 0.16693659126758575
+    },
+    {
+      "max_angle_deg": 358.89830050478963,
+      "head_contacted": true,
+      "max_tilt_deg": 150.2968783464049,
+      "min_height_m": 0.08817790448665619,
+      "final_height_m": 0.1523662507534027
+    },
+    {
+      "max_angle_deg": 348.60558791617393,
+      "head_contacted": true,
+      "max_tilt_deg": 148.82409831605338,
+      "min_height_m": 0.08075186610221863,
+      "final_height_m": 0.16660943627357483
+    },
+    {
+      "max_angle_deg": 347.66553532032674,
+      "head_contacted": true,
+      "max_tilt_deg": 151.38853382106967,
+      "min_height_m": 0.08389049768447876,
+      "final_height_m": 0.16079570353031158
+    },
+    {
+      "max_angle_deg": 353.1575538281506,
+      "head_contacted": true,
+      "max_tilt_deg": 148.56112237262954,
+      "min_height_m": 0.08435338735580444,
+      "final_height_m": 0.15212681889533997
+    },
+    {
+      "max_angle_deg": 350.8355353971564,
+      "head_contacted": true,
+      "max_tilt_deg": 151.15364361551295,
+      "min_height_m": 0.07503502070903778,
+      "final_height_m": 0.16091598570346832
+    },
+    {
+      "max_angle_deg": 356.4622179146562,
+      "head_contacted": true,
+      "max_tilt_deg": 151.63282236692436,
+      "min_height_m": 0.08610371500253677,
+      "final_height_m": 0.16044141352176666
+    },
+    {
+      "max_angle_deg": 362.4895320081123,
+      "head_contacted": true,
+      "max_tilt_deg": 149.96452134139207,
+      "min_height_m": 0.08657480031251907,
+      "final_height_m": 0.16452546417713165
+    }
+  ]
+}

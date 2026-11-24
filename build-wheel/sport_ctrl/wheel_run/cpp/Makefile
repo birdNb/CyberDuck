@@ -250,6 +250,54 @@ src/plant.cpp.s:
 	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/plant.cpp.s
 .PHONY : src/plant.cpp.s
 
+src/policy_log.o: src/policy_log.cpp.o
+.PHONY : src/policy_log.o
+
+# target to build an object file
+src/policy_log.cpp.o:
+	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/policy_log.cpp.o
+.PHONY : src/policy_log.cpp.o
+
+src/policy_log.i: src/policy_log.cpp.i
+.PHONY : src/policy_log.i
+
+# target to preprocess a source file
+src/policy_log.cpp.i:
+	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/policy_log.cpp.i
+.PHONY : src/policy_log.cpp.i
+
+src/policy_log.s: src/policy_log.cpp.s
+.PHONY : src/policy_log.s
+
+# target to generate assembly for a file
+src/policy_log.cpp.s:
+	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/policy_log.cpp.s
+.PHONY : src/policy_log.cpp.s
+
+src/roll.o: src/roll.cpp.o
+.PHONY : src/roll.o
+
+# target to build an object file
+src/roll.cpp.o:
+	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/roll.cpp.o
+.PHONY : src/roll.cpp.o
+
+src/roll.i: src/roll.cpp.i
+.PHONY : src/roll.i
+
+# target to preprocess a source file
+src/roll.cpp.i:
+	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/roll.cpp.i
+.PHONY : src/roll.cpp.i
+
+src/roll.s: src/roll.cpp.s
+.PHONY : src/roll.s
+
+# target to generate assembly for a file
+src/roll.cpp.s:
+	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/roll.cpp.s
+.PHONY : src/roll.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -274,6 +322,12 @@ help:
 	@echo "... src/plant.o"
 	@echo "... src/plant.i"
 	@echo "... src/plant.s"
+	@echo "... src/policy_log.o"
+	@echo "... src/policy_log.i"
+	@echo "... src/policy_log.s"
+	@echo "... src/roll.o"
+	@echo "... src/roll.i"
+	@echo "... src/roll.s"
 .PHONY : help
 
 

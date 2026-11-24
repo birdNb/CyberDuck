@@ -128,8 +128,8 @@ bool Bus::send_zero(int id) {
     return true;
 }
 
-bool Bus::send_position(int id, int16_t raw_pos, float vel_rad_s, float torque_nm) {
-    uint8_t d[8] = {0x1F, 0x00};
+bool Bus::send_position(int id, int16_t raw_pos, float vel_rad_s, float torque_nm, uint8_t query) {
+    uint8_t d[8] = {0x1F, query};
     write_i16(d + 2, raw_pos);
     write_i16(d + 4, vel_to_int(vel_rad_s));
     write_i16(d + 6, tqe_to_int(torque_nm));

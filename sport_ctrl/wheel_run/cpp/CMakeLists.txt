@@ -4,6 +4,8 @@ add_executable(wheel_drive
     src/config.cpp
     src/plant.cpp
     src/getup.cpp
+    src/roll.cpp
+    src/policy_log.cpp
 )
 target_include_directories(wheel_drive PRIVATE
     include

@@ -1,0 +1,167 @@
+{
+  "csv": ".artifacts/roulade/recovery_speed150_hard150_model2997_eval.csv",
+  "task": "CyberDuckV2-Flat-Roulade-Recovery-Speed150",
+  "steps": 250,
+  "duration_s": 5.0,
+  "actuators": {
+    "r_hip_yaw_joint": {
+      "torque_abs_max_nm": 2.0,
+      "torque_abs_mean_nm": 0.29316642591357234,
+      "torque_abs_p95_nm": 1.2212653219699845,
+      "control_steps_torque_above_0_6": 28,
+      "duration_torque_above_0_6_s": 0.56,
+      "speed_abs_max_rad_s": 7.989309310913086,
+      "speed_abs_max_rpm": 76.29228412331531,
+      "control_steps_speed_above_rated": 5
+    },
+    "r_hip_roll_joint": {
+      "torque_abs_max_nm": 1.9875895977020264,
+      "torque_abs_mean_nm": 0.6806905459165573,
+      "torque_abs_p95_nm": 1.0757168531417847,
+      "control_steps_torque_above_0_6": 152,
+      "duration_torque_above_0_6_s": 3.04,
+      "speed_abs_max_rad_s": 7.05263090133667,
+      "speed_abs_max_rpm": 67.34766418502282,
+      "control_steps_speed_above_rated": 5
+    },
+    "r_hip_pitch_joint": {
+      "torque_abs_max_nm": 2.0,
+      "torque_abs_mean_nm": 0.5412192401885987,
+      "torque_abs_p95_nm": 2.0,
+      "control_steps_torque_above_0_6": 60,
+      "duration_torque_above_0_6_s": 1.2,
+      "speed_abs_max_rad_s": 15.707962989807129,
+      "speed_abs_max_rpm": 149.99999734394112,
+      "control_steps_speed_above_rated": 35
+    },
+    "r_calf_joint": {
+      "torque_abs_max_nm": 2.0,
+      "torque_abs_mean_nm": 0.45778354597091675,
+      "torque_abs_p95_nm": 1.8647239327430725,
+      "control_steps_torque_above_0_6": 57,
+      "duration_torque_above_0_6_s": 1.1400000000000001,
+      "speed_abs_max_rad_s": 14.298163414001465,
+      "speed_abs_max_rpm": 136.5374030684414,
+      "control_steps_speed_above_rated": 47
+    },
+    "l_hip_yaw_joint": {
+      "torque_abs_max_nm": 2.0,
+      "torque_abs_mean_nm": 0.29704039873555305,
+      "torque_abs_p95_nm": 1.2142745196819302,
+      "control_steps_torque_above_0_6": 32,
+      "duration_torque_above_0_6_s": 0.64,
+      "speed_abs_max_rad_s": 8.437995910644531,
+      "speed_abs_max_rpm": 80.57692553809656,
+      "control_steps_speed_above_rated": 5
+    },
+    "l_hip_roll_joint": {
+      "torque_abs_max_nm": 2.0,
+      "torque_abs_mean_nm": 0.7268774570226669,
+      "torque_abs_p95_nm": 1.41536065340042,
+      "control_steps_torque_above_0_6": 161,
+      "duration_torque_above_0_6_s": 3.22,
+      "speed_abs_max_rad_s": 7.494060039520264,
+      "speed_abs_max_rpm": 71.56300194702567,
+      "control_steps_speed_above_rated": 3
+    },
+    "l_hip_pitch_joint": {
+      "torque_abs_max_nm": 2.0,
+      "torque_abs_mean_nm": 0.4401512975692749,
+      "torque_abs_p95_nm": 1.715292167663574,
+      "control_steps_torque_above_0_6": 57,
+      "duration_torque_above_0_6_s": 1.1400000000000001,
+      "speed_abs_max_rad_s": 15.707962989807129,
+      "speed_abs_max_rpm": 149.99999734394112,
+      "control_steps_speed_above_rated": 29
+    },
+    "l_calf_joint": {
+      "torque_abs_max_nm": 2.0,
+      "torque_abs_mean_nm": 0.5102664785385131,
+      "torque_abs_p95_nm": 2.0,
+      "control_steps_torque_above_0_6": 60,
+      "duration_torque_above_0_6_s": 1.2,
+      "speed_abs_max_rad_s": 15.707962989807129,
+      "speed_abs_max_rpm": 149.99999734394112,
+      "control_steps_speed_above_rated": 36
+    },
+    "neck_pitch_joint": {
+      "torque_abs_max_nm": 2.0,
+      "torque_abs_mean_nm": 0.7027679708003998,
+      "torque_abs_p95_nm": 2.0,
+      "control_steps_torque_above_0_6": 98,
+      "duration_torque_above_0_6_s": 1.96,
+      "speed_abs_max_rad_s": 13.578250885009766,
+      "speed_abs_max_rpm": 129.66274481347241,
+      "control_steps_speed_above_rated": 26
+    },
+    "head_pitch_joint": {
+      "torque_abs_max_nm": 2.0,
+      "torque_abs_mean_nm": 0.4510729715824127,
+      "torque_abs_p95_nm": 2.0,
+      "control_steps_torque_above_0_6": 65,
+      "duration_torque_above_0_6_s": 1.3,
+      "speed_abs_max_rad_s": 11.234489440917969,
+      "speed_abs_max_rpm": 107.28147165814791,
+      "control_steps_speed_above_rated": 23
+    },
+    "head_yaw_joint": {
+      "torque_abs_max_nm": 2.0,
+      "torque_abs_mean_nm": 0.3215293866544962,
+      "torque_abs_p95_nm": 1.1673420071601865,
+      "control_steps_torque_above_0_6": 51,
+      "duration_torque_above_0_6_s": 1.02,
+      "speed_abs_max_rad_s": 14.27439022064209,
+      "speed_abs_max_rpm": 136.31038579426794,
+      "control_steps_speed_above_rated": 19
+    },
+    "head_roll_joint": {
+      "torque_abs_max_nm": 1.1237118244171143,
+      "torque_abs_mean_nm": 0.10777584380656481,
+      "torque_abs_p95_nm": 0.44142151325941087,
+      "control_steps_torque_above_0_6": 11,
+      "duration_torque_above_0_6_s": 0.22,
+      "speed_abs_max_rad_s": 4.4405436515808105,
+      "speed_abs_max_rpm": 42.40406832986526,
+      "control_steps_speed_above_rated": 0
+    },
+    "r_ankle_joint": {
+      "torque_abs_max_nm": 2.0,
+      "torque_abs_mean_nm": 0.7629251667261123,
+      "torque_abs_p95_nm": 1.82907378077507,
+      "control_steps_torque_above_0_6": 119,
+      "duration_torque_above_0_6_s": 2.38,
+      "speed_abs_max_rad_s": 15.707962989807129,
+      "speed_abs_max_rpm": 149.99999734394112,
+      "control_steps_speed_above_rated": 119
+    },
+    "l_ankle_joint": {
+      "torque_abs_max_nm": 2.0,
+      "torque_abs_mean_nm": 0.7158809223771095,
+      "torque_abs_p95_nm": 1.7982166528701782,
+      "control_steps_torque_above_0_6": 111,
+      "duration_torque_above_0_6_s": 2.22,
+      "speed_abs_max_rad_s": 15.707962989807129,
+      "speed_abs_max_rpm": 149.99999734394112,
+      "control_steps_speed_above_rated": 115
+    }
+  },
+  "limits": {
+    "sim_effort_limit_nm": 2.0,
+    "datasheet_stall_torque_nm": 3.7,
+    "datasheet_user_stall_torque_nm": 3.9,
+    "datasheet_continuous_torque_nm": 0.6,
+    "rated_output_speed_rad_s": 6.283185307179585,
+    "no_load_output_speed_rad_s": 40.84070449666731
+  },
+  "global": {
+    "torque_abs_max_nm": 2.0,
+    "joint_with_torque_abs_max": "r_calf_joint",
+    "speed_abs_max_rad_s": 15.707962989807129,
+    "joint_with_speed_abs_max": "l_hip_pitch_joint",
+    "control_steps_any_torque_above_0_6": 249,
+    "duration_any_torque_above_0_6_s": 4.98,
+    "control_steps_any_speed_above_rated": 135,
+    "duration_any_speed_above_rated_s": 2.7,
+    "control_steps_any_speed_above_no_load": 0
+  }
+}

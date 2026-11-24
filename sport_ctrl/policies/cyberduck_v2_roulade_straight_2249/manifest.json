@@ -1,0 +1,71 @@
+{
+  "bundle": "cyberduck_v2_roulade_straight_2249",
+  "task_id": "CyberDuckV2-Flat-Roulade-SingleForward",
+  "chinese_name": "单前翻滚（2249，矢状面身体最好）",
+  "contract": {
+    "actor_obs": 48,
+    "critic_obs": 55,
+    "action": 14,
+    "action_layout": "12 position joints + 2 ankle velocity joints",
+    "control_hz": 50,
+    "episode_seconds": 5.0,
+    "observation_terms": [
+      "base_ang_vel",
+      "projected_gravity",
+      "joint_pos",
+      "joint_vel",
+      "actions",
+      "roulade_phase"
+    ]
+  },
+  "primary_model": {
+    "file": "model.pt",
+    "source": "logs/rsl_rl/recovery_recipe_symmetric/2026-11-25_11-47-16_straight_ft_seed0/model_2249.pt",
+    "iteration": 2249,
+    "training_run": "logs/rsl_rl/recovery_recipe_symmetric/2026-11-25_11-47-16_straight_ft_seed0",
+    "base_checkpoint": "logs/rsl_rl/recovery_recipe_symmetric/2026-11-24_22-50-46_from_scratch_4096_seed0/best.pt (iteration 750, 32/32)",
+    "selected_reason": "身体横向/横轴最贴矢状面；success 32/32，但 head_yaw 仍偏"
+  },
+  "evaluation": {
+    "fixed_yaw0_32env": {
+      "success_rate": 1.0,
+      "success_episodes": 32,
+      "reset_episodes": 32,
+      "mean_angle_deg": 364.8,
+      "head_contact_rate": 1.0,
+      "final_height_m": 0.18
+    },
+    "first_head_contact": {
+      "head_yaw_rad": -1.053,
+      "neck_rad": -0.735,
+      "head_rad": 1.205,
+      "crown_world": [-0.007, -0.756, -0.655]
+    },
+    "body": {
+      "forward_mean_m": 0.322,
+      "lateral_mean_m": 0.088,
+      "lateral_abs_mean_m": 0.094,
+      "lateral_max_m": 0.175,
+      "final_yaw_deg": 7.7,
+      "mean_lateral_axis_z": 0.067,
+      "max_lateral_axis_z": 0.766,
+      "max_forward_axis_y": 0.7,
+      "max_up_axis_y": 0.767
+    }
+  },
+  "videos": {
+    "full_yaw0": "videos/straight2249_full_yaw0.mp4",
+    "head_yaw0": "videos/straight2249_head_yaw0.mp4"
+  },
+  "params": {
+    "agent": "params/agent.yaml",
+    "env": "params/env.yaml"
+  },
+  "notes": [
+    "这是仿真训练检查点（.pt），不是 ONNX，也未做实机标定；不能直接当作实机部署模型。",
+    "2249 是身体最贴矢状面的候选：横向均值 0.088 m、最终 yaw 7.7°、平均 |横轴 z| 0.067；但首次头触地 head_yaw=-1.05，头部仍偏。",
+    "若优先前向距离/最终朝向/头 yaw，750 base 更好（前进 0.635 m、最终 yaw 1.5°、head_yaw -0.16）；但 750 过程最大 |横轴 z|=0.957，有一次明显侧偏。",
+    "本包是 2249；继续训练到 5000 是另一条 run，不覆盖此检查点。",
+    "真实部署前需要：ONNX 导出、观测/动作 ABI 对接、head_yaw 限位/安全约束、实机标定。"
+  ]
+}
