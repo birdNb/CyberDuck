@@ -10,6 +10,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/aidlux/cyberDuck/sport_ctrl/wheel_run/cpp/src/bus.cpp" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/bus.cpp.o" "gcc" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/bus.cpp.o.d"
   "/home/aidlux/cyberDuck/sport_ctrl/wheel_run/cpp/src/config.cpp" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/config.cpp.o" "gcc" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/config.cpp.o.d"
+  "/home/aidlux/cyberDuck/sport_ctrl/wheel_run/cpp/src/getup.cpp" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/getup.cpp.o" "gcc" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/getup.cpp.o.d"
   "/home/aidlux/cyberDuck/sport_ctrl/wheel_run/cpp/src/main.cpp" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/main.cpp.o" "gcc" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/main.cpp.o.d"
   "/home/aidlux/cyberDuck/sport_ctrl/wheel_run/cpp/src/plant.cpp" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/plant.cpp.o" "gcc" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/plant.cpp.o.d"
   )

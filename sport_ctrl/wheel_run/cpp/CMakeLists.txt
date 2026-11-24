@@ -3,6 +3,7 @@ add_executable(wheel_drive
     src/bus.cpp
     src/config.cpp
     src/plant.cpp
+    src/getup.cpp
 )
 target_include_directories(wheel_drive PRIVATE
     include

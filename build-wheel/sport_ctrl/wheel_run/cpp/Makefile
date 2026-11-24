@@ -178,6 +178,30 @@ src/config.cpp.s:
 	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/config.cpp.s
 .PHONY : src/config.cpp.s
 
+src/getup.o: src/getup.cpp.o
+.PHONY : src/getup.o
+
+# target to build an object file
+src/getup.cpp.o:
+	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/getup.cpp.o
+.PHONY : src/getup.cpp.o
+
+src/getup.i: src/getup.cpp.i
+.PHONY : src/getup.i
+
+# target to preprocess a source file
+src/getup.cpp.i:
+	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/getup.cpp.i
+.PHONY : src/getup.cpp.i
+
+src/getup.s: src/getup.cpp.s
+.PHONY : src/getup.s
+
+# target to generate assembly for a file
+src/getup.cpp.s:
+	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/getup.cpp.s
+.PHONY : src/getup.cpp.s
+
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
@@ -241,6 +265,9 @@ help:
 	@echo "... src/config.o"
 	@echo "... src/config.i"
 	@echo "... src/config.s"
+	@echo "... src/getup.o"
+	@echo "... src/getup.i"
+	@echo "... src/getup.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"

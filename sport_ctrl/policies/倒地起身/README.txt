@@ -1,9 +1,10 @@
-倒地起身策略部署说明（model_3250.pt，2026-11-22 对照实机）
+倒地起身策略部署说明（model_1999.pt）
 
-这份目录里现在是 model_3250.pt、env(4).yaml、agent(4).yaml，没有 onnx。
-权重里的契约版本是 cyberduck_standup_obs46_v1，任务 CyberDuckV2-Flat-StandUp，迭代 3250。
-运行名 standup_obs46_v2_onestage。actor 是 MLP（512-256-128，ELU），带观测归一化，没有 LSTM。
-控制周期 0.02 s（仿真步长 0.002 s × decimation 10），和轮行主循环同拍。
+这份目录是 model_1999.pt、env.yaml、agent.yaml。
+权重契约是 cyberduck_standup_obs46_v3_face_down_locked_wheels，任务 CyberDuckV2-Flat-StandUp，迭代 1999。
+运行名 standup_face_down_symmetric_v4。actor 是 MLP（512-256-128，ELU），带观测归一化，没有 LSTM。
+控制周期 0.02 s。除脖子 latent -0.089 外，位置关节 latent 为 0。轮子动作 scale 为 0。
+没按 LB 时每拍推理但不执行。重力 z 高于 -0.7 并持续 0.3 s 算倒地，这时按 LB 才把关节目标发出去。再按 LB 退出。
 
 当前 sport_ctrl/wheel_run/getup_policy.py 还在找 onnx，并按行走策略拼 61 维观测。
 它不会加载这份 pt，倒地后按 LB 也不会用这份权重动关节。下面是这份权重自己的约定，和实机差在哪里。
@@ -142,4 +143,4 @@ getup_policy.py 直接读这份 pt（不经过 onnx，也不走行走的 61 维�
 位置观测和位置动作用第三节、第五节的 tanh 编码。腿的力矩上限 2 N·m。脖子 12 和头俯仰 11 用轮行平时的力矩（约 1 N·m），并排在腿前面发。
 脖子 12 不把策略绝对角直接发出去。这台正角度越大越缩，缩着压不到地。按 LB 后先收到 0° 伸直；测到 8° 以内或 1.5 秒后，电机目标改为 0° 加上（本拍策略绝对角 − 伸直那一拍的策略绝对角），并夹在脖子限位里。头俯仰仍用绝对角。
 左右轮的速度输出已屏蔽：动作仍先夹到 ±2 并回灌上一拍，但不写到 CAN 1 和 CAN 6。起身时两轮只发速度 0。
-头 yaw、roll 下到舵机 13、14。按 LB 就运行，不看倒地；再按 LB 退出，腿和头回到轮行默认姿态。自平衡默认关。
+头 yaw、roll 下到舵机 13、14。推理从启动就跑，关节指令在倒地后按 LB 才发出；再按 LB 退出，腿和头回到轮行默认姿态。自平衡默认关。

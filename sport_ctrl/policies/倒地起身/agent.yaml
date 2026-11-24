@@ -1,6 +1,6 @@
 seed: 0
 num_steps_per_env: 24
-max_iterations: 6000
+max_iterations: 2000
 obs_groups:
   actor: !!python/tuple
   - actor
@@ -8,7 +8,7 @@ obs_groups:
   - critic
 save_interval: 250
 experiment_name: cyberduck_v2_standup
-run_name: standup_obs46_v2_onestage
+run_name: standup_face_down_symmetric_v4
 logger: tensorboard
 wandb_project: mjlab
 wandb_tags: !!python/tuple []
@@ -16,7 +16,7 @@ resume: false
 load_run: .*
 load_checkpoint: model_.*.pt
 clip_actions: null
-upload_model: false
+upload_model: true
 class_name: OnPolicyRunner
 actor:
   hidden_dims: !!python/tuple
@@ -28,11 +28,11 @@ actor:
   cnn_cfg: null
   distribution_cfg:
     class_name: GaussianDistribution
-    init_std: 1.0
+    init_std: 0.6
     std_type: scalar
     std_range: !!python/tuple
-    - 1.0e-06
-    - 1000000.0
+    - 0.1
+    - 1.0
   rnn_type: null
   rnn_hidden_dim: 256
   rnn_num_layers: 1
@@ -57,7 +57,7 @@ algorithm:
   schedule: fixed
   gamma: 0.99
   lam: 0.95
-  entropy_coef: 0.01
+  entropy_coef: 0.005
   desired_kl: 0.01
   max_grad_norm: 0.5
   value_loss_coef: 1.0

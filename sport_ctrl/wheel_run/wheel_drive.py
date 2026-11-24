@@ -2510,7 +2510,7 @@ def main() -> int:
                 f"扳机张嘴（上限 {MOUTH_OPEN_MAX_DEG:.0f}°）并鸭叫。RB 开关头部张望（默认关）。"
                 "十字键上下调音量，左右侧倾（默认半幅，LT 满幅）。"
                 f"平时力矩 {torque_nm:.1f} N·m，自平衡默认关，短按 Y 才开，髋 {args.hip_tqe:.1f} N·m。"
-                "按 LB 跑起身；站立后按 A 跑前左翻滚；再按同键退出。"
+                "倒地后按 LB 跑起身（启用前只推理）；站立后按 A 跑前左翻滚；再按同键退出。"
                 "B 键卸力停下，长按 Y 再进入。Ctrl+C 退出程序。"
             )
             drive_t0 = time.monotonic()
@@ -2806,13 +2806,8 @@ def main() -> int:
                     getup_cmd = None
                     roulade_cmd = None
                     # 起身与翻滚互斥：一个在跑时忽略另一个的触发。
-                    if jump_u is None and not roulade.active and (lb_rise or getup.active):
-                        if lb_rise and not getup.ready:
-                            print(getup.status_line(), flush=True)
-                        elif balance is None:
-                            if lb_rise:
-                                print("没有 IMU，起身策略不能跑。", flush=True)
-                        else:
+                    if jump_u is None and not roulade.active and balance is not None and getup.ready:
+                        if getup.active or lb_rise:
                             if not getup_stream:
                                 set_getup_stream(True)
                                 getup_stream = True
@@ -2821,14 +2816,24 @@ def main() -> int:
                                 if head is not None
                                 else {"yaw": 0.0, "roll": 0.0}
                             )
-                            getup_cmd = getup.update(
-                                dt_real,
-                                balance.gravity,
-                                balance.gyro,
-                                bus,
-                                servo_now,
-                                arm=lb_rise,
+                        else:
+                            servo_now = (
+                                {"yaw": float(head.fb.get("yaw", 0.0)), "roll": float(head.fb.get("roll", 0.0))}
+                                if head is not None
+                                else {"yaw": 0.0, "roll": 0.0}
                             )
+                        getup_cmd = getup.update(
+                            dt_real,
+                            balance.gravity,
+                            balance.gyro,
+                            bus,
+                            servo_now,
+                            arm=lb_rise,
+                        )
+                    elif jump_u is None and not roulade.active and lb_rise and not getup.ready:
+                        print(getup.status_line(), flush=True)
+                    elif jump_u is None and not roulade.active and lb_rise and balance is None:
+                        print("没有 IMU，起身策略不能跑。", flush=True)
                     if jump_u is None and not getup.active and (a_rise or roulade.active):
                         if a_rise and not roulade.ready:
                             print(roulade.status_line(), flush=True)
@@ -2959,11 +2964,12 @@ def main() -> int:
                     # 并且排在腿前面发，避免队列被腿的位置帧占满后 12 号收不到。
                     if skill_cmd and neck_ids:
                         bus.can.flush_rx(48)
+                        neck_tqe = skill_tqe if getup_cmd is not None else torque_nm
                         neck_miss = pose.command_position(
                             bus,
                             neck_ids,
                             neck_cmd,
-                            torque_nm,
+                            neck_tqe,
                             vel_limit=6.0,
                             strict=False,
                         )
@@ -2973,7 +2979,7 @@ def main() -> int:
                                 bus,
                                 neck_miss,
                                 neck_cmd,
-                                torque_nm,
+                                neck_tqe,
                                 vel_limit=6.0,
                                 strict=False,
                             )

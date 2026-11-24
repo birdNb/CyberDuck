@@ -21,7 +21,6 @@ sys.path.insert(0, str(RUN))
 sys.path.insert(0, str(REPO / "sport_ctrl" / "pose_contrl"))
 
 import pose  # noqa: E402
-from getup_policy import GetupPolicy  # noqa: E402
 from roulade_policy import RouladePolicy  # noqa: E402
 from wheel_drive import (  # noqa: E402
     HEAD_PITCH_ID,
@@ -93,10 +92,9 @@ def main() -> int:
     led = LedRing()
     threading.Thread(target=led.start, name="led-boot", daemon=True).start()
     volume = DuckVolume(mouth.speaker)
-    getup = GetupPolicy()
     roulade = RouladePolicy()
-    print(getup.status_line(), flush=True)
     print(roulade.status_line(), flush=True)
+    print("倒地起身的推理在轮行程序里。倒地后按 LB 才执行。", flush=True)
     pad = Gamepad()
     head: HeadLook | None = None
     head_lock = threading.Lock()
@@ -111,6 +109,9 @@ def main() -> int:
     rt_down_at = 0.0
     long_quack_sent = False
     was_skill = False
+    g_on = False
+    g_yaw = 0.0
+    g_roll = 0.0
     gravity = (0.0, 0.0, -1.0)
     gyro = (0.0, 0.0, 0.0)
     imu_ok = False
@@ -200,6 +201,11 @@ def main() -> int:
                     if imu_ok:
                         gyro = (float(parts[2]), float(parts[3]), float(parts[4]))
                         gravity = (float(parts[5]), float(parts[6]), float(parts[7]))
+                elif parts[0] == "G" and len(parts) >= 2:
+                    g_on = parts[1] == "1"
+                    if g_on and len(parts) >= 4:
+                        g_yaw = float(parts[2])
+                        g_roll = float(parts[3])
                 elif parts[0] == "M" and len(parts) >= 6:
                     can = int(parts[1])
                     if can in bus.motors:
@@ -289,34 +295,24 @@ def main() -> int:
             lb_prev = pad.lb_held() and phase == "drive"
 
             skill = None
-            if phase != "drive":
-                if getup.active:
-                    getup.update(dt, gravity, gyro, bus, {"yaw": 0.0, "roll": 0.0}, arm=True)
+            if phase in ("stop", "exit") or g_on:
                 if roulade.active:
                     roulade.update(dt, gravity, gyro, bus, {"yaw": 0.0, "roll": 0.0}, arm=True)
             elif not imu_ok:
-                if (lb_rise or a_rise) and not imu_warned:
-                    print("没有 IMU，起身和前左翻滚不能跑。", flush=True)
+                if a_rise and not imu_warned:
+                    print("没有 IMU，前左翻滚不能跑。", flush=True)
                     imu_warned = True
-            elif current is not None and not homing:
-                # read_yaw_roll 会把嘴从舵机表里拿掉。只在起身或翻滚真正要观测时读。
-                if not roulade.active and (lb_rise or getup.active):
-                    if lb_rise and not getup.ready:
-                        print(getup.status_line(), flush=True)
-                    else:
-                        servo_now = current.read_yaw_roll()
-                        skill = getup.update(dt, gravity, gyro, bus, servo_now, arm=lb_rise)
-                if skill is None and not getup.active and (a_rise or roulade.active):
-                    if a_rise and not roulade.ready:
-                        print(roulade.status_line(), flush=True)
-                    else:
-                        servo_now = current.read_yaw_roll()
-                        skill = roulade.update(dt, gravity, gyro, bus, servo_now, arm=a_rise)
+            elif current is not None and not homing and phase == "drive" and (a_rise or roulade.active):
+                if a_rise and not roulade.ready:
+                    print(roulade.status_line(), flush=True)
+                else:
+                    servo_now = current.read_yaw_roll()
+                    skill = roulade.update(dt, gravity, gyro, bus, servo_now, arm=a_rise)
 
-            skill_on = getup.active or roulade.active
+            skill_on = roulade.active
             if current is not None and not homing:
-                if getup.active:
-                    current.track_yaw_roll(getup.servo_deg["yaw"], getup.servo_deg["roll"])
+                if g_on:
+                    current.track_yaw_roll(g_yaw, g_roll)
                 elif roulade.active:
                     current.track_yaw_roll(roulade.servo_deg["yaw"], roulade.servo_deg["roll"])
                 elif phase in ("wait", "drive"):
@@ -325,7 +321,11 @@ def main() -> int:
                 current.return_to_drive()
             was_skill = skill_on
 
-            reply = ["W 1" if getup.active else "W 0"]
+            reply = ["W 0"]
+            if current is not None:
+                reply.append(
+                    f"F {float(current.fb.get('yaw', 0.0)):.3f} {float(current.fb.get('roll', 0.0)):.3f}"
+                )
             if skill:
                 for can, deg in skill.items():
                     tq = NECK_TQ if can in (HEAD_PITCH_ID, NECK_PITCH_ID) else SKILL_TQ

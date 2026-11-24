@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""倒地起身。这份权重和行走策略不是同一套。
+"""倒地起身。权重是 policies/倒地起身/model_1999.pt。
 
-身体位置关节发位置。左右轮的速度输出算出来后屏蔽，不写到电机。
+没按 LB 时每拍都推理，不把关节目标发给电机。倒地后按 LB 才执行，再按 LB 退出。
+左右轮的速度输出屏蔽，不写到电机。
 """
 
 from __future__ import annotations
@@ -9,7 +10,6 @@ from __future__ import annotations
 import io
 import math
 import pickle
-import time
 import zipfile
 from collections import OrderedDict
 from pathlib import Path
@@ -17,33 +17,33 @@ from pathlib import Path
 import numpy as np
 
 POLICY_DIR = Path(__file__).resolve().parents[1] / "policies" / "倒地起身"
-TORQUE_NM = 2.0
-# 这台脖子正角度越大越缩。缩着压不到地，起不来。
-# 按 LB 后先收到 0° 伸直，到位后再只跟策略目标相对这一拍的增量。
-NECK_CAN = 12
-NECK_ARRIVE_DEG = 8.0
-NECK_STRAIGHT_S = 1.5
-# rsl_rl EmpiricalNormalization 的默认 eps。这份权重的 std 最小约 0.11，这项几乎不动结果。
+PRIMARY_PT = POLICY_DIR / "model_1999.pt"
+TORQUE_NM = 300.0
+# 直立重力约 (0, 0, -1)。倾斜超过约 45° 并持续一小段，才算倒地。
+FALLEN_GZ = -0.7
+FALLEN_HOLD_S = 0.3
+# rsl_rl EmpiricalNormalization 的默认 eps。
 NORM_EPS = 1e-2
 WHEEL_ACTION_LIMIT = 2.0
-WHEEL_VEL_SCALE = 10.0
 
-# 位置关节，和 model_3250.pt 里的 joint_pos 顺序一致。
+# model_1999.pt 契约 cyberduck_standup_obs46_v3_face_down_locked_wheels。
 # (名字, 电机或舵机号, 是否舵机, 仿真限位 lo/hi, 默认角, latent_offset, SIGN)
-# SIGN：仿真角 = SIGN × 电机弧度。编码器 0 对仿真 0，和行走标定在腿上的结果相同。
+# SIGN：仿真角 = SIGN × 电机弧度。编码器 0 对仿真 0。
+# 这份权重除脖子外 latent 都是 0，动作 0 落在关节行程中点。
 POS_JOINTS = (
     ("r_hip_yaw", 5, False, -0.436, 0.436, 0.0, 0.0, -1.0),
     ("r_hip_roll", 4, False, -0.384, 0.384, 0.0, 0.0, -1.0),
-    ("r_hip_pitch", 3, False, -1.571, 1.571, 0.490, 0.3226523995399475, -1.0),
-    ("r_calf", 2, False, -1.571, 1.571, -0.444, -0.2905299961566925, 1.0),
+    ("r_hip_pitch", 3, False, -1.571, 1.571, 0.0, 0.0, -1.0),
+    ("r_calf", 2, False, -1.571, 1.571, 0.0, 0.0, 1.0),
     ("l_hip_yaw", 10, False, -0.436, 0.436, 0.0, 0.0, -1.0),
     ("l_hip_roll", 9, False, -0.384, 0.384, 0.0, 0.0, 1.0),
-    ("l_hip_pitch", 8, False, -1.571, 1.571, 0.490, 0.3226523995399475, 1.0),
-    ("l_calf", 7, False, -1.571, 1.571, -0.444, -0.2905299961566925, -1.0),
-    ("neck_pitch", 12, False, -1.571, 1.877, -0.360, -0.3068446218967438, 1.0),
-    ("head_pitch", 11, False, -1.571, 1.571, 0.405, 0.26374778151512146, 1.0),
+    ("l_hip_pitch", 8, False, -1.571, 1.571, 0.0, 0.0, 1.0),
+    ("l_calf", 7, False, -1.571, 1.571, 0.0, 0.0, -1.0),
+    # 12 实机方向和行走策略表相反。11 保持原方向。
+    ("neck_pitch", 12, False, -1.571, 1.877, 0.0, -0.08898119628429413, -1.0),
+    ("head_pitch", 11, False, -1.571, 1.571, 0.0, 0.0, 1.0),
     ("head_yaw", 13, True, -2.967, 2.967, 0.0, 0.0, 1.0),
-    ("head_roll", 14, True, -0.208, 0.208, 0.011, 0.05293400213122368, 1.0),
+    ("head_roll", 14, True, -0.208, 0.208, 0.0, 0.0, 1.0),
 )
 # 速度观测在 12 个位置关节之后再加右轮、左轮。这两维是速度输出。
 WHEELS = (
@@ -101,6 +101,8 @@ class _Unpickler(pickle.Unpickler):
 
 
 def _find_pt() -> Path | None:
+    if PRIMARY_PT.is_file():
+        return PRIMARY_PT
     if not POLICY_DIR.is_dir():
         return None
     found = sorted(POLICY_DIR.glob("*.pt"))
@@ -144,8 +146,8 @@ class GetupPolicy:
         self.q_prev: np.ndarray | None = None
         self.servo_deg = {"yaw": 0.0, "roll": 0.0}
         self.wheel_vel = {can: 0.0 for _name, can, _sign in WHEELS}
-        self.neck_origin: float | None = None
-        self.neck_straight_t = 0.0
+        self.fallen_for = 0.0
+        self.fallen_latched = False
         self._w: dict[str, np.ndarray] = {}
         self._load()
 
@@ -153,10 +155,13 @@ class GetupPolicy:
         if self.ready and self.path is not None:
             return (
                 f"倒地起身已加载 {self.path.name}。"
-                f"按 LB 就跑，不看倒地；再按 LB 退出，回到默认姿态。"
-                f"身体位置力矩 {TORQUE_NM:.0f} N·m，左右轮输出已屏蔽。"
+                f"推理一直在跑，不执行。倒地后按 LB 才上关节，再按 LB 退出。"
+                f"不施加力矩限制，左右轮输出已屏蔽。"
             )
         return f"倒地起身没加载（{self.reason}）。"
+
+    def fallen(self) -> bool:
+        return self.fallen_for >= FALLEN_HOLD_S
 
     def _load(self) -> None:
         if self.path is None:
@@ -184,38 +189,34 @@ class GetupPolicy:
         servo_deg: dict[str, float],
         arm: bool = False,
     ) -> dict[int, float] | None:
-        """按 LB 进入，再按 LB 退出。不看倒地。轮子不在返回值里。"""
+        """每拍都推理。倒地后按 LB 才返回关节目标，再按 LB 停止执行。轮子不在返回值里。"""
         if not self.ready:
             return None
         dt = max(0.001, min(0.05, dt))
-        if self.active:
-            if arm:
-                self._stop()
-                print("LB：退出起身策略，回到默认姿态。", flush=True)
-                return None
-            return self._step(dt, gravity, gyro, bus, servo_deg)
-        if not arm:
-            return None
-        self.active = True
-        self.last_action[:] = 0.0
-        self.q_prev = None
-        self.neck_origin = None
-        self.neck_straight_t = 0.0
-        print(
-            f"LB：起身策略生效，不看倒地。轮子输出已屏蔽，身体力矩 {TORQUE_NM:.0f} N·m。"
-            f"脖子先到 0° 伸直，到位后再跟位置增量。再按 LB 回到默认姿态。",
-            flush=True,
-        )
-        return self._step(dt, gravity, gyro, bus, servo_deg)
-
-    def _stop(self) -> None:
-        self.active = False
-        self.last_action[:] = 0.0
-        self.q_prev = None
-        self.servo_deg = {"yaw": 0.0, "roll": 0.0}
-        self.wheel_vel = {can: 0.0 for _name, can, _sign in WHEELS}
-        self.neck_origin = None
-        self.neck_straight_t = 0.0
+        gz = float(gravity[2]) if gravity is not None else -1.0
+        if gz > FALLEN_GZ:
+            self.fallen_for = min(FALLEN_HOLD_S, self.fallen_for + dt)
+        else:
+            self.fallen_for = 0.0
+            self.fallen_latched = False
+        if self.fallen() and not self.fallen_latched and not self.active:
+            self.fallen_latched = True
+            print("已倒地。起身策略在推理，按 LB 才执行。", flush=True)
+        if self.active and arm:
+            self.active = False
+            self.servo_deg = {"yaw": 0.0, "roll": 0.0}
+            print("LB：退出起身策略，回到默认姿态。推理继续，不执行。", flush=True)
+        elif not self.active and arm:
+            if not self.fallen():
+                print("还没倒地，起身策略不执行。", flush=True)
+            else:
+                self.active = True
+                print(
+                    f"LB：已倒地，起身策略开始执行。轮子输出已屏蔽，不施加力矩限制。"
+                    f"再按 LB 回到默认姿态。",
+                    flush=True,
+                )
+        return self._step(dt, gravity, gyro, bus, servo_deg, execute=self.active)
 
     def _motor_rad(self, bus, can: int) -> tuple[float, float]:
         motor = bus.motors.get(can)
@@ -254,7 +255,7 @@ class GetupPolicy:
         self.q_prev = q.copy()
         return qd
 
-    def _step(self, dt, gravity, gyro, bus, servo_deg) -> dict[int, float] | None:
+    def _step(self, dt, gravity, gyro, bus, servo_deg, execute: bool = True) -> dict[int, float] | None:
         q = self._q_sim(bus, servo_deg)
         qd = self._q_dot(dt, q, bus)
         obs = np.zeros(46, dtype=np.float64)
@@ -271,9 +272,11 @@ class GetupPolicy:
         action[12] = min(WHEEL_ACTION_LIMIT, max(-WHEEL_ACTION_LIMIT, float(action[12])))
         action[13] = min(WHEEL_ACTION_LIMIT, max(-WHEEL_ACTION_LIMIT, float(action[13])))
         self.last_action = action
-        # 轮速维仍回灌到上一拍动作，但输出屏蔽，不写到 CAN 1 / 6。
+        # 轮速维仍回灌到上一拍动作。这份权重的轮子 scale 是 0，也不写到 CAN 1 / 6。
         for _name, can, _sign in WHEELS:
             self.wheel_vel[can] = 0.0
+        if not execute:
+            return None
         cmd: dict[int, float] = {}
         for i, (_name, can, servo, lo, hi, _off, lat, sign) in enumerate(POS_JOINTS):
             q_tgt = _decode_pos(float(action[i]), lo, hi, lat)
@@ -283,50 +286,7 @@ class GetupPolicy:
                 self.servo_deg[key] = deg
             else:
                 cmd[can] = deg
-        self._rebase_neck(dt, bus, cmd)
         return cmd
-
-    def _neck_meas_deg(self, bus) -> float | None:
-        motor = bus.motors.get(NECK_CAN)
-        if motor is None or motor.state.t_pos <= 0.0:
-            return None
-        if time.monotonic() - motor.state.t_pos > 0.4:
-            return None
-        return math.degrees(float(motor.state.position))
-
-    def _rebase_neck(self, dt: float, bus, cmd: dict[int, float]) -> None:
-        """绝对角会把已经缩着的脖子继续往回收。先伸直到 0°，再只跟目标的变化。"""
-        policy_deg = cmd.get(NECK_CAN)
-        if policy_deg is None:
-            return
-        if self.neck_origin is None:
-            self.neck_straight_t += dt
-            meas = self._neck_meas_deg(bus)
-            arrived = meas is not None and abs(meas) <= NECK_ARRIVE_DEG
-            cmd[NECK_CAN] = 0.0
-            if not arrived and self.neck_straight_t < NECK_STRAIGHT_S:
-                return
-            self.neck_origin = float(policy_deg)
-            if arrived:
-                print(
-                    f"脖子已到 {meas:+.1f}°，从 0° 起按策略位置增量走。",
-                    flush=True,
-                )
-            else:
-                shown = "无反馈" if meas is None else f"{meas:+.1f}°"
-                print(
-                    f"脖子伸直到时（{shown}），从 0° 起按策略位置增量走。",
-                    flush=True,
-                )
-            return
-        lo, hi, sign = -1.571, 1.877, 1.0
-        for _name, can, _servo, jlo, jhi, _off, _lat, jsign in POS_JOINTS:
-            if can == NECK_CAN and not _servo:
-                lo, hi, sign = jlo, jhi, jsign
-                break
-        ends = (math.degrees(sign * lo), math.degrees(sign * hi))
-        delta = float(policy_deg) - self.neck_origin
-        cmd[NECK_CAN] = min(max(ends), max(min(ends), delta))
 
     def _infer(self, obs: np.ndarray) -> np.ndarray | None:
         try:

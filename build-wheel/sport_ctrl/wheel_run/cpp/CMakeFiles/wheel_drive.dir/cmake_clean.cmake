@@ -3,6 +3,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/wheel_drive.dir/src/bus.cpp.o.d"
   "CMakeFiles/wheel_drive.dir/src/config.cpp.o"
   "CMakeFiles/wheel_drive.dir/src/config.cpp.o.d"
+  "CMakeFiles/wheel_drive.dir/src/getup.cpp.o"
+  "CMakeFiles/wheel_drive.dir/src/getup.cpp.o.d"
   "CMakeFiles/wheel_drive.dir/src/main.cpp.o"
   "CMakeFiles/wheel_drive.dir/src/main.cpp.o.d"
   "CMakeFiles/wheel_drive.dir/src/plant.cpp.o"

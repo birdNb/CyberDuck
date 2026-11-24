@@ -2,6 +2,7 @@
 #define _GNU_SOURCE
 #endif
 
+#include "wheel/getup.hpp"
 #include "wheel/plant.hpp"
 
 #include "imu/lsm6.hpp"
@@ -65,6 +66,9 @@ struct ShowCmd {
     float nvel = 1.2f;
     float ntq = 1.f;
     bool lock_wheels = false;
+    bool has_servo = false;
+    float servo_yaw = 0;
+    float servo_roll = 0;
     uint16_t mask = 0;
     float deg[16]{};
     float vel[16]{};
@@ -83,6 +87,7 @@ struct PadSnap {
     bool bogus = false;
     bool xbox = false;
     bool y_held = false;
+    bool lb_held = false;
     uint32_t edge_b = 0;
     uint32_t edge_y = 0;
     char path[64]{};
@@ -150,6 +155,11 @@ struct State {
     PiMutex mu_job;
     PiMutex mu_show;
     ShowCmd show;
+    Getup getup;
+    GetupGoal getup_goal;
+    bool getup_lb = false;
+    uint64_t getup_prev_ns = 0;
+    std::atomic<uint8_t> getup_on{0};
     Slot slot[16]{};
     Feedback fb[16]{};
     PadSnap pad{};
@@ -390,6 +400,7 @@ void* pad_thread(void* arg) {
         snap.xbox = xbox;
         snap.bogus = bogus;
         snap.y_held = connected && buttons[xbox ? 3 : 4];
+        snap.lb_held = connected && buttons[xbox ? 4 : 6];
         snap.edge_b = edge_b;
         snap.edge_y = edge_y;
         std::snprintf(snap.path, sizeof(snap.path), "%s", path);
@@ -674,9 +685,16 @@ void* body_thread(void* arg) {
                             if (!(show.mask & bit(id))) continue;
                             put_deg(s, id, show.deg[id], show.vel[id], show.tq[id]);
                         }
-                    } else if (show.neck) {
+                    } else if (show.neck && !s->getup_on.load()) {
                         put_deg(s, 11, show.n11, show.nvel, show.ntq);
                         put_deg(s, 12, show.n12, show.nvel, show.ntq);
+                    }
+                }
+                if (s->getup_on.load()) {
+                    const GetupGoal& goal = s->getup_goal;
+                    for (int id = 1; id <= 15; ++id) {
+                        if (goal.tq[id] <= 0.f) continue;
+                        put_deg(s, id, goal.deg[id], 6.f, goal.tq[id]);
                     }
                 }
             }
@@ -717,6 +735,7 @@ void* wheel_thread(void* arg) {
             WheelPair tgt = wheel_targets(pad.fwd, pad.turn, pad.spin, cap, s->args.turn * scale, s->args.spin * scale);
             ShowCmd show = copy_show(s);
             if (show_live(show) && show.lock_wheels) tgt.left = tgt.right = 0;
+            if (s->getup_on.load()) tgt.left = tgt.right = 0;
             if (t0 - s->drive_t0_ns.load() < static_cast<uint64_t>(kSpeedArmS * 1e9f)) tgt.left = tgt.right = 0;
             cmd_l = ramp(cmd_l, tgt.left, s->args.accel, dt);
             cmd_r = ramp(cmd_r, tgt.right, s->args.accel, dt);
@@ -765,13 +784,34 @@ void* can_thread(void* arg) {
         uint32_t ph = s->phase.load();
         bool estop = s->estop.load() != 0;
         Slot slots[16];
+        GetupGoal getup_goal;
         {
             Lock lk(s->mu_cmd);
             std::memcpy(slots, s->slot, sizeof(slots));
+            getup_goal = s->getup_goal;
         }
         if (ph == PhWait) {
             ShowCmd show = copy_show(s);
-            bool neck = show_live(show) && show.neck && show.mask == 0;
+            if (getup_goal.active) {
+                int budget = 4;
+                for (int n = 0; n < 16 && budget > 0; ++n) {
+                    int id = rr_cmd;
+                    rr_cmd = id % 15 + 1;
+                    if (!(s->online & bit(id)) || is_wheel(id) || getup_goal.tq[id] <= 0.f) continue;
+                    float deg = getup_goal.deg[id];
+                    bool due = !track[id].valid || std::fabs(deg - track[id].deg) >= 0.05f || t0 - track[id].ns >= 100000000ull;
+                    if (!due) continue;
+                    if (s->bus->send_position(id, pos_to_int(deg2rad(deg)), 6.f, getup_goal.tq[id])) {
+                        track[id].deg = deg;
+                        track[id].ns = t0;
+                        track[id].valid = true;
+                        --budget;
+                    } else {
+                        s->tx_fail.fetch_add(1, std::memory_order_relaxed);
+                    }
+                }
+            }
+            bool neck = show_live(show) && show.neck && show.mask == 0 && !getup_goal.active;
             if (neck) {
                 if (s->online & bit(11))
                     fail(s->bus->send_position(11, pos_to_int(deg2rad(show.n11)), show.nvel, show.ntq));
@@ -1103,6 +1143,15 @@ void apply_show_line(ShowCmd& cmd, const char* line) {
         if (std::sscanf(line, "W %d", &lock) == 1) cmd.lock_wheels = lock != 0;
         return;
     }
+    if (std::strncmp(line, "F ", 2) == 0) {
+        float yaw = 0, roll = 0;
+        if (std::sscanf(line, "F %f %f", &yaw, &roll) == 2) {
+            cmd.has_servo = true;
+            cmd.servo_yaw = yaw;
+            cmd.servo_roll = roll;
+        }
+        return;
+    }
     if (std::strncmp(line, "J ", 2) == 0) {
         int id = 0;
         float deg = 0, vel = 6.f, tq = 2.f;
@@ -1233,6 +1282,16 @@ void* show_thread(void* arg) {
         if (client >= 0) {
             char out[4096];
             int n = 0;
+            GetupGoal goal;
+            {
+                Lock lk(s->mu_cmd);
+                goal = s->getup_goal;
+            }
+            if (goal.active) {
+                n += std::snprintf(out + n, sizeof(out) - static_cast<size_t>(n), "G 1 %.3f %.3f\n", goal.yaw, goal.roll);
+            } else {
+                n += std::snprintf(out + n, sizeof(out) - static_cast<size_t>(n), "G 0\n");
+            }
             n += std::snprintf(out + n, sizeof(out) - static_cast<size_t>(n), "P %s\n", phase_name(s->phase.load()));
             ImuSnap imu = copy_imu(s);
             if (imu.ok) {
@@ -1327,6 +1386,49 @@ int bring_up_can(const std::string& iface, const std::string& config) {
     }
     std::printf("%s 已拉起。\n", iface.c_str());
     return 0;
+}
+
+void tick_getup(State* s) {
+    if (!s->getup.ready()) return;
+    uint64_t now = mono_ns();
+    float dt = 0.02f;
+    if (s->getup_prev_ns != 0 && now > s->getup_prev_ns) dt = static_cast<float>(now - s->getup_prev_ns) * 1e-9f;
+    s->getup_prev_ns = now;
+    uint32_t ph = s->phase.load();
+    bool allow = ph == PhDrive || ph == PhWait;
+    PadSnap pad = copy_pad(s);
+    bool rise = pad.connected && pad.lb_held && !s->getup_lb;
+    s->getup_lb = pad.connected && pad.lb_held;
+    ImuSnap imu = copy_imu(s);
+    if (!imu.ok) return;
+    GetupSense sense;
+    for (int i = 0; i < 3; ++i) {
+        sense.gyro[i] = imu.gyro[i];
+        sense.grav[i] = imu.grav[i];
+    }
+    for (int id = 1; id <= 12; ++id) {
+        Feedback fb = copy_fb(s, id);
+        sense.pos[id] = fb.position;
+        sense.vel[id] = fb.velocity;
+    }
+    ShowCmd show = copy_show(s);
+    if (show.has_servo) {
+        sense.servo_yaw = show.servo_yaw;
+        sense.servo_roll = show.servo_roll;
+    }
+    sense.lb_rise = rise;
+    sense.allow = allow;
+    GetupGoal goal;
+    s->getup.step(dt, sense, goal);
+    if (goal.say_fall) std::printf("已倒地。起身策略在推理，按 LB 才执行。\n");
+    if (goal.say_refuse) std::printf("还没倒地，起身策略不执行。\n");
+    if (goal.say_start) std::printf("LB：已倒地，起身策略开始执行。腿、头和脖子一起动，不限力矩，再按 LB 退出。\n");
+    if (goal.say_stop) std::printf("LB：退出起身策略。推理继续，不执行。\n");
+    {
+        Lock lk(s->mu_cmd);
+        s->getup_goal = goal;
+    }
+    s->getup_on.store(goal.active ? 1 : 0);
 }
 
 int run(const Args& args) {
@@ -1429,6 +1531,11 @@ int run(const Args& args) {
             std::printf("IMU 已打开。自平衡默认关，驾驶中短按 Y 切换。\n");
         }
     }
+    if (s->getup.load("/home/aidlux/cyberDuck/sport_ctrl/policies/倒地起身/actor_1999.bin")) {
+        std::printf("起身策略已载入本程序。推理一直在跑。倒地后按 LB 才执行，再按 LB 退出。\n");
+    } else {
+        std::printf("起身策略没载入（%s）。\n", s->getup.reason().c_str());
+    }
     s->phase.store(PhWait);
     if (s->imu) up_imu = start_thread(th_imu, imu_thread, s, "wheel-imu");
     up_body = start_thread(th_body, body_thread, s, "wheel-body");
@@ -1518,6 +1625,7 @@ int run(const Args& args) {
             if (s->phase.load() != PhWait && s->phase.load() != PhStop) do_unload(s);
             break;
         }
+        tick_getup(s);
         uint32_t ph = s->phase.load();
         PadSnap pad = copy_pad(s);
         if (pad.connected != was_connected) {
@@ -1546,6 +1654,7 @@ int run(const Args& args) {
                 } else if (mono_s() - y_t0 >= kYHoldS) {
                     y_down = false;
                     y_block = true;
+                    last_edge_y = pad.edge_y;
                     if (!start_slew()) announced = false;
                 }
             } else {
