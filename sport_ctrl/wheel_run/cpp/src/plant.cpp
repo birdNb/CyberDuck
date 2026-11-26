@@ -871,7 +871,10 @@ void* can_thread(void* arg) {
     auto* s = static_cast<State*>(arg);
     s->fifo_can.store(set_fifo(60) ? 1 : -1);
     int rr_stat = 1;
+    int rr_cmd = 1;
     uint64_t last_wheel_q = 0;
+    uint64_t last_wheel_cmd = 0;
+    constexpr uint64_t kWheelCmdPeriodNs = 100000000ull;  // 轮速最多 10 Hz，防止 PCAN 缓冲爆掉
     struct Track {
         float deg = 0;
         uint64_t ns = 0;
@@ -906,14 +909,14 @@ void* can_thread(void* arg) {
         if (ph == PhWait) {
             ShowCmd show = copy_show(s);
             if (roll_goal.active) getup_goal = {};
-            // 策略/站立：0x1F 查询码用 0x0E，一发一收，50 Hz 同步控制和反馈。
-            constexpr uint8_t kPosFb = 0x0E;
+            // 翻滚/起身：位置指令用 0x00（不回包）。若 0x1F+0x0E 全关节齐发，PCAN-USB 缓冲会爆，
+            // 观测角冻住 → 策略以为已站直 → 动作僵住，随后整口掉线。
             if (roll_goal.active) {
                 for (int id = 1; id <= 15; ++id) {
                     if (!(s->online & bit(id)) || is_wheel(id) || roll_goal.tq[id] <= 0.f) continue;
                     float deg = roll_goal.deg[id];
                     float vel = roll_goal.cmd_vel > 0.1f ? roll_goal.cmd_vel : 6.f;
-                    if (s->bus->send_position(id, pos_to_int(deg2rad(deg)), vel, roll_goal.tq[id], kPosFb)) {
+                    if (s->bus->send_position(id, pos_to_int(deg2rad(deg)), vel, roll_goal.tq[id])) {
                         track[id].deg = deg;
                         track[id].ns = t0;
                         track[id].valid = true;
@@ -925,7 +928,7 @@ void* can_thread(void* arg) {
                 for (int id = 1; id <= 15; ++id) {
                     if (!(s->online & bit(id)) || is_wheel(id) || getup_goal.tq[id] <= 0.f) continue;
                     float deg = getup_goal.deg[id];
-                    if (s->bus->send_position(id, pos_to_int(deg2rad(deg)), 6.f, getup_goal.tq[id], kPosFb)) {
+                    if (s->bus->send_position(id, pos_to_int(deg2rad(deg)), 6.f, getup_goal.tq[id])) {
                         track[id].deg = deg;
                         track[id].ns = t0;
                         track[id].valid = true;
@@ -936,18 +939,17 @@ void* can_thread(void* arg) {
             }
             bool neck = show_live(show) && show.neck && show.mask == 0 && !getup_goal.active && !roll_goal.active;
             if (neck) {
-                // 张望保持 0x00，避免空闲时回包把总线打满。
                 if (s->online & bit(11))
                     fail(s->bus->send_position(11, pos_to_int(deg2rad(show.n11)), show.nvel, show.ntq));
                 if (s->online & bit(12))
                     fail(s->bus->send_position(12, pos_to_int(deg2rad(show.n12)), show.nvel, show.ntq));
             }
-        } else if (ph == PhSlew || ph == PhSettle || ph == PhDrive || ph == PhHold) {
-            constexpr uint8_t kPosFb = 0x0E;
+        } else if (ph == PhSlew || ph == PhSettle || ph == PhHold) {
+            // 过渡到站立：一拍发齐，查询码 0x00。
             for (int id = 1; id <= 15; ++id) {
                 if (!(s->online & bit(id)) || is_wheel(id) || slots[id].kind != 1) continue;
                 float deg = rad2deg(slots[id].pos);
-                if (s->bus->send_position(id, pos_to_int(slots[id].pos), slots[id].vel, slots[id].tq, kPosFb)) {
+                if (s->bus->send_position(id, pos_to_int(slots[id].pos), slots[id].vel, slots[id].tq)) {
                     track[id].deg = deg;
                     track[id].ns = t0;
                     track[id].valid = true;
@@ -955,41 +957,28 @@ void* can_thread(void* arg) {
                     s->tx_fail.fetch_add(1, std::memory_order_relaxed);
                 }
             }
-        }
-        const bool skill = roll_goal.active || getup_goal.active;
-        const bool body_fb =
-            skill || ph == PhSlew || ph == PhSettle || ph == PhDrive || ph == PhHold;
-        // 身体已用 0x1F+0x0E 带回包，不再另发状态查询。轮子速度帧仍是 0x00，单独问。
-        const uint64_t wheel_q_period = body_fb ? 80000000ull : 40000000ull;
-        if (t0 - last_wheel_q >= wheel_q_period) {
-            if (s->online & bit(s->left_id)) fail(s->bus->send_status(s->left_id));
-            if (s->online & bit(s->right_id)) fail(s->bus->send_status(s->right_id));
-            last_wheel_q = t0;
-        }
-        if (!body_fb) {
-            for (int n = 0; n < 16; ++n) {
-                int id = rr_stat;
-                rr_stat = id % 15 + 1;
-                if ((s->online & bit(id)) && !is_wheel(id)) {
-                    fail(s->bus->send_status(id));
-                    break;
+        } else if (ph == PhDrive) {
+            // 驾驶：身体最多每拍 4 路轮询，避免和轮速一起把 PCAN 灌满。
+            int budget = 4;
+            for (int n = 0; n < 16 && budget > 0; ++n) {
+                int id = rr_cmd;
+                rr_cmd = id % 15 + 1;
+                if (!(s->online & bit(id)) || is_wheel(id) || slots[id].kind != 1) continue;
+                float deg = rad2deg(slots[id].pos);
+                bool due = !track[id].valid || std::fabs(deg - track[id].deg) >= 0.05f ||
+                           t0 - track[id].ns >= 100000000ull;
+                if (!due) continue;
+                if (s->bus->send_position(id, pos_to_int(slots[id].pos), slots[id].vel, slots[id].tq)) {
+                    track[id].deg = deg;
+                    track[id].ns = t0;
+                    track[id].valid = true;
+                    --budget;
+                } else {
+                    s->tx_fail.fetch_add(1, std::memory_order_relaxed);
                 }
             }
         }
-        uint32_t want = s->sample_mask.load();
-        int sample_budget = 2;
-        for (int id = 1; id <= 15 && sample_budget > 0; ++id) {
-            if (!(want & bit(id))) continue;
-            fail(s->bus->send_status(id));
-            --sample_budget;
-        }
-        // 位置带回包后立刻收齐，供本拍策略/日志使用。
-        ingest(s);
-        if (body_fb) ingest(s);
-        if (ph == PhStop) {
-            for (int id = 1; id <= 15; ++id)
-                if (s->online & bit(id)) fail(s->bus->send_stop(id));
-        }
+        const bool skill = roll_goal.active || getup_goal.active;
         if (ph == PhDrive) s->torque_off.store(0);
         bool wheels_quiet = ph == PhStop || (s->torque_off.load() != 0 && ph != PhDrive);
         auto send_wheel = [&](int id) {
@@ -1001,8 +990,40 @@ void* can_thread(void* arg) {
             if (ph == PhDrive && !estop && !wheel_stale && sl.kind == 2) vel = sl.vel;
             fail(s->bus->send_velocity(id, vel));
         };
-        send_wheel(s->left_id);
-        send_wheel(s->right_id);
+        // 轮速指令封顶 10 Hz（左右各一帧），其余节拍留给身体位置和状态回包。
+        if (t0 - last_wheel_cmd >= kWheelCmdPeriodNs) {
+            send_wheel(s->left_id);
+            send_wheel(s->right_id);
+            last_wheel_cmd = t0;
+        }
+        const uint64_t wheel_q_period = 100000000ull;
+        if (t0 - last_wheel_q >= wheel_q_period) {
+            if (s->online & bit(s->left_id)) fail(s->bus->send_status(s->left_id));
+            if (s->online & bit(s->right_id)) fail(s->bus->send_status(s->right_id));
+            last_wheel_q = t0;
+        }
+        // 身体状态单独稀疏问：策略时每拍 3 路（约 15 Hz/关节），平时 1 路。绝不再用位置帧带 0x0E 灌回包。
+        int stat_budget = skill ? 3 : 1;
+        for (int n = 0; n < 16 && stat_budget > 0; ++n) {
+            int id = rr_stat;
+            rr_stat = id % 15 + 1;
+            if ((s->online & bit(id)) && !is_wheel(id)) {
+                fail(s->bus->send_status(id));
+                --stat_budget;
+            }
+        }
+        uint32_t want = s->sample_mask.load();
+        int sample_budget = 2;
+        for (int id = 1; id <= 15 && sample_budget > 0; ++id) {
+            if (!(want & bit(id))) continue;
+            fail(s->bus->send_status(id));
+            --sample_budget;
+        }
+        ingest(s);
+        if (ph == PhStop) {
+            for (int id = 1; id <= 15; ++id)
+                if (s->online & bit(id)) fail(s->bus->send_stop(id));
+        }
         s->can_hb_ns.store(mono_ns(), std::memory_order_relaxed);
         s->can_us.store(static_cast<uint32_t>(mono_ns() - t0), std::memory_order_relaxed);
         pace(next, s->can_period_ns, &s->late_can);
@@ -1057,7 +1078,8 @@ void* wd_thread(void* arg) {
                 rx_flat_since = 0;
             } else if (rx_flat_since == 0) {
                 rx_flat_since = now;
-            } else if (now - rx_flat_since >= 1500000000ull) {
+            } else if (now - rx_flat_since >= (down ? 600000000ull : 3000000000ull)) {
+                // 口还 UP 时多等一会：翻滚高峰回包会短暂变稀，1.5s 误判会直接卸力僵住。
                 rx_dead = true;
             }
             bool lost = down || rx_dead;
@@ -1065,7 +1087,7 @@ void* wd_thread(void* arg) {
                 lost_since = 0;
             } else if (lost_since == 0) {
                 lost_since = now;
-            } else if (now - lost_since >= 600000000ull) {
+            } else if (now - lost_since >= (down ? 600000000ull : 1500000000ull)) {
                 s->link_recover.store(1);
                 lost_since = 0;
                 rx_flat_since = 0;
