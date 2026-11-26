@@ -24,6 +24,7 @@ struct Args {
     bool no_balance = false;
     bool no_wait_y = false;
     bool swap_wheels = false;
+    bool can_log = true;  // 混合轮速+位置报文落盘 logs/can_mix_*.csv
     int wheel_hz = 50;
     int body_hz = 50;
 };

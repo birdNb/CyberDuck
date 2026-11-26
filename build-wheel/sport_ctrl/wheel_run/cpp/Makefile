@@ -154,6 +154,30 @@ src/bus.cpp.s:
 	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/bus.cpp.s
 .PHONY : src/bus.cpp.s
 
+src/can_log.o: src/can_log.cpp.o
+.PHONY : src/can_log.o
+
+# target to build an object file
+src/can_log.cpp.o:
+	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/can_log.cpp.o
+.PHONY : src/can_log.cpp.o
+
+src/can_log.i: src/can_log.cpp.i
+.PHONY : src/can_log.i
+
+# target to preprocess a source file
+src/can_log.cpp.i:
+	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/can_log.cpp.i
+.PHONY : src/can_log.cpp.i
+
+src/can_log.s: src/can_log.cpp.s
+.PHONY : src/can_log.s
+
+# target to generate assembly for a file
+src/can_log.cpp.s:
+	cd /home/aidlux/cyberDuck/build-wheel && $(MAKE) $(MAKESILENT) -f sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/build.make sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/can_log.cpp.s
+.PHONY : src/can_log.cpp.s
+
 src/config.o: src/config.cpp.o
 .PHONY : src/config.o
 
@@ -310,6 +334,9 @@ help:
 	@echo "... src/bus.o"
 	@echo "... src/bus.i"
 	@echo "... src/bus.s"
+	@echo "... src/can_log.o"
+	@echo "... src/can_log.i"
+	@echo "... src/can_log.s"
 	@echo "... src/config.o"
 	@echo "... src/config.i"
 	@echo "... src/config.s"

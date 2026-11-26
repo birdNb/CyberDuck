@@ -8,6 +8,7 @@
 
 #include "imu/lsm6.hpp"
 #include "wheel/bus.hpp"
+#include "wheel/can_log.hpp"
 #include "wheel/config.hpp"
 #include "wheel/math.hpp"
 
@@ -1726,6 +1727,7 @@ int run(const Args& args) {
     std::setvbuf(stderr, nullptr, _IOLBF, 0);
     std::signal(SIGINT, on_signal);
     std::signal(SIGTERM, on_signal);
+    if (args.can_log) can_log_open();
     if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
         std::printf("内存没有锁住（%s）。实时节拍仍按时钟走。\n", std::strerror(errno));
     }
@@ -2111,6 +2113,7 @@ int run(const Args& args) {
     if (up_can) pthread_join(th_can, nullptr);
     if (up_wd) pthread_join(th_wd, nullptr);
     if (up_show) pthread_join(th_show, nullptr);
+    can_log_close();
     std::printf("已退出。\n");
     return 0;
 }

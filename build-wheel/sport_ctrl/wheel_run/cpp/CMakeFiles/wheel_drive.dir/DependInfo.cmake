@@ -9,6 +9,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/aidlux/cyberDuck/sport_ctrl/wheel_run/cpp/src/bus.cpp" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/bus.cpp.o" "gcc" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/bus.cpp.o.d"
+  "/home/aidlux/cyberDuck/sport_ctrl/wheel_run/cpp/src/can_log.cpp" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/can_log.cpp.o" "gcc" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/can_log.cpp.o.d"
   "/home/aidlux/cyberDuck/sport_ctrl/wheel_run/cpp/src/config.cpp" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/config.cpp.o" "gcc" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/config.cpp.o.d"
   "/home/aidlux/cyberDuck/sport_ctrl/wheel_run/cpp/src/getup.cpp" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/getup.cpp.o" "gcc" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/getup.cpp.o.d"
   "/home/aidlux/cyberDuck/sport_ctrl/wheel_run/cpp/src/main.cpp" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/main.cpp.o" "gcc" "sport_ctrl/wheel_run/cpp/CMakeFiles/wheel_drive.dir/src/main.cpp.o.d"

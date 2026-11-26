@@ -32,6 +32,8 @@ void usage() {
         << "  --balance-flip      平衡方向反了时翻转\n"
         << "  --swap-wheels       交换左右轮角色\n"
         << "  --no-wait-y         扫描后立刻进入姿态\n"
+        << "  --can-log           记录混合轮速/位置 CAN 报文到 logs/can_mix_*.csv（默认开）\n"
+        << "  --no-can-log        关闭报文记录\n"
         << "  --self-test         只检查换算、摇杆和姿态文件，不打开电机\n";
 }
 
@@ -148,6 +150,10 @@ int main(int argc, char** argv) {
             args.swap_wheels = true;
         } else if (a == "--no-wait-y") {
             args.no_wait_y = true;
+        } else if (a == "--can-log") {
+            args.can_log = true;
+        } else if (a == "--no-can-log") {
+            args.can_log = false;
         } else {
             std::cerr << "不认识的参数: " << a << "\n";
             usage();

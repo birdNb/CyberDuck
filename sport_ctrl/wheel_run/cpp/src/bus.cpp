@@ -1,4 +1,5 @@
 #include "wheel/bus.hpp"
+#include "wheel/can_log.hpp"
 
 #include <linux/can.h>
 #include <linux/can/raw.h>
@@ -109,7 +110,10 @@ bool Bus::send(int id, const uint8_t* data, int len) {
     std::memcpy(frame.data, data, len);
     for (int i = 0; i < 3; ++i) {
         ssize_t n = ::write(fd_, &frame, sizeof(frame));
-        if (n == static_cast<ssize_t>(sizeof(frame))) return true;
+        if (n == static_cast<ssize_t>(sizeof(frame))) {
+            can_log_tx(id, data, len);
+            return true;
+        }
         if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != ENOBUFS) return false;
         ::usleep(100);
     }
@@ -184,9 +188,11 @@ bool Bus::poll(Frame& out, int timeout_ms) {
         out.dlc = 0;
         return true;
     }
-    out.id = reply_id(frame.can_id & CAN_EFF_MASK);
+    const uint32_t arb = frame.can_id & CAN_EFF_MASK;
+    out.id = reply_id(arb);
     out.dlc = frame.can_dlc > 8 ? 8 : frame.can_dlc;
     std::memcpy(out.data, frame.data, out.dlc);
+    if (out.id > 0) can_log_rx(out.id, arb, out.data, out.dlc);
     return true;
 }
 

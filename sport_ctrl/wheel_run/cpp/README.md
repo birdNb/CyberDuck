@@ -98,4 +98,7 @@ sudo /home/aidlux/cyberDuck/build-wheel/sport_ctrl/wheel_run/cpp/wheel_drive --s
 
 `sport_ctrl/wheel_run/logs/drive_cpp_年月日_时分秒.csv`
 
+混合轮速(`0x1C`)+身体位置(`0x1F`)+状态查询(`0x0E`) 的逐帧 CAN 报文默认写入  
+`sport_ctrl/wheel_run/logs/can_mix_年月日_时分秒.csv`（`--no-can-log` 可关）。列：`t_s,dir,id,arb,dlc,hex,kind,query,pos_rad,vel_rad_s,tqe_nm,fault`。
+
 终端大约每 0.5 秒打一行。行尾的 CAN 数字是这一拍的耗时，单位是纳秒，不是微秒。

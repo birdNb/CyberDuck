@@ -1,6 +1,7 @@
 add_executable(wheel_drive
     src/main.cpp
     src/bus.cpp
+    src/can_log.cpp
     src/config.cpp
     src/plant.cpp
     src/getup.cpp
